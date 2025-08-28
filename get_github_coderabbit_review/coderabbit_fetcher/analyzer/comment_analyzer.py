@@ -14,7 +14,7 @@ class CommentAnalyzer:
 
     def __init__(self, resolved_marker: str = "🔒 CODERABBIT_RESOLVED 🔒"):
         """Initialize the comment analyzer.
-        
+
         Args:
             resolved_marker: Marker text indicating a resolved comment thread
         """
@@ -202,21 +202,21 @@ class CommentAnalyzer:
                 unresolved_comments.extend(thread)
 
         return unresolved_comments
-    
+
     def _extract_summary_comments(self, comments: List[Dict[str, Any]]) -> List[SummaryComment]:
         """Extract and process summary comments from CodeRabbit.
-        
+
         Args:
             comments: List of PR-level comments
-            
+
         Returns:
             List of processed summary comments
         """
         summary_comments = []
-        
+
         for comment in comments:
             body = comment.get("body", "")
-            
+
             # Use SummaryProcessor to check if this is a summary comment
             if self.summary_processor._is_summary_comment(body):
                 try:
@@ -229,7 +229,7 @@ class CommentAnalyzer:
             elif self.summary_processor.has_summary_content(body):
                 # If it has summary-like content but isn't a formal summary
                 summary_comments.append(SummaryComment(raw_content=body))
-        
+
         return summary_comments
 
     def _extract_actionable_comments(self, comments: List[Dict[str, Any]]) -> List[ActionableComment]:
