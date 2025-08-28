@@ -24,23 +24,51 @@ class ThreadContext(BaseCodeRabbitModel):
     about a comment thread for AI consumption.
     """
 
-    main_comment: Dict[str, Any]
+    thread_id: str
+    root_comment_id: str
+    file_context: str = ""
+    line_context: str = ""
+    participants: List[str] = []
+    comment_count: int = 0
+    coderabbit_comment_count: int = 0
+    is_resolved: bool = False
+    context_summary: str = ""
+    ai_summary: str = ""
+    chronological_comments: List[Dict[str, Any]] = []
+    
+    # Legacy fields for backward compatibility
+    main_comment: Optional[Dict[str, Any]] = None
     replies: List[Dict[str, Any]] = []
     resolution_status: ResolutionStatus = ResolutionStatus.UNRESOLVED
     chronological_order: List[Dict[str, Any]] = []
     contextual_summary: str = ""
-    thread_id: str
 
     def __init__(self, **data) -> None:
         """Initialize thread context with auto-generated summary."""
         super().__init__(**data)
 
+        # Sync new fields with legacy fields for backward compatibility
+        if self.chronological_comments and not self.chronological_order:
+            self.chronological_order = self.chronological_comments
+        
+        if self.context_summary and not self.contextual_summary:
+            self.contextual_summary = self.context_summary
+            
+        if self.is_resolved:
+            self.resolution_status = ResolutionStatus.RESOLVED
+        
+        # Set main_comment from chronological_comments if available
+        if self.chronological_comments and not self.main_comment:
+            self.main_comment = self.chronological_comments[0]
+            if len(self.chronological_comments) > 1:
+                self.replies = self.chronological_comments[1:]
+
         # Auto-generate contextual summary if not provided
-        if not self.contextual_summary:
+        if not self.contextual_summary and not self.context_summary:
             self.contextual_summary = self._generate_contextual_summary()
 
         # Auto-sort chronological order if not provided
-        if not self.chronological_order:
+        if not self.chronological_order and self.main_comment:
             self.chronological_order = self._build_chronological_order()
 
     def _generate_contextual_summary(self) -> str:
@@ -55,7 +83,7 @@ class ThreadContext(BaseCodeRabbitModel):
         summary_parts = [
             f"Thread with {total_comments} comment(s)",
             f"Started by {main_author}",
-            f"Status: {self.resolution_status.value}"
+            f"Status: {self.resolution_status.value if hasattr(self.resolution_status, 'value') else str(self.resolution_status)}"
         ]
 
         if self.replies:

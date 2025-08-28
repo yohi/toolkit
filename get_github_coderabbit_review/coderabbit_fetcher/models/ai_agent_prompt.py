@@ -63,6 +63,6 @@ class AIAgentPrompt(BaseCodeRabbitModel):
         """
         return (
             self.code_block and
-            len(self.code_block.strip()) > 50 and
+            len(self.code_block.strip()) > 20 and  # Relaxed from 50 to 20
             self.language is not None
         )
