@@ -236,5 +236,5 @@ help-testing: ## Show testing help
 	@echo ""
 	@echo "Test files are in tests/ directory:"
 	@echo "  tests/unit/        - Unit tests"
-	@echo "  tests/integration/ - Integration tests"  
+	@echo "  tests/integration/ - Integration tests"
 	@echo "  tests/performance/ - Performance tests"
