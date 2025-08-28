@@ -9,7 +9,7 @@ __version__ = "1.0.0"
 __author__ = "CodeRabbit Fetcher Team"
 __email__ = "support@coderabbit-fetcher.dev"
 
-from .cli import main
+from .cli.main import main
 from .exceptions import CodeRabbitFetcherError
 from .models import AnalyzedComments, SummaryComment, ReviewComment
 
