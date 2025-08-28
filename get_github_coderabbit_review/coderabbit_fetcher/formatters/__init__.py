@@ -7,7 +7,7 @@ from .plaintext_formatter import PlainTextFormatter
 
 __all__ = [
     "BaseFormatter",
-    "MarkdownFormatter", 
+    "MarkdownFormatter",
     "JSONFormatter",
     "PlainTextFormatter",
 ]
