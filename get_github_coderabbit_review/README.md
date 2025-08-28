@@ -130,21 +130,21 @@ coderabbit-fetch https://github.com/owner/repo/pull/123 \
 
 ### Command Line Options
 
-| Option | Description | Default |
-|--------|-------------|---------|
-| `pr_url` | GitHub pull request URL | Required |
-| `--persona-file` | Path to persona file for AI context | None |
-| `--output-format` | Output format: `markdown`, `json`, `plain` | `markdown` |
-| `--output-file` | Output file path | stdout |
-| `--resolved-marker` | Custom resolved marker string | `🔒 CODERABBIT_RESOLVED 🔒` |
-| `--post-resolution-request` | Post resolution requests to unresolved comments | False |
-| `--timeout` | Network timeout in seconds | 30 |
-| `--retry-attempts` | Number of retry attempts | 3 |
-| `--retry-delay` | Delay between retries in seconds | 1.0 |
-| `--show-stats` | Show execution statistics | False |
-| `--debug` | Enable debug mode | False |
-| `--version` | Show version information | - |
-| `--help` | Show help message | - |
+| Option                      | Description                                     | Default                   |
+| --------------------------- | ----------------------------------------------- | ------------------------- |
+| `pr_url`                    | GitHub pull request URL                         | Required                  |
+| `--persona-file`            | Path to persona file for AI context             | None                      |
+| `--output-format`           | Output format: `markdown`, `json`, `plain`      | `markdown`                |
+| `--output-file`             | Output file path                                | stdout                    |
+| `--resolved-marker`         | Custom resolved marker string                   | `🔒 CODERABBIT_RESOLVED 🔒` |
+| `--post-resolution-request` | Post resolution requests to unresolved comments | False                     |
+| `--timeout`                 | Network timeout in seconds                      | 30                        |
+| `--retry-attempts`          | Number of retry attempts                        | 3                         |
+| `--retry-delay`             | Delay between retries in seconds                | 1.0                       |
+| `--show-stats`              | Show execution statistics                       | False                     |
+| `--debug`                   | Enable debug mode                               | False                     |
+| `--version`                 | Show version information                        | -                         |
+| `--help`                    | Show help message                               | -                         |
 
 ## 🎭 Persona Files
 
@@ -410,13 +410,13 @@ coderabbit-fetch URL --show-stats
 
 ### Error Messages
 
-| Error | Cause | Solution |
-|-------|-------|----------|
-| `GitHub CLI not found` | gh not installed | Install GitHub CLI |
-| `Authentication required` | Not logged in to GitHub | Run `gh auth login` |
-| `Rate limit exceeded` | Too many API calls | Wait or use authenticated requests |
-| `PR not found` | Invalid URL or private repo | Check URL and permissions |
-| `Timeout exceeded` | Large dataset or slow network | Increase `--timeout` value |
+| Error                     | Cause                         | Solution                           |
+| ------------------------- | ----------------------------- | ---------------------------------- |
+| `GitHub CLI not found`    | gh not installed              | Install GitHub CLI                 |
+| `Authentication required` | Not logged in to GitHub       | Run `gh auth login`                |
+| `Rate limit exceeded`     | Too many API calls            | Wait or use authenticated requests |
+| `PR not found`            | Invalid URL or private repo   | Check URL and permissions          |
+| `Timeout exceeded`        | Large dataset or slow network | Increase `--timeout` value         |
 
 ### Debug Mode
 
