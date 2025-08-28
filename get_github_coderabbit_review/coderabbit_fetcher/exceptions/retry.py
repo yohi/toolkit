@@ -6,12 +6,12 @@ from .base import CodeRabbitFetcherError
 
 class RetryableError(CodeRabbitFetcherError):
     """Base class for errors that can be retried."""
-    
+
     def __init__(self, message: str, retry_after: Optional[float] = None, **kwargs):
         details = kwargs.get('details', {})
         if retry_after is not None:
             details['retry_after_seconds'] = retry_after
-        
+
         super().__init__(
             message,
             details=details,
@@ -22,7 +22,7 @@ class RetryableError(CodeRabbitFetcherError):
 
 class TransientError(RetryableError):
     """Exception for transient errors that should be retried."""
-    
+
     def __init__(self, message: str, **kwargs):
         super().__init__(
             message,
@@ -37,10 +37,10 @@ class TransientError(RetryableError):
 
 class RateLimitError(RetryableError):
     """Exception raised when rate limits are hit."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         retry_after: Optional[float] = None,
         limit_type: Optional[str] = None,
         **kwargs
@@ -48,7 +48,7 @@ class RateLimitError(RetryableError):
         details = kwargs.get('details', {})
         if limit_type:
             details['limit_type'] = limit_type
-        
+
         super().__init__(
             message,
             retry_after=retry_after,
@@ -64,10 +64,10 @@ class RateLimitError(RetryableError):
 
 class RetryExhaustedError(CodeRabbitFetcherError):
     """Exception raised when all retry attempts are exhausted."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         attempts: int,
         last_error: Exception,
         error_history: Optional[List[Exception]] = None,
@@ -79,7 +79,7 @@ class RetryExhaustedError(CodeRabbitFetcherError):
             'last_error_type': type(last_error).__name__,
             'last_error_message': str(last_error)
         })
-        
+
         if error_history:
             details['error_history'] = [
                 {
@@ -88,7 +88,7 @@ class RetryExhaustedError(CodeRabbitFetcherError):
                 }
                 for err in error_history
             ]
-        
+
         super().__init__(
             message,
             details=details,
@@ -101,7 +101,7 @@ class RetryExhaustedError(CodeRabbitFetcherError):
             recoverable=False,
             **kwargs
         )
-        
+
         self.attempts = attempts
         self.last_error = last_error
         self.error_history = error_history or []
@@ -109,10 +109,10 @@ class RetryExhaustedError(CodeRabbitFetcherError):
 
 class TimeoutError(RetryableError):
     """Exception raised when operations timeout."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         timeout_seconds: Optional[float] = None,
         operation: Optional[str] = None,
         **kwargs
@@ -122,7 +122,7 @@ class TimeoutError(RetryableError):
             details['timeout_seconds'] = timeout_seconds
         if operation:
             details['operation'] = operation
-        
+
         super().__init__(
             message,
             details=details,
@@ -137,10 +137,10 @@ class TimeoutError(RetryableError):
 
 class CircuitBreakerError(CodeRabbitFetcherError):
     """Exception raised when circuit breaker is open."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         failure_count: int,
         threshold: int,
         **kwargs
@@ -151,7 +151,7 @@ class CircuitBreakerError(CodeRabbitFetcherError):
             'threshold': threshold,
             'failure_rate': failure_count / threshold if threshold > 0 else 0
         })
-        
+
         super().__init__(
             message,
             details=details,

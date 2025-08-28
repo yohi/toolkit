@@ -47,29 +47,29 @@ from .utils import (
 __all__ = [
     # Base exception
     "CodeRabbitFetcherError",
-    
+
     # Authentication exceptions
     "GitHubAuthenticationError",
-    
+
     # Network exceptions
     "APIRateLimitError",
-    
+
     # Parsing exceptions
     "CommentParsingError",
     "InvalidPRUrlError",
-    
+
     # Persona exceptions
     "PersonaFileError",
     "PersonaLoadError",
     "PersonaValidationError",
-    
+
     # Validation exceptions
     "ValidationError",
     "ConfigurationValidationError",
     "URLValidationError",
     "FileValidationError",
     "ParameterValidationError",
-    
+
     # Analysis exceptions
     "CommentAnalysisError",
     "CodeRabbitDetectionError",
@@ -78,7 +78,7 @@ __all__ = [
     "CommentFilteringError",
     "SummaryProcessingError",
     "ReviewProcessingError",
-    
+
     # Retry and resilience exceptions
     "RetryableError",
     "TransientError",
@@ -86,7 +86,7 @@ __all__ = [
     "RetryExhaustedError",
     "TimeoutError",
     "CircuitBreakerError",
-    
+
     # Utility functions
     "format_exception_for_user",
     "create_error_summary",

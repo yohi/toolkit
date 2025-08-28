@@ -6,17 +6,17 @@ from .base import CodeRabbitFetcherError
 
 class CommentAnalysisError(CodeRabbitFetcherError):
     """Exception raised when comment analysis fails."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         analysis_stage: Optional[str] = None,
         **kwargs
     ):
         details = kwargs.get('details', {})
         if analysis_stage:
             details['analysis_stage'] = analysis_stage
-        
+
         super().__init__(
             message,
             details=details,
@@ -31,7 +31,7 @@ class CommentAnalysisError(CodeRabbitFetcherError):
 
 class CodeRabbitDetectionError(CommentAnalysisError):
     """Exception raised when CodeRabbit comment detection fails."""
-    
+
     def __init__(self, message: str, **kwargs):
         super().__init__(
             message,
@@ -47,12 +47,12 @@ class CodeRabbitDetectionError(CommentAnalysisError):
 
 class ThreadProcessingError(CommentAnalysisError):
     """Exception raised when comment thread processing fails."""
-    
+
     def __init__(self, message: str, thread_id: Optional[str] = None, **kwargs):
         details = kwargs.get('details', {})
         if thread_id:
             details['thread_id'] = thread_id
-        
+
         super().__init__(
             message,
             analysis_stage="thread_processing",
@@ -68,12 +68,12 @@ class ThreadProcessingError(CommentAnalysisError):
 
 class ResolvedMarkerError(CommentAnalysisError):
     """Exception raised when resolved marker processing fails."""
-    
+
     def __init__(self, message: str, marker: Optional[str] = None, **kwargs):
         details = kwargs.get('details', {})
         if marker:
             details['resolved_marker'] = marker
-        
+
         super().__init__(
             message,
             analysis_stage="resolved_marker_processing",
@@ -89,17 +89,17 @@ class ResolvedMarkerError(CommentAnalysisError):
 
 class CommentFilteringError(CommentAnalysisError):
     """Exception raised when comment filtering fails."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         filter_type: Optional[str] = None,
         **kwargs
     ):
         details = kwargs.get('details', {})
         if filter_type:
             details['filter_type'] = filter_type
-        
+
         super().__init__(
             message,
             analysis_stage="comment_filtering",
@@ -115,7 +115,7 @@ class CommentFilteringError(CommentAnalysisError):
 
 class SummaryProcessingError(CommentAnalysisError):
     """Exception raised when summary comment processing fails."""
-    
+
     def __init__(self, message: str, **kwargs):
         super().__init__(
             message,
@@ -131,7 +131,7 @@ class SummaryProcessingError(CommentAnalysisError):
 
 class ReviewProcessingError(CommentAnalysisError):
     """Exception raised when review comment processing fails."""
-    
+
     def __init__(self, message: str, **kwargs):
         super().__init__(
             message,

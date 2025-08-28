@@ -6,10 +6,10 @@ from .base import CodeRabbitFetcherError
 
 class ValidationError(CodeRabbitFetcherError):
     """Exception raised when input validation fails."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         field: Optional[str] = None,
         validation_errors: Optional[List[str]] = None,
         **kwargs
@@ -19,13 +19,13 @@ class ValidationError(CodeRabbitFetcherError):
             details['field'] = field
         if validation_errors:
             details['validation_errors'] = validation_errors
-        
+
         suggestions = kwargs.get('suggestions', [
             "Check input parameters and values",
             "Refer to help documentation",
             "Use --help for usage information"
         ])
-        
+
         super().__init__(
             message,
             details=details,
@@ -36,12 +36,12 @@ class ValidationError(CodeRabbitFetcherError):
 
 class ConfigurationValidationError(ValidationError):
     """Exception raised when configuration validation fails."""
-    
+
     def __init__(self, message: str, config_section: Optional[str] = None, **kwargs):
         details = kwargs.get('details', {})
         if config_section:
             details['config_section'] = config_section
-        
+
         super().__init__(
             message,
             suggestions=[
@@ -55,12 +55,12 @@ class ConfigurationValidationError(ValidationError):
 
 class URLValidationError(ValidationError):
     """Exception raised when URL validation fails."""
-    
+
     def __init__(self, message: str, url: Optional[str] = None, **kwargs):
         details = kwargs.get('details', {})
         if url:
             details['provided_url'] = url
-        
+
         super().__init__(
             message,
             field="url",
@@ -75,12 +75,12 @@ class URLValidationError(ValidationError):
 
 class FileValidationError(ValidationError):
     """Exception raised when file validation fails."""
-    
+
     def __init__(self, message: str, file_path: Optional[str] = None, **kwargs):
         details = kwargs.get('details', {})
         if file_path:
             details['file_path'] = file_path
-        
+
         super().__init__(
             message,
             field="file_path",
@@ -95,10 +95,10 @@ class FileValidationError(ValidationError):
 
 class ParameterValidationError(ValidationError):
     """Exception raised when parameter validation fails."""
-    
+
     def __init__(
-        self, 
-        message: str, 
+        self,
+        message: str,
         parameter: Optional[str] = None,
         expected_type: Optional[str] = None,
         provided_value: Optional[Any] = None,
@@ -111,7 +111,7 @@ class ParameterValidationError(ValidationError):
             details['expected_type'] = expected_type
         if provided_value is not None:
             details['provided_value'] = str(provided_value)
-        
+
         super().__init__(
             message,
             field=parameter,
