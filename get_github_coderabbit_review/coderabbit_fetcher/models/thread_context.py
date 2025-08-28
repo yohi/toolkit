@@ -35,7 +35,7 @@ class ThreadContext(BaseCodeRabbitModel):
     context_summary: str = ""
     ai_summary: str = ""
     chronological_comments: List[Dict[str, Any]] = []
-    
+
     # Legacy fields for backward compatibility
     main_comment: Optional[Dict[str, Any]] = None
     replies: List[Dict[str, Any]] = []
@@ -50,13 +50,13 @@ class ThreadContext(BaseCodeRabbitModel):
         # Sync new fields with legacy fields for backward compatibility
         if self.chronological_comments and not self.chronological_order:
             self.chronological_order = self.chronological_comments
-        
+
         if self.context_summary and not self.contextual_summary:
             self.contextual_summary = self.context_summary
-            
+
         if self.is_resolved:
             self.resolution_status = ResolutionStatus.RESOLVED
-        
+
         # Set main_comment from chronological_comments if available
         if self.chronological_comments and not self.main_comment:
             self.main_comment = self.chronological_comments[0]

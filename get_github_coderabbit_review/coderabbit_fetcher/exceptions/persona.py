@@ -1,26 +1,50 @@
-"""
-Persona file related exceptions.
-"""
+"""Persona-related exceptions."""
 
 from .base import CodeRabbitFetcherError
 
 
 class PersonaFileError(CodeRabbitFetcherError):
-    """Persona file reading issues.
+    """Base exception for persona file-related errors."""
+    pass
 
-    Raised when a persona file cannot be read or contains
-    invalid content.
-    """
 
-    def __init__(self, message: str, file_path: str | None = None) -> None:
-        """Initialize the persona file error.
-
+class PersonaLoadError(PersonaFileError):
+    """Exception raised when persona loading fails."""
+    
+    def __init__(self, message: str, file_path: str = None):
+        """Initialize persona load error.
+        
         Args:
-            message: Error message describing the issue
-            file_path: Optional path to the problematic file
+            message: Error message
+            file_path: Optional file path that caused the error
         """
-        details = None
-        if file_path:
-            details = f"File path: {file_path}"
+        self.file_path = file_path
+        super().__init__(message)
+    
+    def __str__(self) -> str:
+        """String representation of the error."""
+        if self.file_path:
+            return f"PersonaLoadError in {self.file_path}: {super().__str__()}"
+        return f"PersonaLoadError: {super().__str__()}"
 
-        super().__init__(message, details)
+
+class PersonaValidationError(PersonaLoadError):
+    """Exception raised when persona content validation fails."""
+    
+    def __init__(self, message: str, file_path: str = None, validation_rule: str = None):
+        """Initialize persona validation error.
+        
+        Args:
+            message: Error message
+            file_path: Optional file path that caused the error
+            validation_rule: Optional validation rule that failed
+        """
+        self.validation_rule = validation_rule
+        super().__init__(message, file_path)
+    
+    def __str__(self) -> str:
+        """String representation of the error."""
+        base_str = super().__str__()
+        if self.validation_rule:
+            return f"{base_str} (Rule: {self.validation_rule})"
+        return base_str
