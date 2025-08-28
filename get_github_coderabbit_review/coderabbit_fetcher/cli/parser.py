@@ -13,8 +13,10 @@ from urllib.parse import urlparse
 
 from rich.console import Console
 
-from ..exceptions import InvalidPRUrlError
+from ..exceptions import InvalidPRUrlError, GitHubAuthenticationError
 from ..github.client import GitHubClient
+from ..github.comment_poster import CommentPoster
+from ..analyzer import CommentAnalyzer
 
 console = Console()
 
@@ -29,6 +31,7 @@ class ArgumentParser:
     def __init__(self) -> None:
         """Initialize the argument parser."""
         self.github_client = GitHubClient()
+        self.comment_analyzer = CommentAnalyzer()
 
     def parse_pr_url(self, pr_url: str) -> tuple[str, str, int]:
         """Parse GitHub pull request URL to extract owner, repo, and PR number.
@@ -137,16 +140,54 @@ class ArgumentParser:
             console.print(f"✅ [green]Successfully fetched PR data[/green]")
             console.print(f"📊 [blue]Found {len(comments_data.get('comments', []))} comments[/blue]")
 
-        # For now, just output the raw data (analysis will be implemented in later tasks)
+        # Analyze comments using CommentAnalyzer
+        if verbose:
+            console.print("🔍 [blue]Analyzing CodeRabbit comments...[/blue]")
+        
+        # Update the analyzer with the custom resolved marker
+        self.comment_analyzer.resolved_marker = resolved_marker
+        
+        # Analyze the comments
+        analyzed_comments = self.comment_analyzer.analyze_comments(comments_data)
+        
+        if verbose:
+            console.print(f"📊 [green]Analysis complete:[/green]")
+            console.print(f"   - Total comments: {analyzed_comments.metadata.total_comments}")
+            console.print(f"   - Summary comments: {len(analyzed_comments.summary_comments)}")
+            console.print(f"   - Review comments: {len(analyzed_comments.review_comments)}")
+            console.print(f"   - Actionable items: {analyzed_comments.metadata.actionable_comments}")
+            console.print(f"   - Resolved comments: {analyzed_comments.metadata.resolved_comments}")
+
+        # Prepare output data
+        output_data = {
+            "metadata": {
+                "pr_url": pr_url,
+                "owner": owner,
+                "repo": repo,
+                "pr_number": pr_number,
+                "resolved_marker": resolved_marker,
+                "analysis_timestamp": analyzed_comments.metadata.processed_at.isoformat()
+            },
+            "raw_data": comments_data,
+            "analysis": {
+                "total_comments": analyzed_comments.metadata.total_comments,
+                "resolved_count": analyzed_comments.metadata.resolved_comments,
+                "summary_comments": [comment.model_dump() for comment in analyzed_comments.summary_comments],
+                "review_comments": [comment.model_dump() for comment in analyzed_comments.review_comments],
+                "metadata": analyzed_comments.metadata.model_dump()
+            }
+        }
+
+        # Output the analyzed data
         if output_file:
             if verbose:
-                console.print(f"💾 [blue]Writing to {output_file}...[/blue]")
+                console.print(f"💾 [blue]Writing analyzed data to {output_file}...[/blue]")
             output_file.write_text(
-                json.dumps(comments_data, indent=2, ensure_ascii=False),
+                json.dumps(output_data, indent=2, ensure_ascii=False),
                 encoding="utf-8"
             )
         else:
-            console.print(json.dumps(comments_data, indent=2, ensure_ascii=False))
+            console.print(json.dumps(output_data, indent=2, ensure_ascii=False))
 
         # Post resolution request if requested (basic implementation)
         if request_resolution:

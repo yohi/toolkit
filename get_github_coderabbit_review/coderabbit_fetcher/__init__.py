@@ -12,6 +12,7 @@ __email__ = "support@coderabbit-fetcher.dev"
 from .cli.main import main
 from .exceptions import CodeRabbitFetcherError
 from .models import AnalyzedComments, SummaryComment, ReviewComment
+from .analyzer import CommentAnalyzer
 
 __all__ = [
     "main",
@@ -19,4 +20,5 @@ __all__ = [
     "AnalyzedComments",
     "SummaryComment",
     "ReviewComment",
+    "CommentAnalyzer",
 ]
