@@ -143,13 +143,13 @@ class ArgumentParser:
         # Analyze comments using CommentAnalyzer
         if verbose:
             console.print("🔍 [blue]Analyzing CodeRabbit comments...[/blue]")
-        
+
         # Update the analyzer with the custom resolved marker
         self.comment_analyzer.resolved_marker = resolved_marker
-        
+
         # Analyze the comments
         analyzed_comments = self.comment_analyzer.analyze_comments(comments_data)
-        
+
         if verbose:
             console.print(f"📊 [green]Analysis complete:[/green]")
             console.print(f"   - Total comments: {analyzed_comments.metadata.total_comments}")

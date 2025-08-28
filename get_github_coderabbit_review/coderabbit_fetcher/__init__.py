@@ -13,6 +13,7 @@ from .cli.main import main
 from .exceptions import CodeRabbitFetcherError
 from .models import AnalyzedComments, SummaryComment, ReviewComment
 from .analyzer import CommentAnalyzer
+from .processors import SummaryProcessor
 
 __all__ = [
     "main",
@@ -21,4 +22,5 @@ __all__ = [
     "SummaryComment",
     "ReviewComment",
     "CommentAnalyzer",
+    "SummaryProcessor",
 ]
