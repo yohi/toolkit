@@ -255,7 +255,7 @@ class CodeRabbitOrchestrator:
             self.persona_manager = PersonaManager()
 
             # Initialize resolved marker manager
-            marker_config = ResolvedMarkerConfig(resolved_marker=self.config.resolved_marker)
+            marker_config = ResolvedMarkerConfig(default_marker=self.config.resolved_marker)
             self.resolved_marker_manager = ResolvedMarkerManager(marker_config)
 
             # Initialize comment analyzer

@@ -91,7 +91,7 @@ Define specific areas of knowledge:
 ```text
 ## Expertise Areas
 - Domain 1: Specific technologies, frameworks, patterns
-- Domain 2: Methodologies, practices, principles  
+- Domain 2: Methodologies, practices, principles
 - Domain 3: Tools, platforms, environments
 - Domain 4: Industry standards, compliance requirements
 
@@ -118,7 +118,7 @@ Example:
 ## Review Approach
 Focus on these priorities:
 1. **Security First** - Identify vulnerabilities that could compromise user data
-2. **Performance Impact** - Evaluate changes that affect application responsiveness  
+2. **Performance Impact** - Evaluate changes that affect application responsiveness
 3. **Maintainability** - Ensure code is readable and extensible by the team
 4. **Best Practices** - Apply industry standards and team conventions
 ```
@@ -154,8 +154,8 @@ You are a developer who reviews code.
 
 ✅ **Specific and Focused:**
 ```text
-You are a Senior React Developer with 8+ years of experience building 
-high-performance single-page applications. You specialize in component 
+You are a Senior React Developer with 8+ years of experience building
+high-performance single-page applications. You specialize in component
 optimization, state management, and accessibility best practices.
 ```
 
@@ -221,7 +221,7 @@ Find the right level of technical detail for your team:
 ### Security-Focused Persona
 
 ```text
-You are a Cybersecurity Expert and Application Security Engineer with deep 
+You are a Cybersecurity Expert and Application Security Engineer with deep
 expertise in secure coding practices and vulnerability assessment.
 
 ## Security Expertise
@@ -255,7 +255,7 @@ expertise in secure coding practices and vulnerability assessment.
 ### Performance-Focused Persona
 
 ```text
-You are a Senior Performance Engineer specializing in web application 
+You are a Senior Performance Engineer specializing in web application
 optimization and scalability engineering.
 
 ## Performance Expertise
@@ -289,7 +289,7 @@ optimization and scalability engineering.
 ### Architecture-Focused Persona
 
 ```text
-You are a Principal Software Architect with expertise in designing scalable, 
+You are a Principal Software Architect with expertise in designing scalable,
 maintainable systems for enterprise applications.
 
 ## Architectural Expertise
@@ -327,7 +327,7 @@ maintainable systems for enterprise applications.
 Create personas that can handle international projects:
 
 ```text
-You are a Senior Software Engineer working on international applications 
+You are a Senior Software Engineer working on international applications
 with multilingual teams.
 
 ## Language Considerations
@@ -336,7 +336,7 @@ with multilingual teams.
 - **Unicode**: Proper handling of international character sets
 - **Localization**: I18n best practices and cultural considerations
 
-When reviewing comments in Japanese, respond in Japanese. For English 
+When reviewing comments in Japanese, respond in Japanese. For English
 comments, respond in English. Always maintain technical accuracy across languages.
 ```
 
@@ -345,7 +345,7 @@ comments, respond in English. Always maintain technical accuracy across language
 Tailor personas to specific technologies:
 
 ```text
-You are a React Expert with deep knowledge of the React ecosystem and 
+You are a React Expert with deep knowledge of the React ecosystem and
 modern frontend development practices.
 
 ## React-Specific Knowledge
@@ -369,7 +369,7 @@ modern frontend development practices.
 Adapt to specific industry requirements:
 
 ```text
-You are a FinTech Software Architect with expertise in financial systems 
+You are a FinTech Software Architect with expertise in financial systems
 and regulatory compliance.
 
 ## Financial Industry Context
@@ -426,8 +426,8 @@ You are a good developer. Write good code.
 
 ✅ **Do:**
 ```text
-You are a Senior Backend Engineer specializing in high-throughput API 
-development with expertise in caching strategies, database optimization, 
+You are a Senior Backend Engineer specializing in high-throughput API
+development with expertise in caching strategies, database optimization,
 and microservices architecture.
 ```
 

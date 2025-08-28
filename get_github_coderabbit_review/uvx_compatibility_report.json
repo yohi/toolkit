@@ -1,0 +1,61 @@
+{
+  "summary": {
+    "total_tests": 7,
+    "successful_tests": 5,
+    "failed_tests": 2,
+    "success_rate": 71.42857142857143,
+    "overall_success": false
+  },
+  "test_results": {
+    "uvx_availability": {
+      "success": true,
+      "returncode": 0,
+      "stdout": "uv-tool-uvx 0.4.18\n",
+      "stderr": "",
+      "command": "uvx --version"
+    },
+    "python_version": {
+      "success": true,
+      "returncode": 0,
+      "stdout": "Python 3.11.13\n",
+      "stderr": "",
+      "command": "python --version"
+    },
+    "github_cli": {
+      "success": true,
+      "returncode": 0,
+      "stdout": "gh version 2.78.0 (2025-08-21)\nhttps://github.com/cli/cli/releases/tag/v2.78.0\n",
+      "stderr": "",
+      "command": "gh --version"
+    },
+    "import_compatibility": {
+      "success": true,
+      "returncode": 0,
+      "stdout": "Package version: 1.0.0-dev\nCLI import successful\nCore classes import successful\nAll imports successful!\n",
+      "stderr": "/tmp/uvx_test__jj8jydn/import_test.py:6: RuntimeWarning: CodeRabbit Comment Fetcher requires Python 3.13+, but you're using Python 3.11. Some features may not work correctly.\n  import coderabbit_fetcher\n",
+      "command": "python /tmp/uvx_test__jj8jydn/import_test.py"
+    },
+    "dependency_resolution": {
+      "success": true,
+      "returncode": 0,
+      "stdout": "Testing required modules...\n\u2705 argparse\n\u2705 json\n\u2705 pathlib\n\u2705 subprocess\n\u2705 tempfile\n\u2705 typing\n\u2705 dataclasses\n\u2705 re\n\u2705 os\n\u2705 time\n\u2705 logging\n\nTesting optional modules...\n\u26a0\ufe0f  psutil - OPTIONAL\n\u2705 rich\n\nDependency check completed!\n",
+      "stderr": "",
+      "command": "python /tmp/uvx_test__jj8jydn/dependency_test.py"
+    },
+    "entry_point": {
+      "success": false,
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "/home/linuxbrew/.linuxbrew/opt/python@3.11/bin/python3.11: Error while finding module specification for 'coderabbit_fetcher.cli.main' (ModuleNotFoundError: No module named 'coderabbit_fetcher')\n",
+      "command": "python -m coderabbit_fetcher.cli.main --help"
+    },
+    "cli_arguments": {
+      "success": false,
+      "returncode": 1,
+      "stdout": "",
+      "stderr": "/home/linuxbrew/.linuxbrew/opt/python@3.11/bin/python3.11: Error while finding module specification for 'coderabbit_fetcher.cli.main' (ModuleNotFoundError: No module named 'coderabbit_fetcher')\n",
+      "command": "python -m coderabbit_fetcher.cli.main --version"
+    }
+  },
+  "recommendations": []
+}

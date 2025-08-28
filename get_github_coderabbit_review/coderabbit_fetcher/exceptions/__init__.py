@@ -7,7 +7,7 @@ for proper error handling and user feedback.
 
 from .base import CodeRabbitFetcherError
 from .auth import GitHubAuthenticationError
-from .network import APIRateLimitError
+from .network import NetworkError, APIRateLimitError
 from .parsing import CommentParsingError, InvalidPRUrlError
 from .persona import PersonaFileError, PersonaLoadError, PersonaValidationError
 from .validation import (
@@ -52,6 +52,7 @@ __all__ = [
     "GitHubAuthenticationError",
 
     # Network exceptions
+    "NetworkError",
     "APIRateLimitError",
 
     # Parsing exceptions

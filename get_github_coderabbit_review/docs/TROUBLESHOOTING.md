@@ -65,7 +65,7 @@ bash: coderabbit-fetch: command not found
    ```bash
    # If using uvx
    uvx coderabbit-comment-fetcher --help
-   
+
    # If using pip
    pip show coderabbit-comment-fetcher
    ```
@@ -74,7 +74,7 @@ bash: coderabbit-fetch: command not found
    ```bash
    # With uvx (recommended)
    uvx install coderabbit-comment-fetcher
-   
+
    # With pip
    pip install --upgrade coderabbit-comment-fetcher
    ```
@@ -83,7 +83,7 @@ bash: coderabbit-fetch: command not found
    ```bash
    # Find where pip installs scripts
    python -m site --user-base
-   
+
    # Add to PATH if needed
    export PATH="$PATH:$(python -m site --user-base)/bin"
    ```
@@ -128,11 +128,11 @@ RuntimeWarning: CodeRabbit Comment Fetcher requires Python 3.13+
    ```bash
    # macOS with Homebrew
    brew install python@3.13
-   
+
    # Ubuntu/Debian
    sudo apt update
    sudo apt install python3.13
-   
+
    # Windows - download from python.org
    ```
 
@@ -160,15 +160,15 @@ RuntimeWarning: CodeRabbit Comment Fetcher requires Python 3.13+
    ```bash
    # macOS
    brew install gh
-   
+
    # Ubuntu/Debian
    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
    sudo apt update && sudo apt install gh
-   
+
    # Windows with Chocolatey
    choco install gh
-   
+
    # Windows with Scoop
    scoop install gh
    ```
@@ -192,7 +192,7 @@ RuntimeWarning: CodeRabbit Comment Fetcher requires Python 3.13+
    ```bash
    gh auth login
    ```
-   
+
    Follow the prompts to:
    - Choose authentication method (web browser recommended)
    - Select protocol (HTTPS recommended)
@@ -221,7 +221,7 @@ RuntimeWarning: CodeRabbit Comment Fetcher requires Python 3.13+
    ```bash
    # Test repository access
    gh repo view owner/repository
-   
+
    # Check if you can view the PR
    gh pr view 123 --repo owner/repository
    ```
@@ -251,7 +251,7 @@ RuntimeWarning: CodeRabbit Comment Fetcher requires Python 3.13+
    ```bash
    # Correct format
    https://github.com/owner/repository/pull/123
-   
+
    # Common mistakes to avoid
    https://github.com/owner/repository/pulls/123  # Wrong: "pulls" should be "pull"
    https://github.com/owner/repository/pull/123/ # Extra trailing slash might cause issues
@@ -261,7 +261,7 @@ RuntimeWarning: CodeRabbit Comment Fetcher requires Python 3.13+
    ```bash
    # Manual verification
    gh pr view 123 --repo owner/repository
-   
+
    # Or visit in browser
    ```
 
@@ -269,7 +269,7 @@ RuntimeWarning: CodeRabbit Comment Fetcher requires Python 3.13+
    ```bash
    # Test repository access
    gh repo view owner/repository
-   
+
    # Check if repository is private
    gh api repos/owner/repository | jq .private
    ```
@@ -287,7 +287,7 @@ RuntimeWarning: CodeRabbit Comment Fetcher requires Python 3.13+
    ```bash
    # Check rate limit status
    gh api rate_limit
-   
+
    # Wait for reset time
    ```
 
@@ -295,7 +295,7 @@ RuntimeWarning: CodeRabbit Comment Fetcher requires Python 3.13+
    ```bash
    # Ensure you're authenticated (higher rate limits)
    gh auth status
-   
+
    # Re-authenticate if needed
    gh auth login
    ```
@@ -304,7 +304,7 @@ RuntimeWarning: CodeRabbit Comment Fetcher requires Python 3.13+
    ```bash
    # Use longer timeout to reduce retries
    coderabbit-fetch <URL> --timeout 120
-   
+
    # Reduce retry attempts
    coderabbit-fetch <URL> --retry-attempts 1
    ```
@@ -324,7 +324,7 @@ RuntimeWarning: CodeRabbit Comment Fetcher requires Python 3.13+
    ```bash
    # For large PRs with many comments
    coderabbit-fetch <URL> --timeout 120
-   
+
    # For very large PRs
    coderabbit-fetch <URL> --timeout 300
    ```
@@ -333,7 +333,7 @@ RuntimeWarning: CodeRabbit Comment Fetcher requires Python 3.13+
    ```bash
    # Test GitHub connectivity
    ping github.com
-   
+
    # Test GitHub API
    curl -I https://api.github.com
    ```
@@ -393,7 +393,7 @@ RuntimeWarning: CodeRabbit Comment Fetcher requires Python 3.13+
    ```bash
    # Use JSON format (faster)
    coderabbit-fetch <URL> --output-format json
-   
+
    # Increase timeout but reduce retries
    coderabbit-fetch <URL> --timeout 180 --retry-attempts 2
    ```
@@ -413,7 +413,7 @@ No CodeRabbit comments found in this PR
    ```bash
    # Check PR manually in browser
    # Look for comments from "coderabbitai[bot]"
-   
+
    # Or use GitHub CLI
    gh pr view 123 --repo owner/repository --comments
    ```
@@ -422,7 +422,7 @@ No CodeRabbit comments found in this PR
    ```bash
    # Try with different resolved marker
    coderabbit-fetch <URL> --resolved-marker "✅ RESOLVED"
-   
+
    # Or disable resolved filtering
    coderabbit-fetch <URL> --resolved-marker ""
    ```
@@ -445,7 +445,7 @@ No CodeRabbit comments found in this PR
    ```bash
    # Try different format
    coderabbit-fetch <URL> --output-format plain
-   
+
    # Save to file to avoid terminal issues
    coderabbit-fetch <URL> --output-file output.json --output-format json
    ```
@@ -460,7 +460,7 @@ No CodeRabbit comments found in this PR
    ```bash
    # For JSON output
    cat output.json | jq .
-   
+
    # For Markdown output
    pandoc -f markdown -t html output.md > /dev/null
    ```
@@ -487,7 +487,7 @@ No CodeRabbit comments found in this PR
    # If behind corporate proxy
    export https_proxy=http://proxy.company.com:8080
    export http_proxy=http://proxy.company.com:8080
-   
+
    # Or configure git proxy
    git config --global http.proxy http://proxy.company.com:8080
    ```
@@ -509,7 +509,7 @@ SSL: CERTIFICATE_VERIFY_FAILED
    ```bash
    # macOS
    brew upgrade ca-certificates
-   
+
    # Ubuntu/Debian
    sudo apt update && sudo apt upgrade ca-certificates
    ```
@@ -518,7 +518,7 @@ SSL: CERTIFICATE_VERIFY_FAILED
    ```bash
    # Ensure system time is correct
    date
-   
+
    # Sync time if needed (Linux)
    sudo ntpdate -s time.nist.gov
    ```
@@ -544,10 +544,10 @@ SSL: CERTIFICATE_VERIFY_FAILED
    ```bash
    # Verify file exists
    ls -la /path/to/persona.txt
-   
+
    # Use absolute path
    coderabbit-fetch <URL> --persona-file /absolute/path/to/persona.txt
-   
+
    # Or relative path
    coderabbit-fetch <URL> --persona-file ./examples/personas/default_reviewer.txt
    ```
@@ -556,7 +556,7 @@ SSL: CERTIFICATE_VERIFY_FAILED
    ```bash
    # Make file readable
    chmod 644 persona.txt
-   
+
    # Check permissions
    ls -la persona.txt
    ```

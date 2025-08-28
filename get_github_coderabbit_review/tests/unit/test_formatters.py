@@ -225,8 +225,7 @@ class TestMarkdownFormatter:
                 )
             ],
             thread_contexts=[
-                ThreadContext(thread_id="test_thread",
-                    thread_id="test_thread_456",
+                ThreadContext(thread_id="test_thread_456",
                     main_comment={"body": "Main comment"},
                     replies=[],
                     resolution_status=ResolutionStatus.UNRESOLVED,

@@ -68,6 +68,44 @@ class GitHubClient:
         """
         return self._authenticated or False
 
+    def validate(self) -> Dict[str, Any]:
+        """Validate GitHub CLI setup and authentication.
+        
+        Returns:
+            Dictionary with validation results
+        """
+        from .validation import ValidationResult
+        
+        result = ValidationResult(valid=True)
+        
+        try:
+            # Check if gh CLI is available
+            import subprocess
+            subprocess.run(['gh', '--version'], capture_output=True, check=True, timeout=5)
+        except FileNotFoundError:
+            result.add_issue("GitHub CLI (gh) not found. Install from https://cli.github.com/")
+        except subprocess.CalledProcessError:
+            result.add_issue("GitHub CLI found but not working properly")
+        except subprocess.TimeoutExpired:
+            result.add_issue("GitHub CLI check timed out")
+        except Exception as e:
+            result.add_issue(f"GitHub CLI validation failed: {e}")
+        
+        # Check authentication if CLI is available
+        if result.valid:
+            try:
+                self.check_authentication()
+            except GitHubAuthenticationError as e:
+                result.add_issue(f"GitHub authentication failed: {e}")
+            except Exception as e:
+                result.add_issue(f"Authentication check failed: {e}")
+        
+        return {
+            "valid": result.valid,
+            "issues": result.issues or [],
+            "warnings": result.warnings or []
+        }
+
     def fetch_pr_comments(self, pr_url: str) -> Dict[str, Any]:
         """Fetch pull request comments using GitHub CLI.
 
