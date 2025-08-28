@@ -9,37 +9,37 @@ from .exceptions import PersonaLoadError
 
 class PersonaManager:
     """Manages AI personas for CodeRabbit comment analysis."""
-    
+
     def __init__(self):
         """Initialize persona manager with default generator."""
         self.default_persona_generator = DefaultPersonaGenerator()
         self._persona_cache: Dict[str, str] = {}
-    
+
     def load_persona(self, persona_file: Optional[str] = None) -> str:
         """Load persona from file or generate default.
-        
+
         Args:
             persona_file: Path to persona file. If None, uses default.
-            
+
         Returns:
             Persona content as string
-            
+
         Raises:
             PersonaLoadError: If persona file cannot be loaded
         """
         if persona_file:
             return self.load_from_file(persona_file)
         return self.default_persona_generator.generate()
-    
+
     def load_from_file(self, file_path: str) -> str:
         """Load persona from file with validation.
-        
+
         Args:
             file_path: Path to persona file
-            
+
         Returns:
             Persona content as string
-            
+
         Raises:
             PersonaLoadError: If file cannot be read or is invalid
         """
@@ -47,71 +47,71 @@ class PersonaManager:
             # Check cache first
             if file_path in self._persona_cache:
                 return self._persona_cache[file_path]
-            
+
             # Validate file path
             path = Path(file_path)
             if not path.exists():
                 raise PersonaLoadError(f"Persona file not found: {file_path}")
-            
+
             if not path.is_file():
                 raise PersonaLoadError(f"Persona path is not a file: {file_path}")
-            
+
             # Read file content
             with open(path, 'r', encoding='utf-8') as f:
                 content = f.read()
-            
+
             # Validate content
             if not content.strip():
                 raise PersonaLoadError(f"Persona file is empty: {file_path}")
-            
+
             # Validate persona structure
             self._validate_persona_content(content, file_path)
-            
+
             # Cache the content
             self._persona_cache[file_path] = content
-            
+
             return content
-            
+
         except OSError as e:
             raise PersonaLoadError(f"Failed to read persona file {file_path}: {str(e)}") from e
         except UnicodeDecodeError as e:
             raise PersonaLoadError(f"Persona file has invalid encoding {file_path}: {str(e)}") from e
-    
+
     def _validate_persona_content(self, content: str, file_path: str) -> None:
         """Validate persona content structure.
-        
+
         Args:
             content: Persona content to validate
             file_path: File path for error messages
-            
+
         Raises:
             PersonaLoadError: If content is invalid
         """
         # Check minimum length
         if len(content.strip()) < 50:
             raise PersonaLoadError(f"Persona content too short in {file_path}")
-        
+
         # Check for basic persona elements (optional validation)
         content_lower = content.lower()
-        
+
         # Look for role definition indicators
         role_indicators = [
             "you are", "your role", "act as", "persona", "character",
             "あなたは", "役割", "として振る舞"
         ]
-        
+
         has_role = any(indicator in content_lower for indicator in role_indicators)
         if not has_role:
             # This is a warning, not an error - allow flexible persona formats
             pass
-    
+
     def clear_cache(self) -> None:
         """Clear persona cache."""
         self._persona_cache.clear()
-    
+
     def get_cache_info(self) -> Dict[str, Any]:
         """Get cache information for debugging.
-        
+
         Returns:
             Dictionary with cache statistics
         """
@@ -124,22 +124,22 @@ class PersonaManager:
 
 class DefaultPersonaGenerator:
     """Generates default personas following Claude 4 best practices."""
-    
+
     def __init__(self):
         """Initialize default persona generator."""
         pass
-    
+
     def generate(self) -> str:
         """Generate default persona optimized for CodeRabbit comment analysis.
-        
+
         Returns:
             Default persona string following Claude 4 best practices
         """
         return self._generate_coderabbit_analyst_persona()
-    
+
     def _generate_coderabbit_analyst_persona(self) -> str:
         """Generate CodeRabbit analyst persona.
-        
+
         Returns:
             Persona optimized for code review analysis
         """
@@ -211,18 +211,18 @@ For each significant issue:
 **Ready to analyze CodeRabbit feedback and provide expert guidance for code improvement.**"""
 
         return persona
-    
+
     def generate_specialized_persona(self, specialization: str) -> str:
         """Generate specialized persona for specific domains.
-        
+
         Args:
             specialization: Domain specialization (e.g., 'security', 'performance', 'frontend')
-            
+
         Returns:
             Specialized persona string
         """
         base_persona = self._generate_coderabbit_analyst_persona()
-        
+
         specializations = {
             'security': self._add_security_focus(),
             'performance': self._add_performance_focus(),
@@ -230,12 +230,12 @@ For each significant issue:
             'backend': self._add_backend_focus(),
             'testing': self._add_testing_focus()
         }
-        
+
         if specialization.lower() in specializations:
             return base_persona + "\n\n" + specializations[specialization.lower()]
-        
+
         return base_persona
-    
+
     def _add_security_focus(self) -> str:
         """Add security-focused specialization."""
         return """## Security Specialization
@@ -251,7 +251,7 @@ For each significant issue:
 - Recommend security testing tools and practices
 - Suggest secure alternatives for risky patterns
 - Consider compliance requirements (GDPR, SOX, etc.)"""
-    
+
     def _add_performance_focus(self) -> str:
         """Add performance-focused specialization."""
         return """## Performance Specialization
@@ -267,7 +267,7 @@ For each significant issue:
 - Recommend profiling and monitoring tools
 - Consider scalability implications of code changes
 - Balance performance with code readability and maintainability"""
-    
+
     def _add_frontend_focus(self) -> str:
         """Add frontend-focused specialization."""
         return """## Frontend Specialization
@@ -283,7 +283,7 @@ For each significant issue:
 - Recommend modern JavaScript/TypeScript patterns
 - Suggest performance optimizations for client-side code
 - Address accessibility and inclusive design concerns"""
-    
+
     def _add_backend_focus(self) -> str:
         """Add backend-focused specialization."""
         return """## Backend Specialization
@@ -299,7 +299,7 @@ For each significant issue:
 - Consider system scalability and reliability
 - Recommend appropriate design patterns for server-side code
 - Address data consistency and transaction management"""
-    
+
     def _add_testing_focus(self) -> str:
         """Add testing-focused specialization."""
         return """## Testing Specialization
@@ -315,10 +315,10 @@ For each significant issue:
 - Suggest appropriate testing strategies for different components
 - Recommend testing tools and frameworks
 - Consider test maintenance and reliability"""
-    
+
     def get_available_specializations(self) -> list[str]:
         """Get list of available specializations.
-        
+
         Returns:
             List of available specialization names
         """

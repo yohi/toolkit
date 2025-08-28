@@ -10,17 +10,17 @@ class PersonaFileError(CodeRabbitFetcherError):
 
 class PersonaLoadError(PersonaFileError):
     """Exception raised when persona loading fails."""
-    
+
     def __init__(self, message: str, file_path: str = None):
         """Initialize persona load error.
-        
+
         Args:
             message: Error message
             file_path: Optional file path that caused the error
         """
         self.file_path = file_path
         super().__init__(message)
-    
+
     def __str__(self) -> str:
         """String representation of the error."""
         if self.file_path:
@@ -30,10 +30,10 @@ class PersonaLoadError(PersonaFileError):
 
 class PersonaValidationError(PersonaLoadError):
     """Exception raised when persona content validation fails."""
-    
+
     def __init__(self, message: str, file_path: str = None, validation_rule: str = None):
         """Initialize persona validation error.
-        
+
         Args:
             message: Error message
             file_path: Optional file path that caused the error
@@ -41,7 +41,7 @@ class PersonaValidationError(PersonaLoadError):
         """
         self.validation_rule = validation_rule
         super().__init__(message, file_path)
-    
+
     def __str__(self) -> str:
         """String representation of the error."""
         base_str = super().__str__()
