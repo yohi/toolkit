@@ -5,9 +5,9 @@ from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 
 from .models import (
-    AnalyzedComments, 
-    SummaryComment, 
-    ReviewComment, 
+    AnalyzedComments,
+    SummaryComment,
+    ReviewComment,
     CommentMetadata,
     ThreadContext,
     ResolutionStatus
@@ -38,85 +38,85 @@ class CommentStats:
 
 class CommentAnalyzer:
     """Analyzes and categorizes CodeRabbit comments from GitHub PR data."""
-    
+
     def __init__(self, resolved_marker_config: Optional[ResolvedMarkerConfig] = None):
         """Initialize comment analyzer.
-        
+
         Args:
             resolved_marker_config: Configuration for resolved marker detection
         """
         self.resolved_marker_config = resolved_marker_config or ResolvedMarkerConfig()
         self.resolved_marker_detector = ResolvedMarkerDetector(self.resolved_marker_config)
-        
+
         # Initialize processors
         self.summary_processor = SummaryProcessor()
         self.review_processor = ReviewProcessor()
         self.thread_processor = ThreadProcessor()
-        
+
         # Statistics tracking
         self.stats = CommentStats()
-    
+
     def analyze_comments(self, pr_data: Dict[str, Any]) -> AnalyzedComments:
         """Analyze pull request data and extract CodeRabbit comments.
-        
+
         Args:
             pr_data: Pull request data from GitHub API
-            
+
         Returns:
             Analyzed and categorized comments
-            
+
         Raises:
             CommentAnalysisError: If analysis fails
         """
         start_time = time.time()
-        
+
         try:
             # Reset statistics
             self.stats = CommentStats()
-            
+
             # Extract basic PR information
             pr_info = self._extract_pr_info(pr_data)
-            
+
             # Get all comments (issues + reviews)
             all_comments = self._collect_all_comments(pr_data)
             self.stats.total_comments = len(all_comments)
-            
+
             # Filter CodeRabbit comments
             coderabbit_comments = self._filter_coderabbit_comments(all_comments)
             self.stats.coderabbit_comments = len(coderabbit_comments)
-            
+
             if not coderabbit_comments:
                 # Return empty result with metadata
                 self.stats.processing_time_seconds = time.time() - start_time
                 return self._create_empty_result(pr_info)
-            
+
             # Categorize comments
             summary_comments, review_comments, inline_comments = self._categorize_comments(coderabbit_comments)
-            
+
             # Process each category
             processed_summary = self._process_summary_comments(summary_comments)
             processed_review = self._process_review_comments(review_comments)
             processed_threads = self._process_thread_comments(inline_comments)
-            
+
             # Apply resolved marker filtering
             filtered_threads = self._filter_resolved_threads(processed_threads)
-            
+
             # Create metadata
             metadata = self._create_metadata(pr_info)
-            
+
             # Final statistics
             self.stats.processing_time_seconds = time.time() - start_time
-            
+
             return AnalyzedComments(
                 summary_comments=processed_summary,
                 review_comments=processed_review,
                 unresolved_threads=filtered_threads,
                 metadata=metadata
             )
-            
+
         except Exception as e:
             raise CommentAnalysisError(f"Failed to analyze comments: {e}") from e
-    
+
     def _extract_pr_info(self, pr_data: Dict[str, Any]) -> Dict[str, Any]:
         """Extract basic pull request information."""
         return {
@@ -128,17 +128,17 @@ class CommentAnalyzer:
             "state": pr_data.get("state", ""),
             "author": pr_data.get("author", {}).get("login", "") if pr_data.get("author") else ""
         }
-    
+
     def _collect_all_comments(self, pr_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Collect all comments from PR data (issues + reviews)."""
         all_comments = []
-        
+
         # Add issue comments
         if "comments" in pr_data:
             for comment in pr_data["comments"]:
                 comment["comment_type"] = "issue"
                 all_comments.append(comment)
-        
+
         # Add review comments
         if "reviews" in pr_data:
             for review in pr_data["reviews"]:
@@ -152,59 +152,59 @@ class CommentAnalyzer:
                         "comment_type": "review"
                     }
                     all_comments.append(review_comment)
-                
+
                 # Add individual review comments
                 if "comments" in review:
                     for comment in review["comments"]:
                         comment["comment_type"] = "review_comment"
                         all_comments.append(comment)
-        
+
         return all_comments
-    
+
     def _filter_coderabbit_comments(self, comments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Filter comments to only include those from CodeRabbit."""
         coderabbit_comments = []
-        
+
         for comment in comments:
             user = comment.get("user", {})
             if isinstance(user, dict):
                 login = user.get("login", "").lower()
                 if "coderabbitai" in login:
                     coderabbit_comments.append(comment)
-        
+
         return coderabbit_comments
-    
+
     def _categorize_comments(self, comments: List[Dict[str, Any]]) -> tuple:
         """Categorize CodeRabbit comments into summary, review, and inline types."""
         summary_comments = []
         review_comments = []
         inline_comments = []
-        
+
         for comment in comments:
             body = comment.get("body", "")
             comment_type = comment.get("comment_type", "")
-            
+
             # Check if it's a summary comment
             if "Summary by CodeRabbit" in body or "## Summary" in body:
                 summary_comments.append(comment)
                 self.stats.summary_comments += 1
-            
+
             # Check if it's a review comment (actionable comments posted)
             elif "Actionable comments posted:" in body or comment_type == "review":
                 review_comments.append(comment)
                 self.stats.review_comments += 1
-            
+
             # Otherwise treat as inline comment
             else:
                 inline_comments.append(comment)
                 self.stats.inline_comments += 1
-        
+
         return summary_comments, review_comments, inline_comments
-    
+
     def _process_summary_comments(self, comments: List[Dict[str, Any]]) -> List[SummaryComment]:
         """Process summary comments using SummaryProcessor."""
         processed = []
-        
+
         for comment in comments:
             try:
                 summary = self.summary_processor.process_summary_comment(comment)
@@ -213,13 +213,13 @@ class CommentAnalyzer:
                 # Log error but continue processing
                 import logging
                 logging.warning(f"Failed to process summary comment {comment.get('id')}: {e}")
-        
+
         return processed
-    
+
     def _process_review_comments(self, comments: List[Dict[str, Any]]) -> List[ReviewComment]:
         """Process review comments using ReviewProcessor."""
         processed = []
-        
+
         for comment in comments:
             try:
                 review = self.review_processor.process_review_comment(comment)
@@ -229,9 +229,9 @@ class CommentAnalyzer:
                 # Log error but continue processing
                 import logging
                 logging.warning(f"Failed to process review comment {comment.get('id')}: {e}")
-        
+
         return processed
-    
+
     def _process_thread_comments(self, comments: List[Dict[str, Any]]) -> List[ThreadContext]:
         """Process inline comments into thread contexts."""
         try:
@@ -243,28 +243,28 @@ class CommentAnalyzer:
             import logging
             logging.warning(f"Failed to process thread comments: {e}")
             return []
-    
+
     def _filter_resolved_threads(self, threads: List[ThreadContext]) -> List[ThreadContext]:
         """Filter out resolved threads using resolved marker detection."""
         if not threads:
             return []
-        
+
         # Update resolution status for all threads
         for thread in threads:
             status = self.resolved_marker_detector.detect_resolution_status(thread)
             thread.resolution_status = status
-            
+
             if status == ResolutionStatus.RESOLVED:
                 self.stats.resolved_comments += 1
-        
+
         # Filter to only unresolved threads
         unresolved = [
-            thread for thread in threads 
+            thread for thread in threads
             if thread.resolution_status != ResolutionStatus.RESOLVED
         ]
-        
+
         return unresolved
-    
+
     def _create_metadata(self, pr_info: Dict[str, Any]) -> CommentMetadata:
         """Create metadata object with processing statistics."""
         return CommentMetadata(
@@ -279,21 +279,21 @@ class CommentAnalyzer:
             actionable_comments=self.stats.actionable_comments,
             processing_time_seconds=self.stats.processing_time_seconds
         )
-    
+
     def _create_empty_result(self, pr_info: Dict[str, Any]) -> AnalyzedComments:
         """Create empty result when no CodeRabbit comments found."""
         metadata = self._create_metadata(pr_info)
-        
+
         return AnalyzedComments(
             summary_comments=[],
             review_comments=[],
             unresolved_threads=[],
             metadata=metadata
         )
-    
+
     def get_analysis_statistics(self) -> Dict[str, Any]:
         """Get detailed analysis statistics.
-        
+
         Returns:
             Dictionary with analysis statistics
         """
@@ -308,17 +308,17 @@ class CommentAnalyzer:
             "threads_processed": self.stats.threads_processed,
             "processing_time_seconds": self.stats.processing_time_seconds,
             "resolution_rate": (
-                self.stats.resolved_comments / self.stats.coderabbit_comments 
+                self.stats.resolved_comments / self.stats.coderabbit_comments
                 if self.stats.coderabbit_comments > 0 else 0.0
             )
         }
-    
+
     def validate_pr_data(self, pr_data: Dict[str, Any]) -> Dict[str, Any]:
         """Validate PR data structure and content.
-        
+
         Args:
             pr_data: Pull request data to validate
-            
+
         Returns:
             Dictionary with validation results
         """
@@ -329,26 +329,26 @@ class CommentAnalyzer:
             "comment_count": 0,
             "review_count": 0
         }
-        
+
         # Check required fields
         if not isinstance(pr_data, dict):
             validation_result["valid"] = False
             validation_result["issues"].append("PR data must be a dictionary")
             return validation_result
-        
+
         if "number" not in pr_data:
             validation_result["issues"].append("Missing PR number")
             validation_result["valid"] = False
-        
+
         if "title" not in pr_data:
             validation_result["warnings"].append("Missing PR title")
-        
+
         # Check comments structure
         if "comments" in pr_data:
             comments = pr_data["comments"]
             if isinstance(comments, list):
                 validation_result["comment_count"] = len(comments)
-                
+
                 # Validate comment structure
                 for i, comment in enumerate(comments):
                     if not isinstance(comment, dict):
@@ -359,13 +359,13 @@ class CommentAnalyzer:
             else:
                 validation_result["issues"].append("Comments field must be a list")
                 validation_result["valid"] = False
-        
+
         # Check reviews structure
         if "reviews" in pr_data:
             reviews = pr_data["reviews"]
             if isinstance(reviews, list):
                 validation_result["review_count"] = len(reviews)
-                
+
                 # Validate review structure
                 for i, review in enumerate(reviews):
                     if not isinstance(review, dict):
@@ -374,29 +374,29 @@ class CommentAnalyzer:
             else:
                 validation_result["issues"].append("Reviews field must be a list")
                 validation_result["valid"] = False
-        
+
         # Check if any comments exist
         total_items = validation_result["comment_count"] + validation_result["review_count"]
         if total_items == 0:
             validation_result["warnings"].append("No comments or reviews found")
-        
+
         return validation_result
-    
+
     def update_resolved_marker_config(self, new_config: ResolvedMarkerConfig) -> None:
         """Update resolved marker configuration.
-        
+
         Args:
             new_config: New resolved marker configuration
         """
         self.resolved_marker_config = new_config
         self.resolved_marker_detector = ResolvedMarkerDetector(new_config)
-    
+
     def is_coderabbit_comment(self, comment: Dict[str, Any]) -> bool:
         """Check if a comment is from CodeRabbit.
-        
+
         Args:
             comment: Comment object to check
-            
+
         Returns:
             True if comment is from CodeRabbit
         """
@@ -405,13 +405,13 @@ class CommentAnalyzer:
             login = user.get("login", "").lower()
             return "coderabbitai" in login
         return False
-    
+
     def analyze_comment_trends(self, comments: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Analyze trends in CodeRabbit comments.
-        
+
         Args:
             comments: List of comments to analyze
-            
+
         Returns:
             Dictionary with trend analysis
         """
@@ -422,18 +422,18 @@ class CommentAnalyzer:
             "resolution_patterns": {},
             "time_distribution": {}
         }
-        
+
         if not comments:
             return trends
-        
+
         coderabbit_count = 0
         comment_types = {}
-        
+
         for comment in comments:
             # Count CodeRabbit comments
             if self.is_coderabbit_comment(comment):
                 coderabbit_count += 1
-                
+
                 # Analyze comment type
                 body = comment.get("body", "")
                 if "Summary by CodeRabbit" in body:
@@ -442,8 +442,8 @@ class CommentAnalyzer:
                     comment_types["review"] = comment_types.get("review", 0) + 1
                 else:
                     comment_types["inline"] = comment_types.get("inline", 0) + 1
-        
+
         trends["coderabbit_percentage"] = (coderabbit_count / len(comments)) * 100
         trends["comment_types"] = comment_types
-        
+
         return trends
