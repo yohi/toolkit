@@ -1,0 +1,244 @@
+# CodeRabbit Comment Fetcher
+
+A Python tool for fetching and formatting CodeRabbit comments from GitHub pull requests. This tool efficiently collects and organizes automatic review comments from CodeRabbit, making it easier for developers to understand and act on review feedback.
+
+## Features
+
+- 🤖 **CodeRabbit Integration**: Automatically identifies and extracts CodeRabbit comments
+- 📊 **Multiple Output Formats**: Supports Markdown, JSON, and plain text output
+- 🎯 **AI-Optimized**: Structured output designed for AI agent consumption
+- 🔍 **Smart Filtering**: Distinguishes between resolved and unresolved comments
+- 📝 **Persona Support**: Custom persona files for AI context
+- 🔐 **GitHub CLI Integration**: Secure authentication through GitHub CLI
+- ⚡ **uvx Compatible**: Run directly with uvx without installation
+
+## Requirements
+
+- Python 3.13 or higher
+- GitHub CLI (`gh`) installed and authenticated
+- Access to the target GitHub repository
+
+## Installation
+
+### Using uvx (Recommended)
+
+```bash
+uvx coderabbit-comment-fetcher https://github.com/owner/repo/pull/123
+```
+
+### Using pip
+
+```bash
+pip install coderabbit-comment-fetcher
+```
+
+### From Source
+
+```bash
+git clone https://github.com/yohi/coderabbit-comment-fetcher.git
+cd coderabbit-comment-fetcher
+pip install -e .
+```
+
+## Quick Start
+
+1. **Authenticate with GitHub CLI**:
+   ```bash
+   gh auth login
+   ```
+
+2. **Fetch CodeRabbit comments**:
+   ```bash
+   coderabbit-fetch https://github.com/owner/repo/pull/123
+   ```
+
+3. **Generate JSON output**:
+   ```bash
+   coderabbit-fetch https://github.com/owner/repo/pull/123 --format json
+   ```
+
+4. **Use custom persona**:
+   ```bash
+   coderabbit-fetch https://github.com/owner/repo/pull/123 --persona-file my-persona.txt
+   ```
+
+## Usage
+
+### Basic Command
+
+```bash
+coderabbit-fetch <PR_URL> [OPTIONS]
+```
+
+### Options
+
+- `--persona-file, -p`: Path to persona file for AI context
+- `--output-format, -f`: Output format (markdown, json, plain) [default: markdown]
+- `--resolved-marker, -m`: Custom resolved marker string
+- `--request-resolution, -r`: Post resolution request to CodeRabbit
+- `--output-file, -o`: Save output to file instead of stdout
+- `--verbose, -v`: Enable verbose output
+- `--help, -h`: Show help message
+
+### Examples
+
+**Basic usage**:
+```bash
+coderabbit-fetch https://github.com/microsoft/vscode/pull/12345
+```
+
+**JSON output with custom persona**:
+```bash
+coderabbit-fetch https://github.com/microsoft/vscode/pull/12345 \
+  --format json \
+  --persona-file reviewer-persona.txt \
+  --output-file review-summary.json
+```
+
+**Request resolution from CodeRabbit**:
+```bash
+coderabbit-fetch https://github.com/microsoft/vscode/pull/12345 \
+  --request-resolution \
+  --resolved-marker "✅ RESOLVED"
+```
+
+## Output Formats
+
+### Markdown (Default)
+Human-readable format with proper headings, lists, and code blocks:
+
+```markdown
+# CodeRabbit Review Summary
+
+## Summary by CodeRabbit
+- **New Features**: Added authentication system
+- **Documentation**: Updated API documentation
+
+## Actionable Comments (5)
+### src/auth.py:23-25
+**Issue**: Missing error handling for invalid credentials
+...
+```
+
+### JSON
+Structured data format for programmatic consumption:
+
+```json
+{
+  "summary": {
+    "new_features": ["Added authentication system"],
+    "documentation": ["Updated API documentation"]
+  },
+  "actionable_comments": [
+    {
+      "file_path": "src/auth.py",
+      "line_range": "23-25",
+      "issue": "Missing error handling for invalid credentials"
+    }
+  ]
+}
+```
+
+### Plain Text
+Simple text format for basic consumption:
+
+```
+CodeRabbit Review Summary
+========================
+
+Summary:
+- New Features: Added authentication system
+- Documentation: Updated API documentation
+
+Actionable Comments:
+1. src/auth.py:23-25 - Missing error handling for invalid credentials
+```
+
+## Persona Files
+
+Persona files provide context for AI agents processing the output. Create a text file with instructions:
+
+```
+You are an experienced software developer reviewing CodeRabbit feedback.
+
+Focus on:
+- Security vulnerabilities (highest priority)
+- Performance issues
+- Code maintainability
+- Best practices compliance
+
+Provide specific, actionable recommendations for each issue.
+```
+
+## Configuration
+
+The tool can be configured through:
+
+1. **Command line arguments** (highest priority)
+2. **Environment variables**
+3. **Default values**
+
+### Environment Variables
+
+- `CODERABBIT_RESOLVED_MARKER`: Default resolved marker
+- `CODERABBIT_OUTPUT_FORMAT`: Default output format
+- `CODERABBIT_PERSONA_FILE`: Default persona file path
+
+## Error Handling
+
+The tool provides clear error messages for common issues:
+
+- **Authentication**: GitHub CLI not authenticated
+- **Access**: Insufficient repository permissions
+- **Network**: API rate limits or connectivity issues
+- **Format**: Invalid PR URLs or file paths
+
+## Development
+
+### Setup Development Environment
+
+```bash
+git clone https://github.com/yohi/coderabbit-comment-fetcher.git
+cd coderabbit-comment-fetcher
+pip install -e ".[dev]"
+```
+
+### Run Tests
+
+```bash
+pytest
+```
+
+### Code Quality
+
+```bash
+black .
+isort .
+mypy .
+flake8 .
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests
+5. Run the test suite
+6. Submit a pull request
+
+## License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## Support
+
+- 📖 **Documentation**: [GitHub Wiki](https://github.com/yohi/coderabbit-comment-fetcher/wiki)
+- 🐛 **Bug Reports**: [GitHub Issues](https://github.com/yohi/coderabbit-comment-fetcher/issues)
+- 💬 **Discussions**: [GitHub Discussions](https://github.com/yohi/coderabbit-comment-fetcher/discussions)
+
+## Acknowledgments
+
+- [CodeRabbit](https://coderabbit.ai) for providing AI-powered code reviews
+- [GitHub CLI](https://cli.github.com) for authentication and API access
+- [Rich](https://rich.readthedocs.io) for beautiful terminal output
