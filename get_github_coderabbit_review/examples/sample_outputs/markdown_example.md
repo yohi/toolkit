@@ -1,7 +1,7 @@
 # 🤖 CodeRabbit Comments Analysis
 
-**Generated:** 2025-01-28T14:30:15Z  
-**Analyzed by:** CodeRabbit Comment Fetcher v1.0.0  
+**Generated:** 2025-01-28T14:30:15Z
+**Analyzed by:** CodeRabbit Comment Fetcher v1.0.0
 **Analysis Mode:** Professional Review with Default Persona
 
 ---
@@ -20,14 +20,14 @@
 
 ## 🎯 Executive Summary
 
-| Metric | Count |
-|--------|-------|
-| **Total Comments Analyzed** | 34 |
-| **CodeRabbit Comments** | 18 |
-| **Resolved Comments** | 6 |
-| **Unresolved Comments** | 12 |
-| **AI Agent Prompts** | 4 |
-| **Files with Comments** | 8 |
+| Metric                      | Count |
+| --------------------------- | ----- |
+| **Total Comments Analyzed** | 34    |
+| **CodeRabbit Comments**     | 18    |
+| **Resolved Comments**       | 6     |
+| **Unresolved Comments**     | 12    |
+| **AI Agent Prompts**        | 4     |
+| **Files with Comments**     | 8     |
 
 ### 📊 Comment Distribution
 
@@ -39,9 +39,9 @@
 
 ## 🎭 Persona Context
 
-**Role:** Experienced Software Developer and Technical Reviewer  
-**Focus Areas:** Code quality, security, maintainability, performance  
-**Review Philosophy:** Constructive feedback with specific, actionable improvements  
+**Role:** Experienced Software Developer and Technical Reviewer
+**Focus Areas:** Code quality, security, maintainability, performance
+**Review Philosophy:** Constructive feedback with specific, actionable improvements
 
 ---
 
@@ -49,9 +49,9 @@
 
 ### 1. Security Vulnerability - Input Validation
 
-**File:** `src/vs/workbench/contrib/terminal/browser/terminalService.ts`  
-**Lines:** 142-158  
-**Type:** ⚠️ Potential Security Issue  
+**File:** `src/vs/workbench/contrib/terminal/browser/terminalService.ts`
+**Lines:** 142-158
+**Type:** ⚠️ Potential Security Issue
 **Resolved:** ❌ Unresolved
 
 ```typescript
@@ -90,9 +90,9 @@ if (validatedCommand.isValid) {
 
 ### 2. Performance Bottleneck - Memory Leak
 
-**File:** `src/vs/workbench/contrib/terminal/common/terminalConfiguration.ts`  
-**Lines:** 89-105  
-**Type:** 🛠️ Performance Issue  
+**File:** `src/vs/workbench/contrib/terminal/common/terminalConfiguration.ts`
+**Lines:** 89-105
+**Type:** 🛠️ Performance Issue
 **Resolved:** ❌ Unresolved
 
 **Issue Description:**
@@ -125,9 +125,9 @@ public dispose(): void {
 
 ### 3. Critical Logic Error - Race Condition
 
-**File:** `src/vs/workbench/contrib/terminal/browser/terminalInstance.ts`  
-**Lines:** 234-267  
-**Type:** 🐛 Critical Bug  
+**File:** `src/vs/workbench/contrib/terminal/browser/terminalInstance.ts`
+**Lines:** 234-267
+**Type:** 🐛 Critical Bug
 **Resolved:** ❌ Unresolved
 
 **Issue Description:**
@@ -168,9 +168,9 @@ private async performInitialization(): Promise<void> {
 
 ### 4. Architecture Improvement - Service Coupling
 
-**File:** `src/vs/workbench/contrib/terminal/browser/terminalWidgetManager.ts`  
-**Lines:** 45-78  
-**Type:** 🏗️ Architecture  
+**File:** `src/vs/workbench/contrib/terminal/browser/terminalWidgetManager.ts`
+**Lines:** 45-78
+**Type:** 🏗️ Architecture
 **Resolved:** ❌ Unresolved
 
 **Issue Description:**
@@ -213,9 +213,9 @@ export class TerminalWidgetManager {
 
 ### 5. Performance Optimization - Unnecessary Re-renders
 
-**File:** `src/vs/workbench/contrib/terminal/browser/terminalView.ts`  
-**Lines:** 156-189  
-**Type:** ⚡ Performance  
+**File:** `src/vs/workbench/contrib/terminal/browser/terminalView.ts`
+**Lines:** 156-189
+**Type:** ⚡ Performance
 **Resolved:** ❌ Unresolved
 
 **Issue Description:**
@@ -231,13 +231,13 @@ Terminal view re-renders entire content on every minor update, causing performan
 // Implement virtual scrolling and incremental updates
 class TerminalRenderer {
     private lastRenderState: RenderState;
-    
+
     public render(newState: RenderState): void {
         const diff = this.calculateDiff(this.lastRenderState, newState);
         this.applyIncrementalUpdate(diff);
         this.lastRenderState = newState;
     }
-    
+
     private applyIncrementalUpdate(diff: RenderDiff): void {
         // Only update changed portions
         for (const change of diff.changes) {
@@ -251,9 +251,9 @@ class TerminalRenderer {
 
 ### 6. Error Handling Enhancement
 
-**File:** `src/vs/workbench/contrib/terminal/common/terminalProcess.ts`  
-**Lines:** 201-225  
-**Type:** 🔧 Error Handling  
+**File:** `src/vs/workbench/contrib/terminal/common/terminalProcess.ts`
+**Lines:** 201-225
+**Type:** 🔧 Error Handling
 **Resolved:** ❌ Unresolved
 
 **Issue Description:**
@@ -289,9 +289,9 @@ catch (error) {
 
 ### 7. Code Style - Consistent Naming
 
-**File:** `src/vs/workbench/contrib/terminal/browser/terminalColorRegistry.ts`  
-**Lines:** 23-45  
-**Type:** 📝 Style  
+**File:** `src/vs/workbench/contrib/terminal/browser/terminalColorRegistry.ts`
+**Lines:** 23-45
+**Type:** 📝 Style
 **Resolved:** ❌ Unresolved
 
 **Issue:** Inconsistent naming convention between `colorId` and `color_name` variables.
@@ -300,9 +300,9 @@ catch (error) {
 
 ### 8. Documentation Enhancement
 
-**File:** `src/vs/workbench/contrib/terminal/common/terminal.ts`  
-**Lines:** 67-89  
-**Type:** 📚 Documentation  
+**File:** `src/vs/workbench/contrib/terminal/common/terminal.ts`
+**Lines:** 67-89
+**Type:** 📚 Documentation
 **Resolved:** ❌ Unresolved
 
 **Issue:** Complex interface `ITerminalConfiguration` lacks comprehensive JSDoc comments.
@@ -332,9 +332,9 @@ interface ITerminalConfiguration {
 
 ### 9. Type Safety Improvement
 
-**File:** `src/vs/workbench/contrib/terminal/browser/terminalLinkHandler.ts`  
-**Lines:** 134-142  
-**Type:** 🔒 Type Safety  
+**File:** `src/vs/workbench/contrib/terminal/browser/terminalLinkHandler.ts`
+**Lines:** 134-142
+**Type:** 🔒 Type Safety
 **Resolved:** ❌ Unresolved
 
 **Issue:** Using `any` type reduces type safety benefits.
@@ -344,7 +344,7 @@ interface ITerminalConfiguration {
 // Before
 const linkData: any = this.parseLinkData(text);
 
-// After  
+// After
 interface LinkData {
     url: string;
     line?: number;
@@ -360,25 +360,25 @@ const linkData: LinkData = this.parseLinkData(text);
 ## 🤖 AI Agent Prompts
 
 ### Prompt 1: Security Analysis
-**Context:** Terminal command execution security review  
+**Context:** Terminal command execution security review
 **File:** `terminalService.ts`
 
 > "Analyze the terminal command execution flow for security vulnerabilities. Focus on input validation, command injection prevention, and privilege escalation risks. Consider the interaction between user input, shell execution, and VS Code's security sandbox."
 
 ### Prompt 2: Performance Optimization
-**Context:** Terminal rendering performance  
+**Context:** Terminal rendering performance
 **File:** `terminalView.ts`
 
 > "Review the terminal rendering pipeline for performance bottlenecks. Consider virtual scrolling implementation, incremental updates, and memory management for large buffers. Analyze the impact of real-time updates on UI responsiveness."
 
 ### Prompt 3: Architecture Review
-**Context:** Service dependency management  
+**Context:** Service dependency management
 **File:** `terminalWidgetManager.ts`
 
 > "Evaluate the current service dependency structure for maintainability and testability. Propose refactoring strategies that align with VS Code's dependency injection patterns while maintaining backward compatibility."
 
 ### Prompt 4: Error Handling Strategy
-**Context:** Terminal process error management  
+**Context:** Terminal process error management
 **File:** `terminalProcess.ts`
 
 > "Design a comprehensive error handling strategy for terminal processes. Consider different error types, user experience implications, and recovery mechanisms. Focus on providing actionable feedback while maintaining system stability."
@@ -396,21 +396,21 @@ const linkData: LinkData = this.parseLinkData(text);
 ### Priority Distribution
 ```
 High Priority    ████████████████████████████████████████ 17% (3/18)
-Medium Priority  ████████████████████████████████████████ 39% (7/18)  
+Medium Priority  ████████████████████████████████████████ 39% (7/18)
 Low Priority     ████████████████████████████████████████ 44% (8/18)
 ```
 
 ### File Impact Analysis
-| File | Comments | Priority Breakdown |
-|------|----------|-------------------|
-| `terminalService.ts` | 4 | 🔴×1, 🟡×2, 🟢×1 |
-| `terminalView.ts` | 3 | 🟡×2, 🟢×1 |
-| `terminalInstance.ts` | 2 | 🔴×1, 🟡×1 |
-| `terminalConfiguration.ts` | 2 | 🔴×1, 🟢×1 |
-| `terminalWidgetManager.ts` | 2 | 🟡×1, 🟢×1 |
-| `terminalColorRegistry.ts` | 2 | 🟢×2 |
-| `terminal.ts` | 2 | 🟢×2 |
-| `terminalLinkHandler.ts` | 1 | 🟢×1 |
+| File                       | Comments | Priority Breakdown |
+| -------------------------- | -------- | ------------------ |
+| `terminalService.ts`       | 4        | 🔴×1, 🟡×2, 🟢×1      |
+| `terminalView.ts`          | 3        | 🟡×2, 🟢×1           |
+| `terminalInstance.ts`      | 2        | 🔴×1, 🟡×1           |
+| `terminalConfiguration.ts` | 2        | 🔴×1, 🟢×1           |
+| `terminalWidgetManager.ts` | 2        | 🟡×1, 🟢×1           |
+| `terminalColorRegistry.ts` | 2        | 🟢×2                |
+| `terminal.ts`              | 2        | 🟢×2                |
+| `terminalLinkHandler.ts`   | 1        | 🟢×1                |
 
 ---
 
@@ -418,7 +418,7 @@ Low Priority     █████████████████████
 
 ### Immediate (High Priority)
 1. **🚨 Security Fix:** Address command injection vulnerability in `terminalService.ts`
-2. **⚡ Performance Fix:** Resolve memory leak in `terminalConfiguration.ts` 
+2. **⚡ Performance Fix:** Resolve memory leak in `terminalConfiguration.ts`
 3. **🐛 Bug Fix:** Fix race condition in `terminalInstance.ts`
 
 ### Short Term (Medium Priority)
@@ -448,11 +448,11 @@ Schedule follow-up review after addressing high priority issues to reassess over
 
 ---
 
-**Analysis completed at:** 2025-01-28T14:30:45Z  
-**Estimated fix effort:** 8-12 developer hours for high priority issues  
+**Analysis completed at:** 2025-01-28T14:30:45Z
+**Estimated fix effort:** 8-12 developer hours for high priority issues
 **Recommended review timeline:** 2-3 days for critical fixes, 1-2 weeks for complete resolution
 
 ---
 
-*Generated by CodeRabbit Comment Fetcher v1.0.0 with Professional Review Persona*  
+*Generated by CodeRabbit Comment Fetcher v1.0.0 with Professional Review Persona*
 *For questions about this analysis, refer to the [documentation](https://github.com/yohi/coderabbit-comment-fetcher#readme)*
