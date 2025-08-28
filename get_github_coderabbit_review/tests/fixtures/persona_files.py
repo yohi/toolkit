@@ -281,25 +281,25 @@ INVALID_PERSONA_FILES = {
 
 class PersonaFileManager:
     """Helper class to manage temporary persona files for testing."""
-    
+
     def __init__(self):
         self._temp_files: List[str] = []
         self._temp_dir = None
-    
+
     def create_temp_persona_file(self, file_info: Dict) -> str:
         """Create a temporary persona file for testing.
-        
+
         Args:
             file_info: Dictionary containing 'content', 'filename', 'encoding'
-            
+
         Returns:
             Path to the created temporary file
         """
         if self._temp_dir is None:
             self._temp_dir = tempfile.mkdtemp(prefix="persona_test_")
-        
+
         file_path = os.path.join(self._temp_dir, file_info["filename"])
-        
+
         if file_info.get("encoding") is None:
             # Binary mode
             with open(file_path, 'wb') as f:
@@ -308,13 +308,13 @@ class PersonaFileManager:
             # Text mode
             with open(file_path, 'w', encoding=file_info["encoding"]) as f:
                 f.write(file_info["content"])
-        
+
         self._temp_files.append(file_path)
         return file_path
-    
+
     def create_all_valid_files(self) -> Dict[str, str]:
         """Create all valid persona files and return their paths.
-        
+
         Returns:
             Dictionary mapping file keys to file paths
         """
@@ -322,10 +322,10 @@ class PersonaFileManager:
         for key, file_info in SAMPLE_PERSONA_FILES.items():
             file_paths[key] = self.create_temp_persona_file(file_info)
         return file_paths
-    
+
     def create_all_invalid_files(self) -> Dict[str, str]:
         """Create all invalid persona files and return their paths.
-        
+
         Returns:
             Dictionary mapping file keys to file paths
         """
@@ -333,41 +333,41 @@ class PersonaFileManager:
         for key, file_info in INVALID_PERSONA_FILES.items():
             file_paths[key] = self.create_temp_persona_file(file_info)
         return file_paths
-    
+
     def create_read_only_file(self, content: str = "Read-only content") -> str:
         """Create a read-only file for permission testing.
-        
+
         Args:
             content: Content for the read-only file
-            
+
         Returns:
             Path to the read-only file
         """
         if self._temp_dir is None:
             self._temp_dir = tempfile.mkdtemp(prefix="persona_test_")
-        
+
         file_path = os.path.join(self._temp_dir, "readonly.txt")
-        
+
         with open(file_path, 'w', encoding='utf-8') as f:
             f.write(content)
-        
+
         # Make file read-only
         os.chmod(file_path, 0o444)
-        
+
         self._temp_files.append(file_path)
         return file_path
-    
+
     def create_nonexistent_file_path(self) -> str:
         """Create a path to a non-existent file.
-        
+
         Returns:
             Path to a non-existent file
         """
         if self._temp_dir is None:
             self._temp_dir = tempfile.mkdtemp(prefix="persona_test_")
-        
+
         return os.path.join(self._temp_dir, "nonexistent.txt")
-    
+
     def cleanup(self):
         """Clean up all temporary files and directories."""
         for file_path in self._temp_files:
@@ -378,20 +378,20 @@ class PersonaFileManager:
                     os.unlink(file_path)
             except Exception:
                 pass  # Ignore cleanup errors
-        
+
         if self._temp_dir and os.path.exists(self._temp_dir):
             try:
                 os.rmdir(self._temp_dir)
             except Exception:
                 pass  # Ignore cleanup errors
-        
+
         self._temp_files.clear()
         self._temp_dir = None
-    
+
     def __enter__(self):
         """Context manager entry."""
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Context manager exit."""
         self.cleanup()
@@ -454,10 +454,10 @@ PERSONA_VALIDATION_CASES = {
 # Helper functions for test setup
 def get_sample_persona_content(persona_type: str = "default") -> str:
     """Get sample persona content by type.
-    
+
     Args:
         persona_type: Type of persona content to retrieve
-        
+
     Returns:
         Persona file content string
     """
@@ -466,18 +466,18 @@ def get_sample_persona_content(persona_type: str = "default") -> str:
 
 def create_temporary_persona_file(content: str, filename: str = "test_persona.txt") -> str:
     """Create a temporary persona file with the given content.
-    
+
     Args:
         content: Content for the persona file
         filename: Name of the temporary file
-        
+
     Returns:
         Path to the created temporary file
     """
     temp_dir = tempfile.mkdtemp(prefix="persona_test_")
     file_path = os.path.join(temp_dir, filename)
-    
+
     with open(file_path, 'w', encoding='utf-8') as f:
         f.write(content)
-    
+
     return file_path
