@@ -30,6 +30,7 @@ console = Console()
 )
 @click.option(
     "--output-format",
+    "--format",
     "-f",
     type=click.Choice(["markdown", "json", "plain"], case_sensitive=False),
     default="markdown",
