@@ -47,12 +47,13 @@ classifiers = [
 dependencies = [
     # Core dependencies - minimal for basic functionality
     "typing-extensions>=4.8.0; python_version<'3.14'",
+    "pydantic>=2.5.0",
+    "rich>=13.7.0",
 ]
 
 [project.optional-dependencies]
 # Full feature set (recommended for most users)
 full = [
-    "rich>=13.7.0",
     "psutil>=5.9.0",
 ]
 
