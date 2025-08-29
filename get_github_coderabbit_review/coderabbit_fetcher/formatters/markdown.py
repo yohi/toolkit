@@ -47,7 +47,7 @@ class MarkdownFormatter(Formatter):
             lines.append("## Inline Comments")
             for i, comment in enumerate(inline_comments, 1):
                 lines.append(f"### Comment {i}")
-                lines.append(f"**File**: `{comment.get('file', 'N/A')}`")
+                lines.append(f"**File**: `{comment.get('path', 'N/A')}`")
                 lines.append(f"**User**: {comment.get('user', 'N/A')}")
                 if comment.get('is_coderabbit'):
                     lines.append("**Source**: CodeRabbit 🤖")
