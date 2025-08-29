@@ -197,21 +197,37 @@ def process_pr_comments():
 
     # ファイルに出力
     output_file = base_dir / 'pr_104_ai_friendly_comments.json'
+    
+    # Create parent directory first
     try:
         output_file.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        print(f"❌ Failed to create output directory {output_file.parent}: {e}")
+        return
+    
+    # Write JSON output with specific error handling
+    try:
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(structured_data, f, ensure_ascii=False, indent=2)
-
         print(f'✅ AI-friendly output generated: {output_file}')
-        print('📊 Summary:')
-        print(f'  - Total inline comments: {len(inline_comments)}')
-        print(f'  - Total reviews: {len(reviews)}')
-        print(f'  - CodeRabbit comments: {coderabbit_count}')
-        print(f'  - Actionable items found: {actionable_count}')
-        print(f'  - Files with comments: {len(files_mentioned)}')
+    except (json.JSONEncodeError, TypeError) as e:
+        print(f"❌ JSON encoding error for {output_file}: {e}")
+        return
+    except OSError as e:
+        print(f"❌ I/O error writing JSON file {output_file}: {e}")
+        return
 
-        # 簡易的な分析レポートも生成
-        report_file = base_dir / 'pr_104_analysis_report.md'
+    # Print summary (no file I/O, should not fail)
+    print('📊 Summary:')
+    print(f'  - Total inline comments: {len(inline_comments)}')
+    print(f'  - Total reviews: {len(reviews)}')
+    print(f'  - CodeRabbit comments: {coderabbit_count}')
+    print(f'  - Actionable items found: {actionable_count}')
+    print(f'  - Files with comments: {len(files_mentioned)}')
+
+    # Write markdown report with specific error handling
+    report_file = base_dir / 'pr_104_analysis_report.md'
+    try:
         with open(report_file, 'w', encoding='utf-8') as f:
             f.write(f"""# PR #104 コメント分析レポート
 
@@ -235,7 +251,7 @@ def process_pr_comments():
 
             f.write(f"""
 ## データファイル
-- **構造化データ**: `{output_file}`
+- **構造化データ**: `{output_file.name}`
 - **元データ**: `pr_104_raw_data.json`, `pr_104_inline_comments.json`, `pr_104_reviews.json`
 
 ## AIエージェント向け情報
@@ -245,11 +261,9 @@ def process_pr_comments():
 3. ファイル別のレビュー密度分析
 4. 修正提案の自動生成
 """)
-
         print(f'📄 Analysis report generated: {report_file}')
-
-    except Exception as e:
-        print(f"❌ Error writing output files: {e}")
+    except OSError as e:
+        print(f"❌ I/O error writing report file {report_file}: {e}")
 
 if __name__ == "__main__":
     process_pr_comments()
