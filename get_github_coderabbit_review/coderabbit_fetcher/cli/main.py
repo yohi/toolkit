@@ -16,8 +16,6 @@ from rich.traceback import install
 from ..exceptions import CodeRabbitFetcherError
 from .parser import ArgumentParser
 
-# Install rich traceback handler for better error display
-install(show_locals=True)
 
 console = Console()
 
@@ -114,6 +112,8 @@ def cli(
 
 def main() -> None:
     """Entry point for the CLI application."""
+    # Install rich traceback handler for better error display
+    install(show_locals=True)
     cli()
 
 
