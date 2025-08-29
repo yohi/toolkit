@@ -72,7 +72,7 @@ def process_pr_comments():
         'pull_request_info': {
             'number': pr_data.get('number'),
             'title': pr_data.get('title'),
-            'body': pr_data.get('body', '')[:500] + ('...' if len(pr_data.get('body', '')) > 500 else '')
+            'body': (lambda body: body[:500] + ('...' if len(body) > 500 else ''))(pr_data.get('body') or '')
         },
         'inline_comments': [],
         'review_comments': [],
@@ -89,7 +89,13 @@ def process_pr_comments():
     files_mentioned = set()
 
     for comment in inline_comments:
-        user_login = comment.get('user', {}).get('login', '')
+        # Safe extraction of user login with None protection
+        user_data = comment.get('user') or {}
+        user_login = user_data.get('login') or ''
+        
+        # Safe extraction of body with None protection
+        body_text = comment.get('body') or ''
+        
         is_coderabbit = 'coderabbit' in user_login.lower()
 
         if is_coderabbit:
@@ -104,7 +110,7 @@ def process_pr_comments():
             'user': user_login,
             'created_at': comment.get('created_at'),
             'updated_at': comment.get('updated_at'),
-            'body': comment.get('body', ''),
+            'body': body_text,
             'path': file_path,
             'line': comment.get('line'),
             'start_line': comment.get('start_line'),
@@ -113,25 +119,29 @@ def process_pr_comments():
             'commit_id': comment.get('commit_id'),
             'in_reply_to_id': comment.get('in_reply_to_id'),
             'is_coderabbit': is_coderabbit,
-            'body_length': len(comment.get('body', '')),
-            'has_suggestions': '```suggestion' in comment.get('body', '').lower()
+            'body_length': len(body_text),
+            'has_suggestions': '```suggestion' in body_text.lower()
         }
         structured_data['inline_comments'].append(structured_comment)
 
     # レビューコメントを処理
     for review in reviews:
-        user_login = review.get('user', {}).get('login', '')
+        # Safe extraction with None protection
+        user_data = review.get('user') or {}
+        user_login = user_data.get('login') or ''
+        body = review.get('body') or ''
+        
         is_coderabbit = 'coderabbit' in user_login.lower()
 
         structured_review = {
             'id': review.get('id'),
             'user': user_login,
             'state': review.get('state'),
-            'body': review.get('body', ''),
+            'body': body,
             'submitted_at': review.get('submitted_at'),
             'commit_id': review.get('commit_id'),
             'is_coderabbit': is_coderabbit,
-            'body_length': len(review.get('body', ''))
+            'body_length': len(body)
         }
         structured_data['review_comments'].append(structured_review)
 
@@ -158,10 +168,12 @@ def process_pr_comments():
     ]
 
     for comment in inline_comments:
-        user_login = comment.get('user', {}).get('login', '')
+        # Safe extraction with None protection
+        user_data = comment.get('user') or {}
+        user_login = user_data.get('login') or ''
+        body = comment.get('body') or ''
+        
         if 'coderabbit' in user_login.lower():
-            body = comment.get('body', '')
-
             for keyword in actionable_keywords:
                 if keyword.lower() in body.lower():
                     actionable_count += 1
