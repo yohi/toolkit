@@ -8,7 +8,6 @@ main execution flow of the CodeRabbit Comment Fetcher.
 import re
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
 
 from rich.console import Console
 
