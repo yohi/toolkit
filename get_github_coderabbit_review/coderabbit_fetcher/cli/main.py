@@ -97,6 +97,7 @@ def cli(
             console.print("✅ [green]Successfully processed CodeRabbit comments[/green]")
         else:
             console.print("⚠️ [yellow]Processing completed with warnings[/yellow]")
+            sys.exit(result)
             
     except CodeRabbitFetcherError as e:
         console.print(f"❌ [red]Error: {e}[/red]")
