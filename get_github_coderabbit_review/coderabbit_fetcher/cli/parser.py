@@ -83,9 +83,9 @@ class ArgumentParser:
             from ..exceptions import PersonaFileError
             raise PersonaFileError(f"Persona file not found: {persona_file}")
         
-        # Validate output format
+        # Validate output format (expects normalized format)
         allowed_formats = {"markdown", "json", "plain"}
-        if output_format.lower() not in allowed_formats:
+        if output_format not in allowed_formats:
             from ..exceptions import CodeRabbitFetcherError
             raise CodeRabbitFetcherError(f"Unsupported output_format: {output_format}")
         
@@ -120,6 +120,9 @@ class ArgumentParser:
         """
         if verbose:
             console.print("🔍 [blue]Validating inputs...[/blue]")
+        
+        # Normalize output format early for consistent handling
+        output_format = output_format.lower().strip()
         
         # Validate inputs
         self.validate_inputs(pr_url, persona_file, output_format, resolved_marker)
