@@ -83,6 +83,12 @@ class ArgumentParser:
             from ..exceptions import PersonaFileError
             raise PersonaFileError(f"Persona file not found: {persona_file}")
         
+        # Validate output format
+        allowed_formats = {"markdown", "json", "plain"}
+        if output_format.lower() not in allowed_formats:
+            from ..exceptions import CodeRabbitFetcherError
+            raise CodeRabbitFetcherError(f"Unsupported output_format: {output_format}")
+        
         # Validate resolved marker
         if not resolved_marker.strip():
             from ..exceptions import CodeRabbitFetcherError
