@@ -20,24 +20,42 @@ def process_pr_comments():
         pr_data_path = base_dir / 'pr_104_raw_data.json'
         with open(pr_data_path, 'r', encoding='utf-8') as f:
             pr_data = json.load(f)
-    except Exception as e:
-        print(f"❌ Error reading pr_data from {pr_data_path}: {e}")
+    except FileNotFoundError as e:
+        print(f"❌ PR data file not found at {pr_data_path}: {e}")
+        return
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON in PR data file {pr_data_path}: {e}")
+        return
+    except OSError as e:
+        print(f"❌ I/O error reading PR data file {pr_data_path}: {e}")
         return
 
     try:
         inline_comments_path = base_dir / 'pr_104_inline_comments.json'
         with open(inline_comments_path, 'r', encoding='utf-8') as f:
             inline_comments = json.load(f)
-    except Exception as e:
-        print(f"❌ Error reading inline_comments from {inline_comments_path}: {e}")
+    except FileNotFoundError as e:
+        print(f"❌ Inline comments file not found at {inline_comments_path}: {e}")
+        inline_comments = []
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON in inline comments file {inline_comments_path}: {e}")
+        inline_comments = []
+    except OSError as e:
+        print(f"❌ I/O error reading inline comments file {inline_comments_path}: {e}")
         inline_comments = []
 
     try:
         reviews_path = base_dir / 'pr_104_reviews.json'
         with open(reviews_path, 'r', encoding='utf-8') as f:
             reviews = json.load(f)
-    except Exception as e:
-        print(f"❌ Error reading reviews from {reviews_path}: {e}")
+    except FileNotFoundError as e:
+        print(f"❌ Reviews file not found at {reviews_path}: {e}")
+        reviews = []
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON in reviews file {reviews_path}: {e}")
+        reviews = []
+    except OSError as e:
+        print(f"❌ I/O error reading reviews file {reviews_path}: {e}")
         reviews = []
 
     # AIエージェント向けの構造化データを作成
