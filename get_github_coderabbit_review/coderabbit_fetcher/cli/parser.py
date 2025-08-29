@@ -168,6 +168,7 @@ class ArgumentParser:
         if output_file:
             if verbose:
                 console.print(f"💾 [blue]Writing to {output_file}...[/blue]")
+            output_file.parent.mkdir(parents=True, exist_ok=True)
             output_file.write_text(formatted_output, encoding="utf-8")
         else:
             console.print(formatted_output)
