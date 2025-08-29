@@ -79,7 +79,7 @@ class ArgumentParser:
         self.parse_pr_url(pr_url)
         
         # Validate persona file if provided
-        if persona_file and not persona_file.exists():
+        if persona_file and not persona_file.is_file():
             from ..exceptions import PersonaFileError
             raise PersonaFileError(f"Persona file not found: {persona_file}")
         
