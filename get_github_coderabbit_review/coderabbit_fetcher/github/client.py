@@ -32,16 +32,24 @@ class GitHubClient:
     and managing authentication through the GitHub CLI.
     """
 
-    def __init__(self, max_retries: int = 3, retry_delay: float = 1.0) -> None:
+    def __init__(
+        self, 
+        max_retries: int = 3, 
+        retry_delay: float = 1.0,
+        check_gh_cli: bool = True
+    ) -> None:
         """Initialize GitHub client.
 
         Args:
             max_retries: Maximum number of retries for failed requests
             retry_delay: Base delay between retries in seconds
+            check_gh_cli: Whether to check GitHub CLI availability on initialization
         """
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        self._check_gh_cli_availability()
+        
+        if check_gh_cli:
+            self._check_gh_cli_availability()
 
     def _check_gh_cli_availability(self) -> None:
         """Check if GitHub CLI is available on the system.
