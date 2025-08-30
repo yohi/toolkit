@@ -2,9 +2,10 @@
 Actionable comment data model.
 """
 
-from typing import Optional
+from typing import Optional, Any, Dict
 from enum import Enum
 
+from pydantic import model_validator
 from .base import BaseCodeRabbitModel
 from .ai_agent_prompt import AIAgentPrompt
 from .thread_context import ThreadContext
@@ -44,22 +45,24 @@ class ActionableComment(BaseCodeRabbitModel):
     raw_content: str
     is_resolved: bool = False
     
-    def __init__(self, **data) -> None:
-        """Initialize actionable comment with auto-detected priority."""
-        # Auto-detect priority from content if not provided
-        if "priority" not in data:
-            data["priority"] = self._detect_priority(
+    @model_validator(mode="before")
+    @classmethod
+    def normalize_data(cls, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Normalize input data by auto-detecting priority and comment_type."""
+        # Auto-detect priority from content if not provided or explicitly None
+        if data.get("priority") is None:
+            data["priority"] = cls._detect_priority(
                 data.get("issue_description", ""),
                 data.get("raw_content", "")
             )
         
-        # Auto-detect comment type if not provided
-        if "comment_type" not in data:
-            data["comment_type"] = self._detect_comment_type(
+        # Auto-detect comment type if not provided or explicitly None
+        if data.get("comment_type") is None:
+            data["comment_type"] = cls._detect_comment_type(
                 data.get("raw_content", "")
             )
         
-        super().__init__(**data)
+        return data
     
     @staticmethod
     def _detect_priority(description: str, raw_content: str) -> Priority:
