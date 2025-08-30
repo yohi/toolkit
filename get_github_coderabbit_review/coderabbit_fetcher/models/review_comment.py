@@ -45,8 +45,9 @@ class ReviewComment(BaseModel):
     
     @model_validator(mode="after")
     def sync_actionable_count(self):
-        """Sync actionable_count with actual list length."""
-        self.actionable_count = len(self.actionable_comments)
+        """If no reported count, fall back to parsed length."""
+        if self.actionable_count == 0:
+            self.actionable_count = len(self.actionable_comments)
         return self
     
     @property
