@@ -193,7 +193,7 @@ class TestGitHubClient:
         mock_execute.assert_called_once_with([
             "api", "repos/owner/repo/issues/123/comments",
             "--method", "POST",
-            "-f", "body=Test comment",
+            "--raw-field", "body=Test comment",
         ])
 
     @patch.object(GitHubClient, '_execute_gh_command')

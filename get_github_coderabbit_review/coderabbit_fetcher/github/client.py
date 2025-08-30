@@ -321,7 +321,7 @@ class GitHubClient:
             self._execute_gh_command([
                 "api", f"repos/{owner}/{repo}/issues/{pr_number}/comments",
                 "--method", "POST",
-                "-f", f"body={comment}",
+                "--raw-field", f"body={comment}",
             ])
 
             console.print("✅ [green]Comment posted successfully[/green]")
