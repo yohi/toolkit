@@ -62,7 +62,10 @@ class CommentAnalyzer:
 
             # Create metadata (will be properly initialized from CLI)
             total_coderabbit = len(coderabbit_inline) + len(coderabbit_reviews) + len(coderabbit_pr_comments)
-            resolved = len(inline_threads) + len(review_threads) - len(unresolved_inline) - len(unresolved_reviews)
+            total_threads = len(inline_threads) + len(review_threads)
+            unresolved_threads = sum(1 for t in inline_threads if not self.is_resolved(t)) \
+                               + sum(1 for t in review_threads if not self.is_resolved(t))
+            resolved = total_threads - unresolved_threads
 
             metadata = CommentMetadata(
                 pr_number=0,  # Will be set from CLI
