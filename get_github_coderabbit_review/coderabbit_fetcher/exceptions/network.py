@@ -2,6 +2,7 @@
 Network-related exceptions.
 """
 
+from datetime import datetime, timezone
 from .base import CodeRabbitFetcherError
 
 
@@ -24,9 +25,8 @@ class APIRateLimitError(CodeRabbitFetcherError):
             reset_time: Unix timestamp when rate limit resets (optional)
         """
         details = None
-        if reset_time:
-            import datetime
-            reset_datetime = datetime.datetime.fromtimestamp(reset_time)
+        if reset_time is not None:
+            reset_datetime = datetime.fromtimestamp(reset_time, tz=timezone.utc)
             details = f"Rate limit resets at {reset_datetime.isoformat()}"
 
         super().__init__(message, details)

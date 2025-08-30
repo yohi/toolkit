@@ -4,6 +4,7 @@ Review comment data model.
 
 from typing import List
 
+from pydantic import Field, model_validator
 from .base import BaseCodeRabbitModel
 from .actionable_comment import ActionableComment
 
@@ -43,11 +44,17 @@ class ReviewComment(BaseCodeRabbitModel):
     """
 
     actionable_count: int
-    actionable_comments: List[ActionableComment] = []
-    nitpick_comments: List[NitpickComment] = []
-    outside_diff_comments: List[OutsideDiffComment] = []
+    actionable_comments: List[ActionableComment] = Field(default_factory=list)
+    nitpick_comments: List[NitpickComment] = Field(default_factory=list)
+    outside_diff_comments: List[OutsideDiffComment] = Field(default_factory=list)
     raw_content: str
-
+    
+    @model_validator(mode="after")
+    def sync_actionable_count(self):
+        """Sync actionable_count with actual list length."""
+        self.actionable_count = len(self.actionable_comments)
+        return self
+    
     @property
     def total_issues(self) -> int:
         """Get total number of issues across all categories.
