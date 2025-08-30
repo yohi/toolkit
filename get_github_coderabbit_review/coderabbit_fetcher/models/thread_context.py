@@ -6,6 +6,7 @@ from datetime import datetime
 from typing import Dict, List, Any, Optional
 from enum import Enum
 
+from pydantic import Field
 from .base import BaseCodeRabbitModel
 
 
@@ -25,9 +26,9 @@ class ThreadContext(BaseCodeRabbitModel):
     """
 
     main_comment: Dict[str, Any]
-    replies: List[Dict[str, Any]] = []
+    replies: List[Dict[str, Any]] = Field(default_factory=list)
     resolution_status: ResolutionStatus = ResolutionStatus.UNRESOLVED
-    chronological_order: List[Dict[str, Any]] = []
+    chronological_order: List[Dict[str, Any]] = Field(default_factory=list)
     contextual_summary: str = ""
     thread_id: str
 

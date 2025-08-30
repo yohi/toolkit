@@ -11,7 +11,7 @@ from .summary_comment import SummaryComment, ChangeEntry
 from .review_comment import ReviewComment
 from .actionable_comment import ActionableComment, CommentType, Priority
 from .ai_agent_prompt import AIAgentPrompt
-from .thread_context import ThreadContext
+from .thread_context import ThreadContext, ResolutionStatus
 
 __all__ = [
     "AnalyzedComments",
@@ -24,4 +24,5 @@ __all__ = [
     "Priority",
     "AIAgentPrompt",
     "ThreadContext",
+    "ResolutionStatus",
 ]

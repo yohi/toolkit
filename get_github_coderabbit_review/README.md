@@ -54,7 +54,7 @@ pip install -e .
 
 3. **Generate JSON output**:
    ```bash
-   coderabbit-fetch https://github.com/owner/repo/pull/123 --format json
+   coderabbit-fetch https://github.com/owner/repo/pull/123 --output-format json
    ```
 
 4. **Use custom persona**:
@@ -90,7 +90,7 @@ coderabbit-fetch https://github.com/microsoft/vscode/pull/12345
 **JSON output with custom persona**:
 ```bash
 coderabbit-fetch https://github.com/microsoft/vscode/pull/12345 \
-  --format json \
+  --output-format json \
   --persona-file reviewer-persona.txt \
   --output-file review-summary.json
 ```
