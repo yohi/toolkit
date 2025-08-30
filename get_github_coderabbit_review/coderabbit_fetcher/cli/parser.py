@@ -177,7 +177,7 @@ class ArgumentParser:
             console.print(formatted_output)
         
         # Post resolution request if requested
-        review_comments = analyzed_comments.get("review_comments") if isinstance(analyzed_comments, dict) else []
+        review_comments = analyzed_comments.get("review_comments", []) if isinstance(analyzed_comments, dict) else []
         if request_resolution and review_comments:
             if verbose:
                 console.print("📤 [blue]Posting resolution request...[/blue]")
