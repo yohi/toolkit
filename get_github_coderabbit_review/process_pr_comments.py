@@ -149,7 +149,7 @@ def process_pr_comments():
     coderabbit_count += sum(
         1
         for r in reviews
-        if 'coderabbit' in r.get('user', {}).get('login', '').lower()
+        if 'coderabbit' in (r.get('user', {}).get('login') or '').lower()
     )
 
     # アクショナブルアイテムを抽出（CodeRabbitコメント中心）
