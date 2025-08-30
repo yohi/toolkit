@@ -210,7 +210,7 @@ def process_pr_comments():
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(structured_data, f, ensure_ascii=False, indent=2)
         print(f'✅ AI-friendly output generated: {output_file}')
-    except (json.JSONEncodeError, TypeError) as e:
+    except TypeError as e:
         print(f"❌ JSON encoding error for {output_file}: {e}")
         return
     except OSError as e:
