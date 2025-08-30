@@ -11,11 +11,11 @@ from .base import BaseCodeRabbitModel
 
 class CommentMetadata(BaseCodeRabbitModel):
     """Metadata about the comment analysis process.
-    
+
     Contains information about the pull request, processing time,
     and statistics about the comments found.
     """
-    
+
     pr_number: int
     pr_title: str
     owner: str
@@ -30,18 +30,18 @@ class CommentMetadata(BaseCodeRabbitModel):
     @property
     def resolution_rate(self) -> float:
         """Calculate the resolution rate of CodeRabbit comments.
-        
+
         Returns:
             Percentage of resolved comments (0.0 to 1.0)
         """
         if self.coderabbit_comments == 0:
             return 0.0
         return self.resolved_comments / self.coderabbit_comments
-    
+
     @property
     def actionable_rate(self) -> float:
         """Calculate the rate of actionable comments.
-        
+
         Returns:
             Percentage of actionable comments (0.0 to 1.0)
         """

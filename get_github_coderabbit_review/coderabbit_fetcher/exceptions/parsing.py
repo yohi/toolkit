@@ -7,14 +7,14 @@ from .base import CodeRabbitFetcherError
 
 class InvalidPRUrlError(CodeRabbitFetcherError):
     """Invalid pull request URL format.
-    
+
     Raised when a provided GitHub pull request URL does not match
     the expected format.
     """
-    
+
     def __init__(self, message: str) -> None:
         """Initialize the invalid URL error.
-        
+
         Args:
             message: Error message with URL details
         """
@@ -26,14 +26,14 @@ class InvalidPRUrlError(CodeRabbitFetcherError):
 
 class CommentParsingError(CodeRabbitFetcherError):
     """Comment content parsing issues.
-    
+
     Raised when comment content cannot be parsed or contains
     unexpected format.
     """
-    
+
     def __init__(self, message: str, comment_id: str | None = None) -> None:
         """Initialize the parsing error.
-        
+
         Args:
             message: Error message describing the parsing issue
             comment_id: Optional ID of the problematic comment
@@ -41,5 +41,5 @@ class CommentParsingError(CodeRabbitFetcherError):
         details = None
         if comment_id is not None:
             details = f"Failed to parse comment ID: {comment_id}"
-        
+
         super().__init__(message, details)

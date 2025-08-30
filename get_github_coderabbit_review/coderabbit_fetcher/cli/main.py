@@ -72,10 +72,10 @@ def cli(
     verbose: bool,
 ) -> None:
     """Fetch and format CodeRabbit comments from GitHub pull requests.
-    
+
     PR_URL should be a GitHub pull request URL like:
     https://github.com/owner/repo/pull/123
-    
+
     Examples:
         coderabbit-fetch https://github.com/owner/repo/pull/123
         coderabbit-fetch https://github.com/owner/repo/pull/123 --format json
@@ -92,13 +92,12 @@ def cli(
             output_file=output_file,
             verbose=verbose,
         )
-        
+
         if result == 0:
             console.print("✅ [green]Successfully processed CodeRabbit comments[/green]")
         else:
             console.print("⚠️ [yellow]Processing completed with warnings[/yellow]")
             sys.exit(result)
-            
     except CodeRabbitFetcherError as e:
         console.print(f"❌ [red]Error: {e}[/red]")
         sys.exit(1)
