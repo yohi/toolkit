@@ -42,7 +42,7 @@ class SummaryProcessor:
         try:
             body = comment.get("body", "")
             
-            if not self._is_summary_comment(body):
+            if not self.is_summary_comment(body):
                 raise CommentParsingError(
                     "Comment does not appear to be a CodeRabbit summary"
                 )
@@ -82,6 +82,17 @@ class SummaryProcessor:
             re.search(pattern, body_lines, re.IGNORECASE)
             for pattern in self.summary_patterns
         )
+
+    def is_summary_comment(self, body: str) -> bool:
+        """Public API to check if the comment body contains a CodeRabbit summary.
+        
+        Args:
+            body: Comment body text
+            
+        Returns:
+            True if this is a summary comment
+        """
+        return self._is_summary_comment(body)
     
     def _extract_new_features(self, content: str) -> List[str]:
         """Extract new features from summary content.
