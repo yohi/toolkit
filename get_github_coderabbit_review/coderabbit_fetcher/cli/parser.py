@@ -9,12 +9,14 @@ import json
 import re
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
 
 from rich.console import Console
 
 from ..exceptions import InvalidPRUrlError
 from ..github.client import GitHubClient
+from ..analyzer.comment_analyzer import CommentAnalyzer
+from ..persona.manager import PersonaManager
+from ..formatters.factory import FormatterFactory
 
 console = Console()
 
@@ -29,6 +31,9 @@ class ArgumentParser:
     def __init__(self) -> None:
         """Initialize the argument parser."""
         self.github_client = GitHubClient()
+        self.comment_analyzer = CommentAnalyzer()
+        self.persona_manager = PersonaManager()
+        self.formatter_factory = FormatterFactory()
 
     def parse_pr_url(self, pr_url: str) -> tuple[str, str, int]:
         """Parse GitHub pull request URL to extract owner, repo, and PR number.
@@ -75,10 +80,16 @@ class ArgumentParser:
         self.parse_pr_url(pr_url)
 
         # Validate persona file if provided
-        if persona_file and not persona_file.exists():
+        if persona_file and not persona_file.is_file():
             from ..exceptions import PersonaFileError
             raise PersonaFileError(f"Persona file not found: {persona_file}")
-
+        
+        # Validate output format (expects normalized format)
+        allowed_formats = {"markdown", "json", "plain"}
+        if output_format not in allowed_formats:
+            from ..exceptions import CodeRabbitFetcherError
+            raise CodeRabbitFetcherError(f"Unsupported output_format: {output_format}")
+        
         # Validate resolved marker
         if not resolved_marker.strip():
             from ..exceptions import CodeRabbitFetcherError
@@ -110,7 +121,10 @@ class ArgumentParser:
         """
         if verbose:
             console.print("🔍 [blue]Validating inputs...[/blue]")
-
+        
+        # Normalize output format early for consistent handling
+        output_format = output_format.lower().strip()
+        
         # Validate inputs
         self.validate_inputs(pr_url, persona_file, output_format, resolved_marker)
 
@@ -133,23 +147,39 @@ class ArgumentParser:
 
         comments_data = self.github_client.fetch_pr_comments(pr_url)
 
+        # Analyze comments
         if verbose:
-            console.print(f"✅ [green]Successfully fetched PR data[/green]")
-            console.print(f"📊 [blue]Found {len(comments_data.get('comments', []))} comments[/blue]")
+            console.print("🔍 [blue]Analyzing CodeRabbit comments...[/blue]")
 
-        # For now, just output the raw data (analysis will be implemented in later tasks)
+        analyzed_comments = self.comment_analyzer.analyze_comments(
+            comments_data, resolved_marker
+        )
+
+        # Load persona
+        if verbose:
+            console.print("🤖 [blue]Loading persona...[/blue]")
+
+        persona = self.persona_manager.load_persona(persona_file)
+
+        # Format output
+        if verbose:
+            console.print(f"📝 [blue]Formatting output as {output_format}...[/blue]")
+
+        formatter = self.formatter_factory.create_formatter(output_format)
+        formatted_output = formatter.format(persona, analyzed_comments)
+
+        # Write output
         if output_file:
             if verbose:
                 console.print(f"💾 [blue]Writing to {output_file}...[/blue]")
-            output_file.write_text(
-                json.dumps(comments_data, indent=2, ensure_ascii=False),
-                encoding="utf-8"
-            )
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            output_file.write_text(formatted_output, encoding="utf-8")
         else:
-            console.print(json.dumps(comments_data, indent=2, ensure_ascii=False))
-
-        # Post resolution request if requested (basic implementation)
-        if request_resolution:
+            console.print(formatted_output)
+        
+        # Post resolution request if requested
+        review_comments = analyzed_comments.get("review_comments", []) if isinstance(analyzed_comments, dict) else []
+        if request_resolution and review_comments:
             if verbose:
                 console.print("📤 [blue]Posting resolution request...[/blue]")
 
