@@ -243,14 +243,21 @@ class ReviewProcessor:
         
         # Look for individual actionable items
         # Pattern for file:line format
-        item_pattern = r"(?:^|\n)(?:[-*+]|\d+\.)\s*(?:\*\*)?([^:\n]+):?(\d+)?(?:\*\*)?\s*[-:]?\s*(.+?)(?=\n[-*+\d]|\n\n|\\Z)"
+        # 箇条書き/番号付き、`file`またはfile、:line(または:start-end)→区切り(–—含む)→説明
+        item_pattern = (
+            r"(?m)^(?:[-*+]|\d+\.)\s*"
+            r"(?:`(?P<file>[^`]+)`|(?P<file2>[^:\n]+))"
+            r"(?::(?P<line>\d+(?:-\d+)?))?\s*[-:–—]\s*"
+            r"(?P<desc>.+?)"
+            r"(?=(?:\n(?:[-*+]|\d+\.)\s+)|\n{2,}|\Z)"
+        )
         
         matches = re.finditer(item_pattern, section, re.MULTILINE | re.DOTALL)
         
         for match in matches:
-            file_info = match.group(1).strip()
-            line_number = match.group(2)
-            description = match.group(3).strip()
+            file_info = (match.group("file") or match.group("file2") or "").strip()
+            line_number = match.group("line")
+            description = match.group("desc").strip()
             
             if len(description) > 10:  # Filter out very short descriptions
                 # Clean up the description
