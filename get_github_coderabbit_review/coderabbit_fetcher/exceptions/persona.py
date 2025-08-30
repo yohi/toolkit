@@ -20,7 +20,7 @@ class PersonaFileError(CodeRabbitFetcherError):
             file_path: Optional path to the problematic file
         """
         details = None
-        if file_path:
+        if file_path is not None:
             details = f"File path: {file_path}"
         
         super().__init__(message, details)
