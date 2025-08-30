@@ -182,14 +182,19 @@ class TestGitHubClient:
 
     @patch.object(GitHubClient, '_execute_gh_command')
     def test_post_comment(self, mock_execute):
-        """Test posting a comment."""
-        mock_execute.return_value = {}
+        """Test posting a comment via gh api."""
+        mock_execute.return_value = {"id": 12345, "body": "Test comment"}
 
         client = GitHubClient(check_gh_cli=False)
         result = client.post_comment("https://github.com/owner/repo/pull/123", "Test comment")
 
         assert result is True
-        mock_execute.assert_called_once()
+        # gh api対応の正確な引数をチェック
+        mock_execute.assert_called_once_with([
+            "api", "repos/owner/repo/issues/123/comments",
+            "--method", "POST",
+            "-f", "body=Test comment",
+        ])
 
     @patch.object(GitHubClient, '_execute_gh_command')
     def test_post_comment_failure(self, mock_execute):
