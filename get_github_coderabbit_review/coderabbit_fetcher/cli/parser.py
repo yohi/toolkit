@@ -6,13 +6,10 @@ main execution flow of the CodeRabbit Comment Fetcher.
 """
 
 import json
-import re
 from pathlib import Path
 from typing import Optional
 
 from rich.console import Console
-
-from ..exceptions import InvalidPRUrlError
 from ..github.client import GitHubClient
 from ..analyzer.comment_analyzer import CommentAnalyzer
 from ..persona.manager import PersonaManager
@@ -24,10 +21,6 @@ console = Console()
 class ArgumentParser:
     """Handles argument parsing and main execution orchestration."""
 
-    PR_URL_PATTERN = re.compile(
-        r"^https://github\.com/([^/]+)/([^/]+)/pull/(\d+)$"
-    )
-
     def __init__(self) -> None:
         """Initialize the argument parser."""
         self.github_client = GitHubClient()
@@ -36,7 +29,7 @@ class ArgumentParser:
         self.formatter_factory = FormatterFactory()
 
     def parse_pr_url(self, pr_url: str) -> tuple[str, str, int]:
-        """Parse GitHub pull request URL to extract owner, repo, and PR number.
+        """GitHubClientに委譲してURLを解析する。
 
         Args:
             pr_url: GitHub pull request URL
@@ -47,15 +40,7 @@ class ArgumentParser:
         Raises:
             InvalidPRUrlError: If URL format is invalid
         """
-        match = self.PR_URL_PATTERN.match(pr_url.strip())
-        if not match:
-            raise InvalidPRUrlError(
-                f"Invalid GitHub pull request URL: {pr_url}\n"
-                "Expected format: https://github.com/owner/repo/pull/123"
-            )
-
-        owner, repo, pr_number_str = match.groups()
-        return owner, repo, int(pr_number_str)
+        return self.github_client.parse_pr_url(pr_url)
 
     def validate_inputs(
         self,
