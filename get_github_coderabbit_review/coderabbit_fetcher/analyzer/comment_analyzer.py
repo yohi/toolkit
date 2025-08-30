@@ -6,7 +6,7 @@ from datetime import datetime
 
 from ..models import AnalyzedComments, SummaryComment, ReviewComment, ActionableComment, ThreadContext, CommentMetadata
 from ..exceptions import CommentParsingError
-from ..processors import SummaryProcessor
+from ..processors import SummaryProcessor, ReviewProcessor
 
 
 class CommentAnalyzer:
@@ -14,13 +14,14 @@ class CommentAnalyzer:
 
     def __init__(self, resolved_marker: str = "🔒 CODERABBIT_RESOLVED 🔒"):
         """Initialize the comment analyzer.
-        
+
         Args:
             resolved_marker: Marker text indicating a resolved comment thread
         """
         self.resolved_marker = resolved_marker
         self.coderabbit_author = "coderabbitai[bot]"
         self.summary_processor = SummaryProcessor()
+        self.review_processor = ReviewProcessor()
 
     def analyze_comments(self, comments_data: Dict[str, Any]) -> AnalyzedComments:
         """Analyze GitHub PR comments and extract CodeRabbit-specific information.
@@ -61,7 +62,10 @@ class CommentAnalyzer:
 
             # Create metadata (will be properly initialized from CLI)
             total_coderabbit = len(coderabbit_inline) + len(coderabbit_reviews) + len(coderabbit_pr_comments)
-            resolved = len(inline_threads) + len(review_threads) - len(unresolved_inline) - len(unresolved_reviews)
+            total_threads = len(inline_threads) + len(review_threads)
+            unresolved_threads = sum(1 for t in inline_threads if not self.is_resolved(t)) \
+                               + sum(1 for t in review_threads if not self.is_resolved(t))
+            resolved = total_threads - unresolved_threads
 
             metadata = CommentMetadata(
                 pr_number=0,  # Will be set from CLI
@@ -76,14 +80,20 @@ class CommentAnalyzer:
                 processing_time_seconds=0.0  # Will be calculated in CLI
             )
 
-            # Convert unresolved comments to ReviewComment objects
+            # Convert unresolved comments to ReviewComment objects using ReviewProcessor
             review_comments = []
             for comment in unresolved_inline + unresolved_reviews:
-                review_comment = ReviewComment(
-                    actionable_count=1,  # Each unresolved comment is considered actionable
-                    raw_content=comment.get("body", "")
-                )
-                review_comments.append(review_comment)
+                try:
+                    # Use ReviewProcessor to extract structured information
+                    review_comment = self.review_processor.process_review_comment(comment)
+                    review_comments.append(review_comment)
+                except CommentParsingError:
+                    # Fallback to basic ReviewComment
+                    review_comment = ReviewComment(
+                        actionable_count=1,  # Each unresolved comment is considered actionable
+                        raw_content=comment.get("body", "")
+                    )
+                    review_comments.append(review_comment)
 
             return AnalyzedComments(
                 summary_comments=summary_comments,
@@ -202,21 +212,21 @@ class CommentAnalyzer:
                 unresolved_comments.extend(thread)
 
         return unresolved_comments
-    
+
     def _extract_summary_comments(self, comments: List[Dict[str, Any]]) -> List[SummaryComment]:
         """Extract and process summary comments from CodeRabbit.
-        
+
         Args:
             comments: List of PR-level comments
-            
+
         Returns:
             List of processed summary comments
         """
         summary_comments = []
-        
+
         for comment in comments:
             body = comment.get("body", "")
-            
+
             # Use SummaryProcessor to check if this is a summary comment
             if self.summary_processor.is_summary_comment(body):
                 try:
@@ -229,7 +239,7 @@ class CommentAnalyzer:
             elif self.summary_processor.has_summary_content(body):
                 # If it has summary-like content but isn't a formal summary
                 summary_comments.append(SummaryComment(raw_content=body))
-        
+
         return summary_comments
 
     def _extract_actionable_comments(self, comments: List[Dict[str, Any]]) -> List[ActionableComment]:
