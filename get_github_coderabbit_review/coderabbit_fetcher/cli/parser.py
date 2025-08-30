@@ -163,7 +163,13 @@ class ArgumentParser:
             console.print(formatted_output)
         
         # Post resolution request if requested
-        review_comments = analyzed_comments.get("review_comments", []) if isinstance(analyzed_comments, dict) else []
+        review_comments: list = []
+        if isinstance(analyzed_comments, dict):
+            review_comments = (
+                analyzed_comments.get("review_comments")
+                or analyzed_comments.get("reviewComments")
+                or []
+            )
         if request_resolution and review_comments:
             if verbose:
                 console.print("📤 [blue]Posting resolution request...[/blue]")
