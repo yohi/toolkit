@@ -278,8 +278,7 @@ class GitHubClient:
         # Fetch additional comment details (reviews contain inline comments)
         try:
             review_comments = self._execute_gh_command([
-                "api", f"repos/{owner}/{repo}/pulls/{pr_number}/comments",
-                "--paginate"
+                "api", f"repos/{owner}/{repo}/pulls/{pr_number}/comments?per_page=100"
             ])
 
             # Merge review comments into the main data structure
