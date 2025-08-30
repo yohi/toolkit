@@ -8,7 +8,6 @@ main execution flow of the CodeRabbit Comment Fetcher.
 import re
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
 
 from rich.console import Console
 
@@ -80,9 +79,15 @@ class ArgumentParser:
         self.parse_pr_url(pr_url)
         
         # Validate persona file if provided
-        if persona_file and not persona_file.exists():
+        if persona_file and not persona_file.is_file():
             from ..exceptions import PersonaFileError
             raise PersonaFileError(f"Persona file not found: {persona_file}")
+        
+        # Validate output format (expects normalized format)
+        allowed_formats = {"markdown", "json", "plain"}
+        if output_format not in allowed_formats:
+            from ..exceptions import CodeRabbitFetcherError
+            raise CodeRabbitFetcherError(f"Unsupported output_format: {output_format}")
         
         # Validate resolved marker
         if not resolved_marker.strip():
@@ -115,6 +120,9 @@ class ArgumentParser:
         """
         if verbose:
             console.print("🔍 [blue]Validating inputs...[/blue]")
+        
+        # Normalize output format early for consistent handling
+        output_format = output_format.lower().strip()
         
         # Validate inputs
         self.validate_inputs(pr_url, persona_file, output_format, resolved_marker)
@@ -163,12 +171,14 @@ class ArgumentParser:
         if output_file:
             if verbose:
                 console.print(f"💾 [blue]Writing to {output_file}...[/blue]")
+            output_file.parent.mkdir(parents=True, exist_ok=True)
             output_file.write_text(formatted_output, encoding="utf-8")
         else:
             console.print(formatted_output)
         
         # Post resolution request if requested
-        if request_resolution and analyzed_comments.review_comments:
+        review_comments = analyzed_comments.get("review_comments", []) if isinstance(analyzed_comments, dict) else []
+        if request_resolution and review_comments:
             if verbose:
                 console.print("📤 [blue]Posting resolution request...[/blue]")
             

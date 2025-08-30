@@ -20,3 +20,10 @@ __all__ = [
     "SummaryComment", 
     "ReviewComment",
 ]
+
+# Lazily expose CLI entry to avoid import-time side effects.
+def __getattr__(name: str):
+    if name == "main":
+        from .cli.main import main as _main
+        return _main
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
