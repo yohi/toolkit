@@ -13,7 +13,7 @@ from .persona import PersonaFileError
 
 __all__ = [
     "CodeRabbitFetcherError",
-    "GitHubAuthenticationError", 
+    "GitHubAuthenticationError",
     "APIRateLimitError",
     "CommentParsingError",
     "InvalidPRUrlError",

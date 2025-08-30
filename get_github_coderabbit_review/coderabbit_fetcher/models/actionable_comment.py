@@ -29,11 +29,11 @@ class Priority(str, Enum):
 
 class ActionableComment(BaseCodeRabbitModel):
     """Actionable comment from CodeRabbit review.
-    
+
     Represents a specific issue or suggestion that requires
     developer attention or action.
     """
-    
+
     comment_id: str
     file_path: str
     line_range: str
@@ -67,47 +67,47 @@ class ActionableComment(BaseCodeRabbitModel):
     @staticmethod
     def _detect_priority(description: str, raw_content: str) -> Priority:
         """Detect priority level from comment content.
-        
+
         Args:
             description: Issue description
             raw_content: Full comment content
-            
+
         Returns:
             Detected priority level
         """
         content = (description + " " + raw_content).lower()
-        
+
         # High priority keywords
         high_keywords = [
             "security", "vulnerability", "critical", "urgent", "fatal",
             "error", "exception", "crash", "fail", "broken", "bug"
         ]
-        
-        # Low priority keywords  
+
+        # Low priority keywords
         low_keywords = [
             "nitpick", "style", "formatting", "whitespace", "comment",
             "documentation", "typo", "minor", "suggestion"
         ]
-        
+
         if any(keyword in content for keyword in high_keywords):
             return Priority.HIGH
         elif any(keyword in content for keyword in low_keywords):
             return Priority.LOW
-        
+
         return Priority.MEDIUM
-    
+
     @staticmethod
     def _detect_comment_type(raw_content: str) -> CommentType:
         """Detect comment type from raw content.
-        
+
         Args:
             raw_content: Full comment content
-            
+
         Returns:
             Detected comment type
         """
         content = raw_content.lower()
-        
+
         if "🧹 nitpick" in content:
             return CommentType.NITPICK
         elif "⚠️ potential issue" in content:
@@ -116,22 +116,22 @@ class ActionableComment(BaseCodeRabbitModel):
             return CommentType.REFACTOR_SUGGESTION
         elif "outside diff range" in content:
             return CommentType.OUTSIDE_DIFF
-        
+
         return CommentType.GENERAL
-    
+
     @property
     def has_ai_prompt(self) -> bool:
         """Check if comment has AI agent prompt.
-        
+
         Returns:
             True if comment contains AI agent prompt
         """
         return self.ai_agent_prompt is not None
-    
+
     @property
     def is_high_priority(self) -> bool:
         """Check if comment is high priority.
-        
+
         Returns:
             True if comment has high priority
         """

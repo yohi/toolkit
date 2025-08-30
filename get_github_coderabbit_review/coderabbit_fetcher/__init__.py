@@ -29,7 +29,7 @@ __all__ = [
     "main",
     "CodeRabbitFetcherError",
     "AnalyzedComments",
-    "SummaryComment", 
+    "SummaryComment",
     "ReviewComment",
     "ActionableComment",
     "AIAgentPrompt",

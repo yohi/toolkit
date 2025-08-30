@@ -17,7 +17,7 @@ __all__ = [
     "AnalyzedComments",
     "CommentMetadata",
     "SummaryComment",
-    "ChangeEntry", 
+    "ChangeEntry",
     "ReviewComment",
     "ActionableComment",
     "CommentType",
