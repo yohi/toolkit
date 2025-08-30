@@ -203,7 +203,9 @@ class GitHubClient:
                     f"GitHub CLI command timed out after {timeout} seconds"
                 )
                 if attempt < self.max_retries:
-                    console.print(f"⏳ [yellow]Command timed out, retrying... (attempt {attempt + 1}/{self.max_retries})[/yellow]")
+                    wait_time = self.retry_delay * (2 ** attempt)  # Exponential backoff
+                    console.print(f"⏳ [yellow]Command timed out, retrying in {wait_time}s... (attempt {attempt + 1}/{self.max_retries})[/yellow]")
+                    time.sleep(wait_time)
                     continue
             except (APIRateLimitError, GitHubAuthenticationError):
                 # Don't retry these specific errors
@@ -211,7 +213,9 @@ class GitHubClient:
             except Exception as e:
                 last_exception = CodeRabbitFetcherError(f"Unexpected error: {e}")
                 if attempt < self.max_retries:
-                    console.print(f"⏳ [yellow]Unexpected error, retrying... (attempt {attempt + 1}/{self.max_retries})[/yellow]")
+                    wait_time = self.retry_delay * (2 ** attempt)  # Exponential backoff
+                    console.print(f"⏳ [yellow]Unexpected error, retrying in {wait_time}s... (attempt {attempt + 1}/{self.max_retries})[/yellow]")
+                    time.sleep(wait_time)
                     continue
 
         # All retries exhausted
