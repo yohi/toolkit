@@ -314,10 +314,11 @@ class GitHubClient:
         console.print(f"📤 [blue]Posting comment to {owner}/{repo}#{pr_number}[/blue]")
 
         try:
+            # PRはIssueとしてコメントAPIが利用可能
             self._execute_gh_command([
-                "pr", "comment", str(pr_number),
-                "--repo", f"{owner}/{repo}",
-                "--body", comment
+                "api", f"repos/{owner}/{repo}/issues/{pr_number}/comments",
+                "--method", "POST",
+                "-f", f"body={comment}",
             ])
 
             console.print("✅ [green]Comment posted successfully[/green]")
