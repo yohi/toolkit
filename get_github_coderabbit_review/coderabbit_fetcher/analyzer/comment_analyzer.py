@@ -218,7 +218,7 @@ class CommentAnalyzer:
             body = comment.get("body", "")
 
             # Use SummaryProcessor to check if this is a summary comment
-            if self.summary_processor._is_summary_comment(body):
+            if self.summary_processor.is_summary_comment(body):
                 try:
                     # Process the summary comment using SummaryProcessor
                     summary_comment = self.summary_processor.process_summary_comment(comment)

@@ -6,17 +6,14 @@ main execution flow of the CodeRabbit Comment Fetcher.
 """
 
 import json
-import re
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
 
 from rich.console import Console
-
-from ..exceptions import InvalidPRUrlError, GitHubAuthenticationError
 from ..github.client import GitHubClient
-from ..github.comment_poster import CommentPoster
-from ..analyzer import CommentAnalyzer
+from ..analyzer.comment_analyzer import CommentAnalyzer
+from ..persona.manager import PersonaManager
+from ..formatters.factory import FormatterFactory
 
 console = Console()
 
@@ -24,17 +21,15 @@ console = Console()
 class ArgumentParser:
     """Handles argument parsing and main execution orchestration."""
 
-    PR_URL_PATTERN = re.compile(
-        r"^https://github\.com/([^/]+)/([^/]+)/pull/(\d+)$"
-    )
-
     def __init__(self) -> None:
         """Initialize the argument parser."""
         self.github_client = GitHubClient()
         self.comment_analyzer = CommentAnalyzer()
+        self.persona_manager = PersonaManager()
+        self.formatter_factory = FormatterFactory()
 
     def parse_pr_url(self, pr_url: str) -> tuple[str, str, int]:
-        """Parse GitHub pull request URL to extract owner, repo, and PR number.
+        """GitHubClientに委譲してURLを解析する。
 
         Args:
             pr_url: GitHub pull request URL
@@ -45,15 +40,7 @@ class ArgumentParser:
         Raises:
             InvalidPRUrlError: If URL format is invalid
         """
-        match = self.PR_URL_PATTERN.match(pr_url.strip())
-        if not match:
-            raise InvalidPRUrlError(
-                f"Invalid GitHub pull request URL: {pr_url}\n"
-                "Expected format: https://github.com/owner/repo/pull/123"
-            )
-
-        owner, repo, pr_number_str = match.groups()
-        return owner, repo, int(pr_number_str)
+        return self.github_client.parse_pr_url(pr_url)
 
     def validate_inputs(
         self,
@@ -78,10 +65,16 @@ class ArgumentParser:
         self.parse_pr_url(pr_url)
 
         # Validate persona file if provided
-        if persona_file and not persona_file.exists():
+        if persona_file and not persona_file.is_file():
             from ..exceptions import PersonaFileError
             raise PersonaFileError(f"Persona file not found: {persona_file}")
-
+        
+        # Validate output format (expects normalized format)
+        allowed_formats = {"markdown", "json", "plain"}
+        if output_format not in allowed_formats:
+            from ..exceptions import CodeRabbitFetcherError
+            raise CodeRabbitFetcherError(f"Unsupported output_format: {output_format}")
+        
         # Validate resolved marker
         if not resolved_marker.strip():
             from ..exceptions import CodeRabbitFetcherError
@@ -113,7 +106,10 @@ class ArgumentParser:
         """
         if verbose:
             console.print("🔍 [blue]Validating inputs...[/blue]")
-
+        
+        # Normalize output format early for consistent handling
+        output_format = output_format.lower().strip()
+        
         # Validate inputs
         self.validate_inputs(pr_url, persona_file, output_format, resolved_marker)
 
@@ -136,61 +132,45 @@ class ArgumentParser:
 
         comments_data = self.github_client.fetch_pr_comments(pr_url)
 
-        if verbose:
-            console.print(f"✅ [green]Successfully fetched PR data[/green]")
-            console.print(f"📊 [blue]Found {len(comments_data.get('comments', []))} comments[/blue]")
-
-        # Analyze comments using CommentAnalyzer
+        # Analyze comments
         if verbose:
             console.print("🔍 [blue]Analyzing CodeRabbit comments...[/blue]")
 
-        # Update the analyzer with the custom resolved marker
-        self.comment_analyzer.resolved_marker = resolved_marker
+        analyzed_comments = self.comment_analyzer.analyze_comments(
+            comments_data, resolved_marker
+        )
 
-        # Analyze the comments
-        analyzed_comments = self.comment_analyzer.analyze_comments(comments_data)
-
+        # Load persona
         if verbose:
-            console.print(f"📊 [green]Analysis complete:[/green]")
-            console.print(f"   - Total comments: {analyzed_comments.metadata.total_comments}")
-            console.print(f"   - Summary comments: {len(analyzed_comments.summary_comments)}")
-            console.print(f"   - Review comments: {len(analyzed_comments.review_comments)}")
-            console.print(f"   - Actionable items: {analyzed_comments.metadata.actionable_comments}")
-            console.print(f"   - Resolved comments: {analyzed_comments.metadata.resolved_comments}")
+            console.print("🤖 [blue]Loading persona...[/blue]")
 
-        # Prepare output data
-        output_data = {
-            "metadata": {
-                "pr_url": pr_url,
-                "owner": owner,
-                "repo": repo,
-                "pr_number": pr_number,
-                "resolved_marker": resolved_marker,
-                "analysis_timestamp": analyzed_comments.metadata.processed_at.isoformat()
-            },
-            "raw_data": comments_data,
-            "analysis": {
-                "total_comments": analyzed_comments.metadata.total_comments,
-                "resolved_count": analyzed_comments.metadata.resolved_comments,
-                "summary_comments": [comment.model_dump() for comment in analyzed_comments.summary_comments],
-                "review_comments": [comment.model_dump() for comment in analyzed_comments.review_comments],
-                "metadata": analyzed_comments.metadata.model_dump()
-            }
-        }
+        persona = self.persona_manager.load_persona(persona_file)
 
-        # Output the analyzed data
+        # Format output
+        if verbose:
+            console.print(f"📝 [blue]Formatting output as {output_format}...[/blue]")
+
+        formatter = self.formatter_factory.create_formatter(output_format)
+        formatted_output = formatter.format(persona, analyzed_comments)
+
+        # Write output
         if output_file:
             if verbose:
-                console.print(f"💾 [blue]Writing analyzed data to {output_file}...[/blue]")
-            output_file.write_text(
-                json.dumps(output_data, indent=2, ensure_ascii=False),
-                encoding="utf-8"
-            )
+                console.print(f"💾 [blue]Writing to {output_file}...[/blue]")
+            output_file.parent.mkdir(parents=True, exist_ok=True)
+            output_file.write_text(formatted_output, encoding="utf-8")
         else:
-            console.print(json.dumps(output_data, indent=2, ensure_ascii=False))
-
-        # Post resolution request if requested (basic implementation)
-        if request_resolution:
+            console.print(formatted_output)
+        
+        # Post resolution request if requested
+        review_comments: list = []
+        if isinstance(analyzed_comments, dict):
+            review_comments = (
+                analyzed_comments.get("review_comments")
+                or analyzed_comments.get("reviewComments")
+                or []
+            )
+        if request_resolution and review_comments:
             if verbose:
                 console.print("📤 [blue]Posting resolution request...[/blue]")
 
