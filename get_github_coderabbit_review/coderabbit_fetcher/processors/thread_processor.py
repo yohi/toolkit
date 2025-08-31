@@ -123,7 +123,6 @@ class ThreadProcessor:
             Comments sorted by creation time
         """
         def parse_datetime(dt_string: str) -> datetime:
-        def parse_datetime(dt_string: str) -> datetime:
             """Parse datetime string with fallback handling."""
             try:
                 # Try parsing ISO format with Z suffix
@@ -138,6 +137,11 @@ class ThreadProcessor:
             except (ValueError, TypeError):
                 # Fallback to current time if parsing fails
                 return datetime.now(timezone.utc)
+
+        return sorted(
+            comments,
+            key=lambda c: parse_datetime(c.get("created_at", ""))
+        )
     def _group_comments_into_threads(self, comments: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
         """Group comments into threads based on reply relationships.
         
