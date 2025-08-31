@@ -33,13 +33,13 @@ class ThreadProcessor:
         Raises:
             CommentParsingError: If thread cannot be processed
         """
+        # Check for empty thread before entering try block
+        if not thread_comments:
+            raise CommentParsingError("Empty thread provided")
+        
         try:
-            if not thread_comments:
-                raise CommentParsingError("Empty thread provided")
-            
             # Sort comments chronologically
             sorted_comments = self._sort_comments_chronologically(thread_comments)
-            
             # Extract thread metadata
             root_comment = sorted_comments[0]
             thread_id = str(root_comment.get("id", "unknown"))
@@ -79,7 +79,7 @@ class ThreadProcessor:
             )
             
         except Exception as e:
-            raise CommentParsingError(f"Failed to process thread: {str(e)}") from e
+            raise CommentParsingError(f"Failed to process thread: {e!s}") from e
     
     def build_thread_context(self, comments: List[Dict[str, Any]]) -> List[ThreadContext]:
         """Build thread contexts from a list of comments by grouping them into threads.
@@ -90,21 +90,28 @@ class ThreadProcessor:
         Returns:
             List of ThreadContext objects, one for each thread
         """
-        # Group comments into threads
-        threads = self._group_comments_into_threads(comments)
-        
-        # Process each thread
-        thread_contexts = []
-        for thread_comments in threads:
-            if thread_comments:  # Only process non-empty threads
-                try:
-                    context = self.process_thread(thread_comments)
-                    thread_contexts.append(context)
-                except CommentParsingError:
-                    # Skip problematic threads but continue processing others
-                    continue
-        
-        return thread_contexts
+        # Check for empty comments before processing
+        if not comments:
+            raise CommentParsingError("Empty comments list provided")
+            
+        try:
+            # Group comments into threads
+            threads = self._group_comments_into_threads(comments)
+            
+            # Process each thread
+            thread_contexts = []
+            for thread_comments in threads:
+                if thread_comments:  # Only process non-empty threads
+                    try:
+                        context = self.process_thread(thread_comments)
+                        thread_contexts.append(context)
+                    except CommentParsingError:
+                        # Skip problematic threads but continue processing others
+                        continue
+            
+            return thread_contexts
+        except Exception as e:
+            raise CommentParsingError(f"Failed to build thread contexts: {e!s}") from e
     
     def _sort_comments_chronologically(self, comments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Sort comments in chronological order.
@@ -116,22 +123,21 @@ class ThreadProcessor:
             Comments sorted by creation time
         """
         def parse_datetime(dt_string: str) -> datetime:
+        def parse_datetime(dt_string: str) -> datetime:
             """Parse datetime string with fallback handling."""
             try:
                 # Try parsing ISO format with Z suffix
                 if dt_string.endswith('Z'):
-                    return datetime.fromisoformat(dt_string[:-1] + '+00:00')
+                    dt = datetime.fromisoformat(dt_string[:-1] + '+00:00')
                 else:
-                    return datetime.fromisoformat(dt_string)
+                    dt = datetime.fromisoformat(dt_string)
+                # すべて UTC aware に正規化
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt
             except (ValueError, TypeError):
                 # Fallback to current time if parsing fails
                 return datetime.now(timezone.utc)
-        
-        return sorted(
-            comments,
-            key=lambda c: parse_datetime(c.get("created_at", ""))
-        )
-    
     def _group_comments_into_threads(self, comments: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
         """Group comments into threads based on reply relationships.
         
