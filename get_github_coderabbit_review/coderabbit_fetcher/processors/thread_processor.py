@@ -381,6 +381,9 @@ class ThreadProcessor:
             if c.get("user", {}).get("login") == self.coderabbit_author
         ]
         
+        # Use existing method for participant analysis
+        participants = self._analyze_participants(comments)
+        
         # Structure following Claude 4 best practices
         ai_summary_parts = []
         
@@ -388,9 +391,13 @@ class ThreadProcessor:
         ai_summary_parts.append("## Thread Context")
         ai_summary_parts.append(f"- **File**: {root_comment.get('path', 'Unknown')}")
         ai_summary_parts.append(f"- **Line**: {self._extract_line_context(root_comment) or 'Unknown'}")
-        ai_summary_parts.append(f"- **Participants**: {len(set(c.get('user', {}).get('login') for c in comments))}")
+        ai_summary_parts.append(f"- **Participants**: {len(participants)}")
         ai_summary_parts.append(f"- **Total Comments**: {len(comments)}")
         ai_summary_parts.append(f"- **CodeRabbit Comments**: {len(coderabbit_comments)}")
+        
+        # Include the provided context summary
+        if context_summary:
+            ai_summary_parts.append(f"- **Summary**: {context_summary}")
         
         # 2. Resolution Status (clear outcome)
         resolution_status = "✅ Resolved" if self._determine_resolution_status(comments) else "⏳ Open"
