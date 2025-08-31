@@ -11,6 +11,7 @@ from .exceptions import (
     GitHubAuthenticationError,
     InvalidPRUrlError,
     PersonaFileError,
+    PersonaLoadError,
     CommentAnalysisError
 )
 from .github_client import GitHubClient, GitHubAPIError
@@ -309,25 +310,31 @@ class CodeRabbitOrchestrator:
             raise CodeRabbitFetcherError(f"Failed to validate PR URL: {e}") from e
 
     def _load_persona(self) -> str:
-        """Load persona content."""
-        logger.debug("Loading persona configuration...")
-
+        """Load persona configuration.
+        
+        Returns:
+            Persona content as string
+            
+        Raises:
+            PersonaFileError: If persona loading fails
+        """
         try:
             if self.config.persona_file:
                 logger.debug(f"Loading persona from file: {self.config.persona_file}")
-                persona = self.persona_manager.load_persona_file(self.config.persona_file)
+                persona = self.persona_manager.load_from_file(self.config.persona_file)
             else:
                 logger.debug("Using default persona")
-                persona = self.persona_manager.get_default_persona()
+                persona = self.persona_manager.load_persona()
 
             logger.info(f"Persona loaded ({len(persona)} characters)")
             return persona
 
-        except PersonaFileError as e:
+        except PersonaLoadError as e:
             logger.error(f"Persona loading failed: {e}")
             raise
         except Exception as e:
-            raise CodeRabbitFetcherError(f"Failed to load persona: {e}") from e
+            logger.error(f"Unexpected error loading persona: {e}")
+            raise PersonaLoadError(f"Persona loading failed: {e}") from e
 
     def _fetch_pr_data(self) -> Dict[str, Any]:
         """Fetch PR data from GitHub."""

@@ -228,10 +228,10 @@ class JSONFormatter(BaseFormatter):
         return {
             "type": "actionable",
             "title": comment.title,
-            "description": comment.description,
+            "description": comment.issue_description,
             "file_path": comment.file_path,
             "line_number": comment.line_number,
-            "priority": self._extract_priority_level(comment.description or "")
+            "priority": self._extract_priority_level(comment.issue_description or "")
         }
 
     def _format_nitpick_comment(self, comment: NitpickComment) -> Dict[str, Any]:
@@ -263,10 +263,10 @@ class JSONFormatter(BaseFormatter):
         return {
             "type": "outside_diff",
             "issue": comment.issue,
-            "description": comment.description,
+            "description": comment.issue_description,
             "file_path": comment.file_path,
             "line_range": comment.line_range,
-            "severity": self._assess_severity(comment.issue, comment.description)
+            "severity": self._assess_severity(comment.issue, comment.issue_description)
         }
 
     def _format_chronological_comments(self, chronological_order: Optional[List]) -> List[Dict[str, Any]]:
@@ -334,7 +334,7 @@ class JSONFormatter(BaseFormatter):
         priorities = []
 
         for comment in review.actionable_comments:
-            priority = self._extract_priority_level(comment.description or "")
+            priority = self._extract_priority_level(comment.issue_description or "")
             priorities.append(priority)
 
         # Return highest priority found

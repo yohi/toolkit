@@ -147,8 +147,8 @@ class CommentAnalyzer:
                     review_comment = {
                         "id": review.get("id"),
                         "body": review["body"],
-                        "user": review.get("user", {}),
-                        "created_at": review.get("created_at"),
+                        "user": review.get("author", {}),  # GitHub API uses 'author' for reviews
+                        "created_at": review.get("submittedAt"),  # GitHub API uses 'submittedAt' for reviews
                         "comment_type": "review"
                     }
                     all_comments.append(review_comment)
@@ -235,7 +235,7 @@ class CommentAnalyzer:
     def _process_thread_comments(self, comments: List[Dict[str, Any]]) -> List[ThreadContext]:
         """Process inline comments into thread contexts."""
         try:
-            threads = self.thread_processor.process_comments_to_threads(comments)
+            threads = self.thread_processor.build_thread_context(comments)
             self.stats.threads_processed = len(threads)
             return threads
         except Exception as e:
@@ -272,12 +272,11 @@ class CommentAnalyzer:
             pr_title=pr_info["title"],
             owner=pr_info["owner"],
             repo=pr_info["repo"],
-            processed_at=None,  # Will be set by processor if needed
             total_comments=self.stats.total_comments,
             coderabbit_comments=self.stats.coderabbit_comments,
             resolved_comments=self.stats.resolved_comments,
             actionable_comments=self.stats.actionable_comments,
-            processing_time_seconds=self.stats.processing_time_seconds
+            processing_time_seconds=0.0  # Will be updated by processor
         )
 
     def _create_empty_result(self, pr_info: Dict[str, Any]) -> AnalyzedComments:

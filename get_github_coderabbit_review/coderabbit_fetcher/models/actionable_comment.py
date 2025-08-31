@@ -133,3 +133,43 @@ class ActionableComment(BaseCodeRabbitModel):
             True if comment has high priority
         """
         return self.priority == Priority.HIGH
+
+    @property
+    def title(self) -> str:
+        """Generate a title from issue description.
+
+        Returns:
+            Title string derived from issue description
+        """
+        if not self.issue_description:
+            return "CodeRabbit Comment"
+        
+        # Take the first sentence or first 80 characters as title
+        first_sentence = self.issue_description.split('.')[0].strip()
+        if len(first_sentence) > 80:
+            # If first sentence is too long, truncate it
+            return first_sentence[:77] + "..."
+        return first_sentence if first_sentence else "CodeRabbit Comment"
+
+    @property
+    def line_number(self) -> Optional[str]:
+        """Extract line number from line_range.
+
+        Returns:
+            Line number string or None if not available
+        """
+        if not self.line_range:
+            return None
+        
+        # Handle different line range formats like "123", "123-125", etc.
+        if '-' in self.line_range:
+            # Range format, return the first line number
+            return self.line_range.split('-')[0].strip()
+        else:
+            # Single line format
+            return self.line_range.strip()
+
+    @property
+    def issue(self) -> str:
+        """Return the main issue/content for this comment."""
+        return self.issue_description

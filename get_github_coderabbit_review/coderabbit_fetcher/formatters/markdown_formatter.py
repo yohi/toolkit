@@ -303,13 +303,13 @@ class MarkdownFormatter(BaseFormatter):
 
         sections = []
         for i, comment in enumerate(comments, 1):
-            priority = self._extract_priority_level(comment.description or "")
+            priority = self._extract_priority_level(comment.issue_description or "")
             priority_icon = {"High": "🔴", "Medium": "🟡", "Low": "🟢"}.get(priority, "⚪")
 
             sections.append(f"{i}. {priority_icon} **{comment.title}**")
 
-            if comment.description:
-                sections.append(f"   {comment.description}")
+            if comment.issue_description:
+                sections.append(f"   {comment.issue_description}")
 
             # Location info
             location_parts = []
@@ -371,8 +371,8 @@ class MarkdownFormatter(BaseFormatter):
         for i, comment in enumerate(comments, 1):
             sections.append(f"{i}. ⚠️ **{comment.issue}**")
 
-            if comment.description:
-                sections.append(f"   {comment.description}")
+            if comment.issue_description:
+                sections.append(f"   {comment.issue_description}")
 
             # Location info
             location_parts = []
@@ -494,7 +494,7 @@ class MarkdownFormatter(BaseFormatter):
             return "ai_prompt"
         elif review.actionable_comments:
             # Check for security/performance indicators
-            content = " ".join([c.description or "" for c in review.actionable_comments])
+            content = " ".join([c.issue_description or "" for c in review.actionable_comments])
             if "security" in content.lower() or "vulnerability" in content.lower():
                 return "security"
             elif "performance" in content.lower() or "optimize" in content.lower():

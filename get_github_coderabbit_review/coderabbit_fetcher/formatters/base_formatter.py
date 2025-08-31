@@ -119,8 +119,8 @@ class BaseFormatter(ABC):
         sections = []
         for i, comment in enumerate(comments, 1):
             sections.append(f"{i}. **{comment.title}**")
-            if comment.description:
-                sections.append(f"   {comment.description}")
+            if comment.issue_description:
+                sections.append(f"   {comment.issue_description}")
             if comment.file_path:
                 sections.append(f"   File: {comment.file_path}")
             if comment.line_number:
@@ -167,8 +167,8 @@ class BaseFormatter(ABC):
         sections = []
         for i, comment in enumerate(comments, 1):
             sections.append(f"{i}. **{comment.issue}**")
-            if comment.description:
-                sections.append(f"   {comment.description}")
+            if comment.issue_description:
+                sections.append(f"   {comment.issue_description}")
             if comment.file_path:
                 sections.append(f"   File: {comment.file_path}")
             if comment.line_range:

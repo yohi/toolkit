@@ -283,14 +283,14 @@ class PlainTextFormatter(BaseFormatter):
 
         sections = []
         for i, comment in enumerate(comments, 1):
-            priority = self._extract_priority_level(comment.description or "")
+            priority = self._extract_priority_level(comment.issue_description or "")
             priority_marker = {"High": "[HIGH]", "Medium": "[MED]", "Low": "[LOW]"}.get(priority, "")
 
             header = f"  {i}. {priority_marker} {comment.title}"
             sections.append(header)
 
-            if comment.description:
-                wrapped_desc = self._wrap_text(comment.description, indent=6)
+            if comment.issue_description:
+                wrapped_desc = self._wrap_text(comment.issue_description, indent=6)
                 sections.append(f"     {wrapped_desc}")
 
             # Location
@@ -353,8 +353,8 @@ class PlainTextFormatter(BaseFormatter):
         for i, comment in enumerate(comments, 1):
             sections.append(f"  {i}. {comment.issue}")
 
-            if comment.description:
-                wrapped_desc = self._wrap_text(comment.description, indent=6)
+            if comment.issue_description:
+                wrapped_desc = self._wrap_text(comment.issue_description, indent=6)
                 sections.append(f"     {wrapped_desc}")
 
             # Location
