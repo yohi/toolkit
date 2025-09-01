@@ -31,12 +31,13 @@ class JSONFormatter(BaseFormatter):
         self.pretty_print = pretty_print
         self.include_raw_content = include_raw_content
 
-    def format(self, persona: str, analyzed_comments: AnalyzedComments) -> str:
+    def format(self, persona: str, analyzed_comments: AnalyzedComments, quiet: bool = False) -> str:
         """Format analyzed comments as JSON.
 
         Args:
             persona: AI persona prompt string
             analyzed_comments: Analyzed CodeRabbit comments
+            quiet: Use quiet mode for minimal output (ignored for JSON)
 
         Returns:
             Formatted JSON string

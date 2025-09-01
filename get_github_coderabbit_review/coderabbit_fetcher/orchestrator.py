@@ -38,6 +38,7 @@ class ExecutionConfig:
     post_resolution_request: bool = False
     show_stats: bool = False
     debug: bool = False
+    quiet: bool = False
     timeout_seconds: int = 300
     retry_attempts: int = 3
     retry_delay: float = 1.0
@@ -77,16 +78,18 @@ class ExecutionMetrics:
 class ProgressTracker:
     """Tracks and reports execution progress."""
 
-    def __init__(self, total_steps: int = 8, progress_callback: Optional[Callable[[str, int, int], None]] = None):
+    def __init__(self, total_steps: int = 8, progress_callback: Optional[Callable[[str, int, int], None]] = None, quiet_mode: bool = False):
         """Initialize progress tracker.
 
         Args:
             total_steps: Total number of execution steps
             progress_callback: Optional callback for progress updates
+            quiet_mode: If True, suppress progress logging
         """
         self.total_steps = total_steps
         self.current_step = 0
         self.progress_callback = progress_callback
+        self.quiet_mode = quiet_mode
         self.step_descriptions = [
             "Initializing components",
             "Validating GitHub CLI authentication",
@@ -107,7 +110,9 @@ class ProgressTracker:
 
         percentage = min(100, (self.current_step / self.total_steps) * 100)
 
-        logger.info(f"Progress: {self.current_step}/{self.total_steps} ({percentage:.1f}%) - {description}")
+        # Only log progress if not in quiet mode
+        if not self.quiet_mode:
+            logger.info(f"Progress: {self.current_step}/{self.total_steps} ({percentage:.1f}%) - {description}")
 
         if self.progress_callback:
             self.progress_callback(description or "Processing...", self.current_step, self.total_steps)
@@ -140,17 +145,20 @@ class CodeRabbitOrchestrator:
         self.formatters: Dict[str, Any] = {}
 
         # Execution state
-        self.progress_tracker = ProgressTracker()
+        self.progress_tracker = ProgressTracker(quiet_mode=config.quiet)
         self.is_initialized = False
 
         # Configure logging
         self._setup_logging()
 
     def _setup_logging(self) -> None:
-        """Configure logging based on debug setting."""
+        """Configure logging based on debug and quiet settings."""
         if self.config.debug:
             logging.getLogger().setLevel(logging.DEBUG)
             logger.debug("Debug logging enabled")
+        elif self.config.quiet:
+            # In quiet mode, suppress INFO level logs for cleaner output
+            logging.getLogger().setLevel(logging.WARNING)
         else:
             logging.getLogger().setLevel(logging.INFO)
 
@@ -163,7 +171,8 @@ class CodeRabbitOrchestrator:
         Raises:
             CodeRabbitFetcherError: If execution fails
         """
-        logger.info("Starting CodeRabbit Comment Fetcher execution")
+        if not self.config.quiet:
+            logger.info("Starting CodeRabbit Comment Fetcher execution")
 
         try:
             # Phase 1: Initialization
@@ -247,7 +256,10 @@ class CodeRabbitOrchestrator:
         try:
             # Initialize formatters
             self.formatters = {
-                'markdown': MarkdownFormatter(),
+                'markdown': MarkdownFormatter(
+                    include_metadata=not self.config.quiet, 
+                    include_toc=not self.config.quiet
+                ),
                 'json': JSONFormatter(),
                 'plain': PlainTextFormatter()
             }
@@ -409,7 +421,7 @@ class CodeRabbitOrchestrator:
             if not formatter:
                 raise CodeRabbitFetcherError(f"Unsupported output format: {self.config.output_format}")
 
-            formatted_content = formatter.format(persona, analyzed_comments)
+            formatted_content = formatter.format(persona, analyzed_comments, self.config.quiet)
             format_time = time.time() - start_time
 
             self.metrics.formatting_time = format_time

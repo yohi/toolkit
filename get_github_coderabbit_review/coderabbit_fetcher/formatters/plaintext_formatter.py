@@ -30,12 +30,13 @@ class PlainTextFormatter(BaseFormatter):
         self.line_width = line_width
         self.include_separators = include_separators
 
-    def format(self, persona: str, analyzed_comments: AnalyzedComments) -> str:
+    def format(self, persona: str, analyzed_comments: AnalyzedComments, quiet: bool = False) -> str:
         """Format analyzed comments as plain text.
 
         Args:
             persona: AI persona prompt string
             analyzed_comments: Analyzed CodeRabbit comments
+            quiet: Use quiet mode for minimal output (ignored for plain text)
 
         Returns:
             Formatted plain text string

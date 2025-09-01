@@ -30,6 +30,8 @@ Professional tool to fetch, analyze, and format CodeRabbit comments from GitHub 
 - **Claude 4 Best Practices**: Optimized prompts and formatting for Claude 4
 - **AI Agent Prompts**: Extracts and formats "Prompt for AI Agents" sections
 - **Contextual Analysis**: Provides rich context for AI processing
+- **Quiet Mode**: AI-optimized minimal output with priority-based structuring
+- **Thread Context Extraction**: Advanced inline comment detection from thread discussions
 
 ### ⚡ **Performance & Reliability**
 - **Large Dataset Support**: Efficiently processes PRs with hundreds of comments
@@ -47,13 +49,19 @@ Professional tool to fetch, analyze, and format CodeRabbit comments from GitHub 
 ### Installation with uvx (Recommended)
 
 ```bash
-# Install and run directly with uvx
-uvx coderabbit-comment-fetcher https://github.com/owner/repo/pull/123
+# Install and run directly with uvx (local development)
+uvx --from . -n crf https://github.com/owner/repo/pull/123
+
+# With quiet mode for AI-optimized output
+uvx --from . -n crf https://github.com/owner/repo/pull/123 --quiet
 
 # With custom options
-uvx coderabbit-comment-fetcher https://github.com/owner/repo/pull/123 \
+uvx --from . -n crf https://github.com/owner/repo/pull/123 \
     --output-format json \
     --output-file results.json
+
+# From PyPI (when published)
+uvx coderabbit-comment-fetcher https://github.com/owner/repo/pull/123
 ```
 
 ### Installation with pip
@@ -106,6 +114,9 @@ coderabbit-fetch https://github.com/owner/repo/pull/123 --output-format json
 ### Advanced Usage
 
 ```bash
+# Quiet mode for AI-optimized minimal output
+coderabbit-fetch https://github.com/owner/repo/pull/123 --quiet
+
 # With custom persona file
 coderabbit-fetch https://github.com/owner/repo/pull/123 \
     --persona-file my_reviewer_persona.txt \
@@ -126,6 +137,11 @@ coderabbit-fetch https://github.com/owner/repo/pull/123 \
 coderabbit-fetch https://github.com/owner/repo/pull/123 \
     --debug \
     --show-stats
+
+# uvx development usage with quiet mode
+uvx --from . -n crf https://github.com/owner/repo/pull/123 \
+    --quiet \
+    --debug
 ```
 
 ### Command Line Options
@@ -142,6 +158,7 @@ coderabbit-fetch https://github.com/owner/repo/pull/123 \
 | `--retry-attempts`          | Number of retry attempts                        | 3                         |
 | `--retry-delay`             | Delay between retries in seconds                | 1.0                       |
 | `--show-stats`              | Show execution statistics                       | False                     |
+| `--quiet`                   | AI-optimized minimal output with priority grouping | False                 |
 | `--debug`                   | Enable debug mode                               | False                     |
 | `--version`                 | Show version information                        | -                         |
 | `--help`                    | Show help message                               | -                         |
@@ -183,7 +200,39 @@ You are a Senior Software Architect with 15+ years of experience.
 
 ## 📊 Output Examples
 
-### Markdown Output
+### Quiet Mode Output (AI-Optimized)
+
+```markdown
+# CodeRabbit Analysis Summary
+
+## Overview
+- **Total Issues**: 8
+- **Priority Breakdown**: 2 Critical, 4 Important, 2 Minor
+- **Files Affected**: 5
+
+## 🔴 Critical Issues (Immediate Action Required)
+• **Security**: Potential vulnerability in token validation
+  - File: `src/auth/token.py:23`
+  - Action: Implement proper input sanitization
+
+• **Bug Fix**: Null pointer exception in login handler
+  - File: `src/auth/login.py:67`
+  - Action: Add null checks before property access
+
+## 🟡 Important Issues (Should Fix Soon)
+• **Performance**: Inefficient database queries detected
+  - File: `src/data/repository.py:45`
+
+• **Configuration**: Hardcoded credentials in source code
+  - File: `src/config/database.py:12`
+
+## Files Summary
+- **src/auth/token.py**: 2 issue(s)
+- **src/auth/login.py**: 1 issue(s)
+- **src/data/repository.py**: 3 issue(s)
+```
+
+### Standard Markdown Output
 
 ```markdown
 # 🤖 CodeRabbit Comments Analysis
@@ -256,44 +305,53 @@ git clone https://github.com/yohi/coderabbit-comment-fetcher.git
 cd coderabbit-comment-fetcher
 
 # Install with development dependencies
-pip install -e ".[dev]"
+make install-dev
+# or manually: pip install -e ".[dev,performance,docs]"
 
 # Install pre-commit hooks
-pre-commit install
+make pre-commit-install
 
-# Run tests
-pytest
+# Run all tests
+make test
+
+# Run specific test types
+make test-unit
+make test-integration
+make test-performance
 
 # Run with coverage
-pytest --cov=coderabbit_fetcher --cov-report=html
+make coverage
+make coverage-html
 
-# Format code
-black coderabbit_fetcher tests
-isort coderabbit_fetcher tests
+# Code quality checks
+make lint          # ruff + mypy
+make format        # black + isort
+make type-check    # mypy only
 
-# Type checking
-mypy coderabbit_fetcher
-
-# Lint code
-ruff check coderabbit_fetcher tests
+# uvx compatibility testing (important)
+make uvx-test
 ```
 
 ### Running Tests
 
 ```bash
-# Run all tests
-python tests/test_runner.py
+# Using Make commands (recommended)
+make test              # Run all tests
+make test-unit         # Unit tests only
+make test-integration  # Integration tests only
+make test-performance  # Performance tests only
+make coverage          # With coverage report
 
-# Run specific test types
+# Using custom test runner directly
+python tests/test_runner.py
 python tests/test_runner.py --type unit
 python tests/test_runner.py --type integration
 python tests/test_runner.py --type performance
-
-# Generate test report
-python tests/test_runner.py --report test_results.html
-
-# Run with coverage
 python tests/test_runner.py --coverage
+
+# Generate detailed reports
+python tests/test_runner.py --report test_results.html
+python tests/test_runner.py --verbosity 2
 ```
 
 ### Project Structure
@@ -398,14 +456,20 @@ gh pr view 123 --repo owner/repo
 #### Performance Issues
 
 ```bash
+# Use quiet mode for cleaner AI processing
+coderabbit-fetch URL --quiet
+
 # Use JSON format for large PRs
 coderabbit-fetch URL --output-format json
 
 # Increase timeout for large datasets
 coderabbit-fetch URL --timeout 120
 
-# Enable parallel processing
-coderabbit-fetch URL --show-stats
+# Enable parallel processing with debug info
+coderabbit-fetch URL --show-stats --debug
+
+# uvx usage for development testing
+uvx --from . -n crf URL --quiet --debug
 ```
 
 ### Error Messages
@@ -423,7 +487,14 @@ coderabbit-fetch URL --show-stats
 Enable debug mode for detailed logging:
 
 ```bash
+# Standard debug mode
 coderabbit-fetch URL --debug
+
+# Debug mode with quiet output (AI-optimized)
+coderabbit-fetch URL --debug --quiet
+
+# uvx development debugging
+uvx --from . -n crf URL --debug --quiet
 ```
 
 This provides:
@@ -432,6 +503,7 @@ This provides:
 - Memory usage statistics
 - Error stack traces
 - Validation details
+- Thread context analysis (in quiet mode)
 
 ## 📋 API Reference
 

@@ -24,12 +24,13 @@ class BaseFormatter(ABC):
         self.timestamp = datetime.now()
 
     @abstractmethod
-    def format(self, persona: str, analyzed_comments: AnalyzedComments) -> str:
+    def format(self, persona: str, analyzed_comments: AnalyzedComments, quiet: bool = False) -> str:
         """Format analyzed comments with persona.
 
         Args:
             persona: AI persona prompt string
             analyzed_comments: Analyzed CodeRabbit comments
+            quiet: Use quiet mode for minimal AI-optimized output
 
         Returns:
             Formatted output string

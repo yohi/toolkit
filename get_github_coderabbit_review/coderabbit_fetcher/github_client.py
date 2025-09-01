@@ -70,14 +70,14 @@ class GitHubClient:
 
     def validate(self) -> Dict[str, Any]:
         """Validate GitHub CLI setup and authentication.
-        
+
         Returns:
             Dictionary with validation results
         """
         from .validation import ValidationResult
-        
+
         result = ValidationResult(valid=True)
-        
+
         try:
             # Check if gh CLI is available
             import subprocess
@@ -90,7 +90,7 @@ class GitHubClient:
             result.add_issue("GitHub CLI check timed out")
         except Exception as e:
             result.add_issue(f"GitHub CLI validation failed: {e}")
-        
+
         # Check authentication if CLI is available
         if result.valid:
             try:
@@ -99,7 +99,7 @@ class GitHubClient:
                 result.add_issue(f"GitHub authentication failed: {e}")
             except Exception as e:
                 result.add_issue(f"Authentication check failed: {e}")
-        
+
         return {
             "valid": result.valid,
             "issues": result.issues or [],
@@ -397,7 +397,71 @@ class GitHubClient:
         if "reviews" not in pr_data:
             pr_data["reviews"] = []
 
+        # Fetch inline/review comments using GitHub API
+        try:
+            inline_comments = self._fetch_inline_comments(owner, repo, pr_number)
+            if inline_comments:
+                # Add inline comments to the main comments list
+                pr_data["comments"].extend(inline_comments)
+        except Exception as e:
+            # Log warning but don't fail the entire request
+            import logging
+            logging.warning(f"Failed to fetch inline comments: {e}")
+
         return pr_data
+
+    def _fetch_inline_comments(self, owner: str, repo: str, pr_number: str) -> List[Dict[str, Any]]:
+        """Fetch inline/review comments for a pull request.
+
+        Args:
+            owner: Repository owner
+            repo: Repository name
+            pr_number: Pull request number
+
+        Returns:
+            List of inline comment objects
+
+        Raises:
+            GitHubAPIError: If fetching fails
+        """
+        try:
+            # Use gh api to get inline comments
+            result = subprocess.run([
+                "gh", "api", f"repos/{owner}/{repo}/pulls/{pr_number}/comments",
+                "--paginate"
+            ], capture_output=True, text=True, timeout=60)
+
+            if result.returncode != 0:
+                raise GitHubAPIError(f"Failed to fetch inline comments: {result.stderr.strip()}")
+
+            inline_comments = json.loads(result.stdout)
+            
+            # Format inline comments to match expected structure
+            formatted_comments = []
+            for comment in inline_comments:
+                # Only include CodeRabbit comments
+                if comment.get("user", {}).get("login", "").lower().startswith("coderabbit"):
+                    formatted_comment = {
+                        "id": comment.get("id"),
+                        "body": comment.get("body", ""),
+                        "user": comment.get("user", {}),
+                        "created_at": comment.get("created_at"),
+                        "comment_type": "review_comment",  # Mark as review comment
+                        "path": comment.get("path"),
+                        "line": comment.get("line"),
+                        "diff_hunk": comment.get("diff_hunk"),
+                        "position": comment.get("position")
+                    }
+                    formatted_comments.append(formatted_comment)
+
+            return formatted_comments
+
+        except subprocess.TimeoutExpired:
+            raise GitHubAPIError("GitHub API request for inline comments timed out")
+        except json.JSONDecodeError as e:
+            raise GitHubAPIError(f"Failed to parse inline comments response: {e}")
+        except Exception as e:
+            raise GitHubAPIError(f"Unexpected error fetching inline comments: {e}")
 
     def validate_github_cli(self) -> Dict[str, Any]:
         """Validate GitHub CLI installation and configuration.

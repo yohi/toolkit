@@ -20,7 +20,7 @@ from ..models import CommentMetadata
 from ..orchestrator import CodeRabbitOrchestrator, ExecutionConfig
 
 
-# Configure logging
+# Configure logging - will be reconfigured based on command line args
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
@@ -141,12 +141,29 @@ Examples:
         help='Show usage examples'
     )
 
+    parser.add_argument(
+        '--quiet', '-q',
+        action='store_true',
+        help='Reduce output verbosity (minimal output)'
+    )
+
     return parser
 
 
 def run_fetch_command(args) -> int:
     """Run the main fetch command using orchestrator."""
     try:
+        # Configure logging level based on quiet mode
+        if args.quiet:
+            # In quiet mode, show only warnings and errors
+            logging.getLogger().setLevel(logging.WARNING)
+            # Also suppress logging from other modules
+            for log_name in ['coderabbit_fetcher.orchestrator', 
+                           'coderabbit_fetcher.github_client',
+                           'coderabbit_fetcher.comment_analyzer',
+                           'coderabbit_fetcher.formatters.markdown_formatter']:
+                logging.getLogger(log_name).setLevel(logging.WARNING)
+        
         # Create execution configuration
         config = ExecutionConfig(
             pr_url=args.pr_url,
@@ -156,11 +173,13 @@ def run_fetch_command(args) -> int:
             resolved_marker=args.resolved_marker,
             post_resolution_request=args.post_resolution_request,
             show_stats=args.show_stats,
-            debug=args.debug
+            debug=args.debug,
+            quiet=args.quiet
         )
 
         # Validate configuration
-        print("🔍 Validating configuration...")
+        if not args.quiet:
+            print("🔍 Validating configuration...")
         orchestrator = CodeRabbitOrchestrator(config)
         validation_result = orchestrator.validate_configuration()
 
@@ -170,17 +189,19 @@ def run_fetch_command(args) -> int:
                 print(f"   • {issue}", file=sys.stderr)
             return 1
 
-        if validation_result["warnings"]:
+        if validation_result["warnings"] and not args.quiet:
             print("⚠️  Configuration warnings:")
             for warning in validation_result["warnings"]:
                 print(f"   • {warning}")
 
         # Execute main workflow
-        print("🚀 Starting CodeRabbit Comment Fetcher...")
+        if not args.quiet:
+            print("🚀 Starting CodeRabbit Comment Fetcher...")
         results = orchestrator.execute()
 
         if results["success"]:
-            print(f"\n✅ Processing completed successfully in {results['execution_time']:.2f}s!")
+            if not args.quiet:
+                print(f"\n✅ Processing completed successfully in {results['execution_time']:.2f}s!")
 
             # Show statistics if requested
             if args.show_stats:
