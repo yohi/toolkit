@@ -241,34 +241,159 @@ class ReviewProcessor:
         """
         items = []
 
-        # Look for individual actionable items
-        # Pattern for file:line format
-        item_pattern = r"(?:^|\n)(?:[-*+]|\d+\.)\s*(?:\*\*)?([^:\n]+):?(\d+)?(?:\*\*)?\s*[-:]?\s*(.+?)(?=\n[-*+\d]|\n\n|\\Z)"
+        # Enhanced patterns to handle various CodeRabbit comment formats
+        patterns = [
+            # Pattern 1: `file_path:line_range`: **Description**  
+            r"^(?:[-*+]|\d+\.)\s*`([^`]+)`:?\s*(.+?)$",
+            
+            # Pattern 2: **file_path:line_range**: Description
+            r"^(?:[-*+]|\d+\.)\s*\*\*([^*:]+):?([^*]*)\*\*\s*(.+?)$",
+            
+            # Pattern 3: file_path:line_range - Description
+            r"^(?:[-*+]|\d+\.)\s*([^:\-\n]+):?(\d+-?\d*)?[:\-]\s*(.+?)$",
+            
+            # Pattern 4: LanguageTool pattern: [tool] ~line-line: description
+            r"^\[([^\]]+)\]\s+~(\d+)-?~?(\d+)?:\s*(.+?)$",
+            
+            # Pattern 5: Generic markdown list item with description
+            r"^(?:[-*+]|\d+\.)\s*([^:\-\n]{3,}?)(?:[:\-]\s*(.+?))?$"
+        ]
 
-        matches = re.finditer(item_pattern, section, re.MULTILINE | re.DOTALL)
-
-        for match in matches:
-            file_info = match.group(1).strip()
-            line_number = match.group(2)
-            description = match.group(3).strip()
-
-            if len(description) > 10:  # Filter out very short descriptions
-                # Clean up the description
-                description = re.sub(r'\n+', ' ', description)
-                description = re.sub(r'\s+', ' ', description)
-
-                line_range = line_number if line_number else "0"
-
-                items.append(ActionableComment(
-                    comment_id=f"actionable_{len(items)}",
-                    file_path=file_info,
-                    line_range=line_range,
-                    issue_description=description,
-                    priority="medium",  # Default priority
-                    raw_content=match.group(0)
-                ))
-
+        # Split section into lines for better processing
+        lines = section.strip().split('\n')
+        
+        for line in lines:
+            line = line.strip()
+            if not line or len(line) < 10:  # Skip very short lines
+                continue
+                
+            matched = False
+            
+            for i, pattern in enumerate(patterns):
+                match = re.match(pattern, line, re.IGNORECASE | re.MULTILINE)
+                if match:
+                    matched = True
+                    
+                    if i == 3:  # LanguageTool pattern
+                        tool_name = match.group(1)
+                        start_line = match.group(2)
+                        end_line = match.group(3)
+                        description = match.group(4).strip()
+                        
+                        file_path = "unknown"  # LanguageTool doesn't specify files
+                        line_range = f"{start_line}-{end_line}" if end_line else start_line
+                        
+                        # Clean description
+                        description = f"[{tool_name}] {description}"
+                        
+                    else:
+                        # Standard patterns
+                        file_info = match.group(1).strip() if match.group(1) else "unknown"
+                        
+                        if i == 1:  # Pattern 2: **file:line**: description
+                            line_info = match.group(2).strip() if match.group(2) else ""
+                            description = match.group(3).strip() if match.group(3) else ""
+                            file_path, line_range = self._parse_file_line_info(file_info, line_info)
+                        else:
+                            # Other patterns
+                            if match.lastindex >= 3:
+                                line_info = match.group(2) if match.group(2) else ""
+                                description = match.group(3).strip() if match.group(3) else file_info
+                            else:
+                                line_info = ""
+                                description = match.group(2).strip() if match.group(2) else file_info
+                                
+                            file_path, line_range = self._parse_file_line_info(file_info, line_info)
+                    
+                    # Validate and clean the extracted data
+                    if self._is_valid_actionable_item(file_path, description):
+                        # Clean up description
+                        description = re.sub(r'\s+', ' ', description).strip()
+                        description = re.sub(r'\*\*([^*]+)\*\*', r'\1', description)  # Remove markdown bold
+                        
+                        items.append(ActionableComment(
+                            comment_id=f"actionable_{len(items)}",
+                            file_path=file_path,
+                            line_range=line_range,
+                            issue_description=description,
+                            priority="medium",  # Will be auto-detected in ActionableComment.__init__
+                            raw_content=line
+                        ))
+                    
+                    break  # Stop trying other patterns if one matched
+        
         return items
+
+    def _parse_file_line_info(self, file_info: str, line_info: str) -> tuple[str, str]:
+        """Parse file path and line information from extracted groups.
+        
+        Args:
+            file_info: File information string
+            line_info: Line information string
+            
+        Returns:
+            Tuple of (file_path, line_range)
+        """
+        # Clean file_info
+        file_info = file_info.strip()
+        
+        # Check if file_info contains line numbers (e.g., "file.py:123-125")
+        if ':' in file_info:
+            parts = file_info.split(':', 1)
+            file_path = parts[0].strip()
+            line_from_file = parts[1].strip()
+        else:
+            file_path = file_info
+            line_from_file = ""
+        
+        # Determine line range
+        if line_from_file:
+            line_range = line_from_file
+        elif line_info:
+            line_range = str(line_info).strip()
+        else:
+            line_range = "0"
+        
+        # Clean up file path
+        file_path = file_path.replace('`', '').strip()
+        
+        # Handle special cases
+        if not file_path or file_path in ['--', '-', '+', '*']:
+            file_path = "unknown"
+        
+        # Remove leading/trailing punctuation
+        file_path = re.sub(r'^[-+*\s]+|[-+*\s]+$', '', file_path)
+        
+        return file_path, line_range
+
+    def _is_valid_actionable_item(self, file_path: str, description: str) -> bool:
+        """Check if extracted item is a valid actionable comment.
+        
+        Args:
+            file_path: Extracted file path
+            description: Extracted description
+            
+        Returns:
+            True if item appears to be valid
+        """
+        # Must have meaningful description
+        if not description or len(description) < 5:
+            return False
+        
+        # Filter out clearly invalid file paths
+        invalid_paths = {
+            '--', '-', '+', '*', '**', '***', 
+            'create', 'implement', 'add', 'update', 'fix'
+        }
+        
+        if file_path.lower() in invalid_paths:
+            return False
+        
+        # Filter out non-descriptive content
+        if description.lower() in {'', 'todo', 'fixme', 'note'}:
+            return False
+        
+        return True
 
     def _parse_nitpick_items(self, section: str) -> List[NitpickComment]:
         """Parse nitpick items from a section.

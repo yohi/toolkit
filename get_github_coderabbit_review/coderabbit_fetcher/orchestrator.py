@@ -17,7 +17,7 @@ from .exceptions import (
 from .github_client import GitHubClient, GitHubAPIError
 from .comment_analyzer import CommentAnalyzer
 from .persona_manager import PersonaManager
-from .formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter
+from .formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter, LLMInstructionFormatter
 from .resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
 from .comment_poster import ResolutionRequestManager, ResolutionRequestConfig
 from .models import AnalyzedComments, CommentMetadata
@@ -32,7 +32,7 @@ class ExecutionConfig:
     """Configuration for main execution flow."""
     pr_url: str
     persona_file: Optional[str] = None
-    output_format: str = 'markdown'
+    output_format: str = 'llm-instruction'
     output_file: Optional[str] = None
     resolved_marker: str = '🔒 CODERABBIT_RESOLVED 🔒'
     post_resolution_request: bool = False
@@ -261,7 +261,8 @@ class CodeRabbitOrchestrator:
                     include_toc=not self.config.quiet
                 ),
                 'json': JSONFormatter(),
-                'plain': PlainTextFormatter()
+                'plain': PlainTextFormatter(),
+                'llm-instruction': LLMInstructionFormatter()
             }
 
             # Initialize persona manager
@@ -633,7 +634,7 @@ class CodeRabbitOrchestrator:
             validation_result["issues"].append("PR URL must be a valid HTTP/HTTPS URL")
 
         # Validate output format
-        if self.config.output_format not in ['markdown', 'json', 'plain']:
+        if self.config.output_format not in ['markdown', 'json', 'plain', 'llm-instruction']:
             validation_result["valid"] = False
             validation_result["issues"].append(f"Invalid output format: {self.config.output_format}")
 

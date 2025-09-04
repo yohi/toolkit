@@ -13,7 +13,7 @@ from ..exceptions import CodeRabbitFetcherError, GitHubAuthenticationError, Inva
 from ..github_client import GitHubClient, GitHubAPIError
 from ..comment_analyzer import CommentAnalyzer
 from ..persona_manager import PersonaManager
-from ..formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter
+from ..formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter, LLMInstructionFormatter
 from ..resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
 from ..comment_poster import ResolutionRequestManager, ResolutionRequestConfig
 from ..models import CommentMetadata
@@ -81,9 +81,9 @@ Examples:
 
     parser.add_argument(
         '--output-format', '-f',
-        choices=['markdown', 'json', 'plain'],
-        default='markdown',
-        help='Output format (default: markdown)'
+        choices=['markdown', 'json', 'plain', 'llm-instruction'],
+        default='llm-instruction',
+        help='Output format (default: llm-instruction)'
     )
 
     parser.add_argument(

@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![uvx Compatible](https://img.shields.io/badge/uvx-compatible-green)](https://github.com/astral-sh/uv)
 
-Professional tool to fetch, analyze, and format CodeRabbit comments from GitHub Pull Requests with AI-agent optimization and Claude 4 best practices compliance.
+Professional tool to fetch, analyze, and format CodeRabbit comments from GitHub Pull Requests with AI-agent optimization. Generates LLM instruction prompts following Claude 4 best practices for automated code review analysis.
 
 ## ✨ Features
 
@@ -21,16 +21,19 @@ Professional tool to fetch, analyze, and format CodeRabbit comments from GitHub 
 - **No Token Storage**: Relies on GitHub CLI authentication, never stores tokens
 
 ### 📊 **Multiple Output Formats**
+- **LLM Instruction (Default)**: XML-structured prompts optimized for Claude 4 and other LLMs
 - **Markdown**: Rich formatting with headers, code blocks, and organization
 - **JSON**: Structured data for programmatic processing
 - **Plain Text**: Simple, readable format for basic use cases
 
 ### 🎭 **AI-Agent Optimization**
+- **LLM Instruction Format**: XML-structured prompts optimized for Claude 4 and other LLMs
 - **Persona Support**: Custom AI persona files for tailored output
 - **Claude 4 Best Practices**: Optimized prompts and formatting for Claude 4
 - **AI Agent Prompts**: Extracts and formats "Prompt for AI Agents" sections
 - **Contextual Analysis**: Provides rich context for AI processing
-- **Quiet Mode**: AI-optimized minimal output with priority-based structuring
+- **Priority Classification**: Automatic HIGH/MEDIUM/LOW priority assignment using rule-based analysis
+- **Comment ID Tracking**: Full traceability back to original CodeRabbit comments
 - **Thread Context Extraction**: Advanced inline comment detection from thread discussions
 
 ### ⚡ **Performance & Reliability**
@@ -70,8 +73,12 @@ uvx coderabbit-comment-fetcher https://github.com/owner/repo/pull/123
 # Install from PyPI
 pip install coderabbit-comment-fetcher
 
-# Basic usage
+# Basic usage (LLM instruction format - default)
 coderabbit-fetch https://github.com/owner/repo/pull/123
+
+# Alternative output formats
+coderabbit-fetch https://github.com/owner/repo/pull/123 --output-format markdown
+coderabbit-fetch https://github.com/owner/repo/pull/123 --output-format json
 
 # With full features
 pip install "coderabbit-comment-fetcher[full]"
@@ -150,7 +157,7 @@ uvx --from . -n crf https://github.com/owner/repo/pull/123 \
 | --------------------------- | ----------------------------------------------- | ------------------------- |
 | `pr_url`                    | GitHub pull request URL                         | Required                  |
 | `--persona-file`            | Path to persona file for AI context             | None                      |
-| `--output-format`           | Output format: `markdown`, `json`, `plain`      | `markdown`                |
+| `--output-format`           | Output format: `llm-instruction`, `markdown`, `json`, `plain` | `llm-instruction`        |
 | `--output-file`             | Output file path                                | stdout                    |
 | `--resolved-marker`         | Custom resolved marker string                   | `🔒 CODERABBIT_RESOLVED 🔒` |
 | `--post-resolution-request` | Post resolution requests to unresolved comments | False                     |
@@ -162,6 +169,68 @@ uvx --from . -n crf https://github.com/owner/repo/pull/123 \
 | `--debug`                   | Enable debug mode                               | False                     |
 | `--version`                 | Show version information                        | -                         |
 | `--help`                    | Show help message                               | -                         |
+
+## 📋 Output Formats
+
+### 🤖 LLM Instruction Format (Default)
+
+The LLM instruction format generates XML-structured prompts optimized for Claude 4 and other large language models. This format follows best practices for LLM consumption and includes:
+
+- **Structured XML output** with agent context, task overview, and execution instructions
+- **Comment ID tracking** for traceability back to original CodeRabbit comments
+- **Priority-based classification** (HIGH/MEDIUM/LOW) using rule-based analysis
+- **Actionable task lists** with specific file paths, line numbers, and code suggestions
+- **Thread context data** in structured JSON format for complex comment discussions
+
+**Example usage:**
+```bash
+# Uses LLM instruction format by default
+crf https://github.com/owner/repo/pull/123
+
+# Explicit specification
+crf https://github.com/owner/repo/pull/123 --output-format llm-instruction
+
+# Save to file for LLM processing
+crf https://github.com/owner/repo/pull/123 --output-file instructions.xml
+```
+
+**Sample output structure:**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<coderabbit_instructions generated="2025-09-04T17:35:50.629259">
+  <agent_context>
+    <persona language="english">...</persona>
+    <capabilities>...</capabilities>
+  </agent_context>
+  <task_overview>
+    <objective>Analyze CodeRabbit review comments and provide actionable recommendations</objective>
+    <statistics>...</statistics>
+  </task_overview>
+  <execution_instructions>
+    <primary_tasks>
+      <task priority='HIGH' comment_id='actionable_0'>
+        <description>Security vulnerability in authentication</description>
+        <file>src/auth.py</file>
+        <line>42</line>
+        <code_suggestion language='python'>
+          # Add input validation here
+          if not validate_input(user_input):
+              raise ValidationError("Invalid input")
+        </code_suggestion>
+      </task>
+    </primary_tasks>
+  </execution_instructions>
+  <context_data>...</context_data>
+</coderabbit_instructions>
+```
+
+📖 **Detailed specification**: See [LLM_INSTRUCTION_FORMAT.md](docs/LLM_INSTRUCTION_FORMAT.md) for complete documentation.
+
+### 📝 Other Formats
+
+- **Markdown**: Rich formatting with headers, code blocks, and organization
+- **JSON**: Structured data for programmatic processing  
+- **Plain Text**: Simple, readable format for basic use cases
 
 ## 🎭 Persona Files
 
