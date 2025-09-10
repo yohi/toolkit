@@ -63,7 +63,7 @@ class ActionableComment(BaseCodeRabbitModel):
 
     @staticmethod
     def _detect_priority(description: str, raw_content: str) -> Priority:
-        """Detect priority level from comment content.
+        """Detect priority level from comment content with Phase 2 enhanced classification.
 
         Args:
             description: Issue description
@@ -74,24 +74,103 @@ class ActionableComment(BaseCodeRabbitModel):
         """
         content = (description + " " + raw_content).lower()
 
-        # High priority keywords
-        high_keywords = [
-            "security", "vulnerability", "critical", "urgent", "fatal",
-            "error", "exception", "crash", "fail", "broken", "bug"
+        # Phase 2: Enhanced priority classification with weighted scoring
+        priority_score = 0
+        
+        # Critical security issues (Highest priority)
+        critical_security_keywords = [
+            "security", "vulnerability", "exploit", "injection", "xss", "csrf",
+            "authentication bypass", "privilege escalation", "remote code execution",
+            "sql injection", "command injection", "path traversal", "data leak",
+            "sensitive data", "credentials", "password", "token", "secret"
         ]
-
-        # Low priority keywords
-        low_keywords = [
-            "nitpick", "style", "formatting", "whitespace", "comment",
-            "documentation", "typo", "minor", "suggestion"
+        
+        # High priority technical issues
+        high_technical_keywords = [
+            "critical", "fatal", "crash", "exception", "error", "fail", "broken",
+            "deadlock", "race condition", "memory leak", "performance", "timeout",
+            "data corruption", "data loss", "infinite loop", "stack overflow",
+            "null pointer", "buffer overflow", "out of bounds"
         ]
-
-        if any(keyword in content for keyword in high_keywords):
+        
+        # Medium priority functional issues  
+        medium_functional_keywords = [
+            "bug", "issue", "problem", "incorrect", "wrong behavior", "unexpected",
+            "not working", "malfunction", "regression", "compatibility",
+            "inconsistent", "missing functionality", "logic error"
+        ]
+        
+        # Low priority style and minor issues
+        low_priority_keywords = [
+            "nitpick", "style", "formatting", "whitespace", "indentation", "comment",
+            "documentation", "typo", "minor", "suggestion", "cleanup", "refactor",
+            "optimization", "improvement", "convention", "naming", "readability"
+        ]
+        
+        # Phase 2: Weighted scoring system
+        for keyword in critical_security_keywords:
+            if keyword in content:
+                priority_score += 10  # Highest weight for security
+                
+        for keyword in high_technical_keywords:
+            if keyword in content:
+                priority_score += 5   # High weight for technical issues
+                
+        for keyword in medium_functional_keywords:
+            if keyword in content:
+                priority_score += 2   # Medium weight for functional issues
+                
+        for keyword in low_priority_keywords:
+            if keyword in content:
+                priority_score -= 3   # Negative weight for minor issues
+        
+        # Phase 2: CodeRabbit emoji-based classification
+        emoji_weights = {
+            "⚠️": 4,     # Warning - high priority
+            "🛠️": 3,     # Refactor - medium-high priority  
+            "🔒": 8,     # Security - critical priority
+            "💀": 7,     # Dangerous - high priority
+            "🚨": 6,     # Alert - high priority
+            "🧹": -2,    # Nitpick - low priority
+            "💡": 1,     # Suggestion - low-medium priority
+            "📝": -1,    # Documentation - low priority
+            "✨": 0      # Enhancement - neutral
+        }
+        
+        for emoji, weight in emoji_weights.items():
+            if emoji in raw_content:
+                priority_score += weight
+        
+        # Phase 2: Context-based adjustments
+        # File type considerations
+        if any(ext in content for ext in ['.config', '.env', '.secret', '.key']):
+            priority_score += 3  # Config/secret files are more important
+            
+        if any(ext in content for ext in ['.test', '.spec', 'test_', '_test']):
+            priority_score -= 1  # Test files are slightly lower priority
+            
+        if any(ext in content for ext in ['.md', '.txt', '.doc', 'readme']):
+            priority_score -= 2  # Documentation files are lower priority
+        
+        # Code complexity indicators
+        complexity_indicators = [
+            'complex', 'complicated', 'difficult', 'hard to', 'confusing',
+            'maintainability', 'scalability', 'architecture'
+        ]
+        
+        for indicator in complexity_indicators:
+            if indicator in content:
+                priority_score += 1
+        
+        # Phase 2: Final priority determination with thresholds
+        if priority_score >= 8:
             return Priority.HIGH
-        elif any(keyword in content for keyword in low_keywords):
+        elif priority_score >= 3:
+            return Priority.MEDIUM  
+        elif priority_score <= -3:
             return Priority.LOW
-
-        return Priority.MEDIUM
+        else:
+            return Priority.MEDIUM  # Default for unclear cases
 
     @staticmethod
     def _detect_comment_type(raw_content: str) -> CommentType:
