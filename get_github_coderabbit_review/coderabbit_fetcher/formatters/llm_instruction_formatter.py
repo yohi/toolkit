@@ -1,6 +1,6 @@
 """LLM Instruction Formatter for CodeRabbit comments.
 
-This formatter creates XML-structured instruction prompts optimized for 
+This formatter creates XML-structured instruction prompts optimized for
 LLM consumption following Claude 4 best practices.
 """
 
@@ -25,9 +25,9 @@ class LLMInstructionFormatter(BaseFormatter):
     """Formatter for LLM instruction prompts with XML structure."""
 
     def format(
-        self, 
-        persona: str, 
-        analyzed_comments: AnalyzedComments, 
+        self,
+        persona: str,
+        analyzed_comments: AnalyzedComments,
         quiet: bool = False
     ) -> str:
         """Format analyzed comments into LLM instruction prompts.
@@ -44,19 +44,19 @@ class LLMInstructionFormatter(BaseFormatter):
 
         # Document header
         sections.append(self._format_header())
-        
+
         # AI Agent Context
         sections.append(self._format_agent_context(persona))
-        
+
         # Task Overview
         sections.append(self._format_task_overview(analyzed_comments))
-        
+
         # Execution Instructions
         sections.append(self._format_execution_instructions(analyzed_comments))
-        
+
         # Context Data
         sections.append(self._format_context_data(analyzed_comments))
-        
+
         # Document footer
         sections.append(self._format_footer())
 
@@ -74,10 +74,10 @@ class LLMInstructionFormatter(BaseFormatter):
 
     def _format_agent_context(self, persona: str) -> str:
         """Format AI agent context section.
-        
+
         Args:
             persona: AI persona prompt string
-            
+
         Returns:
             Formatted agent context XML
         """
@@ -96,15 +96,15 @@ class LLMInstructionFormatter(BaseFormatter):
 
     def _format_task_overview(self, analyzed_comments: AnalyzedComments) -> str:
         """Format task overview section.
-        
+
         Args:
             analyzed_comments: Analyzed comments data
-            
+
         Returns:
             Formatted task overview XML
         """
         stats = self._calculate_statistics(analyzed_comments)
-        
+
         return f"""<task_overview>
   <objective>Analyze CodeRabbit review comments and provide actionable recommendations</objective>
   <statistics>
@@ -121,25 +121,25 @@ class LLMInstructionFormatter(BaseFormatter):
 
     def _format_execution_instructions(self, analyzed_comments: AnalyzedComments) -> str:
         """Format execution instructions section.
-        
+
         Args:
             analyzed_comments: Analyzed comments data
-            
+
         Returns:
             Formatted execution instructions XML
         """
         instructions = []
         instructions.append("<execution_instructions>")
-        
-        # Primary tasks with Phase 3 enhancements
+
+        # Primary tasks with integrated enhancements
         primary_tasks = self._extract_primary_tasks(analyzed_comments)
         if primary_tasks:
             instructions.append("  <primary_tasks>")
             for task in primary_tasks:
-                # Phase 3: Enhanced task attributes
+                # Integrated: Enhanced task attributes with fallbacks
                 task_attrs = f"priority='{task['priority']}' comment_id='{task.get('comment_id', 'N/A')}'"
                 
-                # Add context information
+                # Add context information if available (Phase 3 integration)
                 if task.get('context_strength', 0.0) > 0:
                     task_attrs += f" context_strength='{task['context_strength']:.2f}'"
                 
@@ -152,7 +152,7 @@ class LLMInstructionFormatter(BaseFormatter):
                 if task.get('line'):
                     instructions.append(f"      <line>{escape(str(task['line']))}</line>")
                 
-                # Phase 3: Risk indicators
+                # Risk indicators (if available)
                 if task.get('risk_indicators'):
                     instructions.append("      <risk_indicators>")
                     for risk in task['risk_indicators']:
@@ -165,29 +165,29 @@ class LLMInstructionFormatter(BaseFormatter):
                     instructions.append("      </code_suggestion>")
                 instructions.append("    </task>")
             instructions.append("  </primary_tasks>")
-        
+
         # Additional guidance
         instructions.append("  <guidance>")
         instructions.append("    <approach>Address issues systematically by priority level</approach>")
         instructions.append("    <verification>Test changes thoroughly before finalizing</verification>")
         instructions.append("    <best_practices>Follow language-specific conventions and patterns</best_practices>")
         instructions.append("  </guidance>")
-        
+
         instructions.append("</execution_instructions>")
         return "\n".join(instructions)
 
     def _format_context_data(self, analyzed_comments: AnalyzedComments) -> str:
         """Format context data section.
-        
+
         Args:
             analyzed_comments: Analyzed comments data
-            
+
         Returns:
             Formatted context data XML
         """
         sections = []
         sections.append("<context_data>")
-        
+
         # Summary information
         if analyzed_comments.summary_comments:
             sections.append("  <summary_information>")
@@ -198,7 +198,7 @@ class LLMInstructionFormatter(BaseFormatter):
                     sections.append(f"      <walkthrough>{escape(summary.walkthrough)}</walkthrough>")
                 sections.append(f"    </summary>")
             sections.append("  </summary_information>")
-        
+
         # Thread contexts with inline comments
         if analyzed_comments.unresolved_threads:
             sections.append("  <thread_contexts>")
@@ -207,7 +207,7 @@ class LLMInstructionFormatter(BaseFormatter):
                 sections.append(f"      <file_context>{escape(thread.file_context)}</file_context>")
                 if thread.line_context:
                     sections.append(f"      <line_context>{escape(thread.line_context)}</line_context>")
-                
+
                 # Extract inline comments from thread
                 inline_comments = self._extract_thread_inline_comments(thread)
                 if inline_comments:
@@ -220,7 +220,7 @@ class LLMInstructionFormatter(BaseFormatter):
                             sections.append(f"          <timestamp>{escape(comment['created_at'])}</timestamp>")
                         sections.append("        </comment>")
                     sections.append("      </inline_comments>")
-                
+
                 # Thread summary as JSON data
                 thread_data = self._thread_to_json(thread)
                 sections.append(f"      <structured_data>")
@@ -228,16 +228,18 @@ class LLMInstructionFormatter(BaseFormatter):
                 sections.append(f"      </structured_data>")
                 sections.append(f"    </thread>")
             sections.append("  </thread_contexts>")
-        
+
         sections.append("</context_data>")
         return "\n".join(sections)
 
     def _extract_primary_tasks(self, analyzed_comments: AnalyzedComments) -> List[Dict[str, Any]]:
-        """Extract primary tasks from analyzed comments with Phase 3 intelligent enhancements.
-        
+        """Extract primary tasks from analyzed comments with integrated smart analysis.
+
+        Combines Phase 3 intelligent enhancements with robust practical filtering.
+
         Args:
             analyzed_comments: Analyzed comments data
-            
+
         Returns:
             List of primary task dictionaries
         """
@@ -247,71 +249,161 @@ class LLMInstructionFormatter(BaseFormatter):
         # Collect all actionable comments
         for review in analyzed_comments.review_comments:
             all_actionable_comments.extend(review.actionable_comments)
-        
-        # Phase 3: Perform intelligent context analysis
-        context_relationships = self._analyze_context_relationships(
-            analyzed_comments.unresolved_threads, all_actionable_comments
-        )
-        
-        # Phase 3: Analyze code change patterns
-        change_analysis = self._analyze_code_patterns(all_actionable_comments)
-        
+
+        # Try Phase 3 intelligent analysis (with fallback)
+        context_relationships = None
+        change_analysis = None
+        try:
+            context_relationships = self._analyze_context_relationships(
+                analyzed_comments.unresolved_threads, all_actionable_comments
+            )
+            change_analysis = self._analyze_code_patterns(all_actionable_comments)
+        except Exception:
+            # Fallback to basic processing if Phase 3 features unavailable
+            context_relationships = {'context_strengths': {}}
+            change_analysis = {'file_impact_scores': {}, 'risk_indicators': []}
+
+        # Initialize counters for each category
+        actionable_counter = 0
+        nitpick_counter = 0
+        outside_diff_counter = 0
+
         # Extract from review comments (actionable comments)
         for review in analyzed_comments.review_comments:
             for comment in review.actionable_comments:
-                if self._is_meaningful_task(comment.issue_description, comment.file_path):
-                    # Phase 3: Apply intelligent priority adjustments
-                    adjusted_priority = self._calculate_intelligent_priority(
-                        comment, context_relationships, change_analysis
-                    )
+                # Use meaningful task filtering with enhanced validation
+                if not self._is_meaningful_task(comment.issue_description, comment.file_path):
+                    continue
                     
-                    task = {
-                        'priority': adjusted_priority,
-                        'comment_id': comment.comment_id,
-                        'description': self._enhance_description_with_context(comment, context_relationships),
-                        'file': comment.file_path,
-                        'line': comment.line_number,
-                        'context_strength': context_relationships.get('context_strengths', {}).get(comment.comment_id, 0.0),
-                        'file_impact_score': change_analysis.get('file_impact_scores', {}).get(comment.file_path, 0.0)
-                    }
-                    
-                    # Add AI code suggestion if available
-                    if comment.ai_agent_prompt and comment.ai_agent_prompt.code_block:
-                        task['code_suggestion'] = comment.ai_agent_prompt.code_block
-                        task['language'] = comment.ai_agent_prompt.language or 'text'
-                    
-                    # Phase 3: Add risk indicators
+                if self._should_skip_actionable(comment):
+                    continue
+
+                # Determine priority with intelligent adjustments
+                priority_value = comment.priority.value if hasattr(comment.priority, 'value') else str(comment.priority)
+                priority_value = priority_value.upper()
+                
+                # Apply intelligent priority adjustments if available
+                if context_relationships and change_analysis:
+                    try:
+                        adjusted_priority = self._calculate_intelligent_priority(
+                            comment, context_relationships, change_analysis
+                        )
+                        priority_value = adjusted_priority
+                    except Exception:
+                        pass  # Keep original priority on error
+
+                task = {
+                    'priority': priority_value,
+                    'comment_id': comment.comment_id,
+                    'description': comment.issue_description,
+                    'file': comment.file_path if comment.file_path and len(comment.file_path) > 3 else "Unknown",
+                    'line': getattr(comment, 'line_range', "0") if hasattr(comment, 'line_range') else "0",
+                }
+
+                # Add Phase 3 context information if available
+                if context_relationships:
+                    task['context_strength'] = context_relationships.get('context_strengths', {}).get(comment.comment_id, 0.0)
+                    task['description'] = self._enhance_description_with_context(comment, context_relationships)
+                
+                if change_analysis:
+                    task['file_impact_score'] = change_analysis.get('file_impact_scores', {}).get(comment.file_path, 0.0)
                     task['risk_indicators'] = self._get_task_risk_indicators(
                         comment, change_analysis.get('risk_indicators', [])
                     )
-                    
-                    tasks.append(task)
-            
-            # Extract from nitpick comments (with enhanced filtering)
+
+                # Add AI code suggestion if available
+                if comment.ai_agent_prompt and comment.ai_agent_prompt.code_block:
+                    task['code_suggestion'] = comment.ai_agent_prompt.code_block
+                    task['language'] = comment.ai_agent_prompt.language or 'text'
+
+                tasks.append(task)
+                actionable_counter += 1
+
+            # Extract from nitpick comments with enhanced filtering
             for comment in review.nitpick_comments:
-                if self._is_meaningful_task(comment.suggestion, comment.file_path):
-                    # Phase 3: Nitpicks can be upgraded based on context
+                if not self._is_meaningful_task(comment.suggestion, comment.file_path):
+                    continue
+                    
+                if self._should_skip_nitpick(comment):
+                    continue
+
+                # Intelligent priority for nitpicks based on file impact
+                priority = 'LOW'  # Default
+                if change_analysis:
                     file_impact = change_analysis.get('file_impact_scores', {}).get(comment.file_path, 0.0)
                     priority = 'MEDIUM' if file_impact > 0.7 else 'LOW'
-                    
-                    task = {
-                        'priority': priority,
-                        'comment_id': f"nitpick_{len(tasks)}",
-                        'description': f"Nitpick: {comment.suggestion}",
-                        'file': comment.file_path,
-                        'line': comment.line_range,
-                        'context_strength': 0.0,
-                        'file_impact_score': file_impact
-                    }
-                    
-                    tasks.append(task)
-        
-        # Phase 3: Enhanced deduplication with context awareness
-        tasks = self._deduplicate_tasks_with_context(tasks)
-        
-        # Phase 3: Intelligent sorting with multiple criteria
-        tasks = self._sort_tasks_intelligently(tasks)
-        
+
+                task = {
+                    'priority': priority,
+                    'comment_id': f"nitpick_{nitpick_counter}",
+                    'description': f"Nitpick: {comment.suggestion}",
+                    'file': comment.file_path if comment.file_path and len(comment.file_path) > 3 else "Unknown",
+                    'line': comment.line_range if comment.line_range else "0",
+                }
+
+                # Add context information if available
+                if change_analysis:
+                    task['file_impact_score'] = change_analysis.get('file_impact_scores', {}).get(comment.file_path, 0.0)
+
+                tasks.append(task)
+                nitpick_counter += 1
+
+            # Extract from outside diff comments with filtering
+            for comment in review.outside_diff_comments:
+                if self._should_skip_outside_diff(comment):
+                    continue
+
+                # Determine priority based on content
+                priority = self._determine_outside_diff_priority(comment.content)
+                task = {
+                    'priority': priority,
+                    'comment_id': f"outside_diff_{outside_diff_counter}",
+                    'description': comment.content,
+                    'file': comment.file_path if comment.file_path and len(comment.file_path) > 3 else "Unknown",
+                    'line': comment.line_range if comment.line_range else "0",
+                }
+
+                tasks.append(task)
+                outside_diff_counter += 1
+
+        # Apply enhanced deduplication if available
+        if context_relationships:
+            try:
+                tasks = self._deduplicate_tasks_with_context(tasks)
+            except Exception:
+                tasks = self._deduplicate_tasks(tasks)  # Fallback to basic deduplication
+        else:
+            tasks = self._deduplicate_tasks(tasks)
+
+        # Apply intelligent sorting if available
+        if context_relationships and change_analysis:
+            try:
+                tasks = self._sort_tasks_intelligently(tasks)
+            except Exception:
+                # Fallback to basic priority sorting
+                priority_order = {'HIGH': 0, 'MEDIUM': 1, 'LOW': 2}
+                tasks.sort(key=lambda x: priority_order.get(x['priority'], 2))
+        else:
+            # Basic priority sorting
+            priority_order = {'HIGH': 0, 'MEDIUM': 1, 'LOW': 2}
+            tasks.sort(key=lambda x: priority_order.get(x['priority'], 2))
+
+        # Regenerate comment IDs after sorting to maintain sequential order
+        actionable_counter = 0
+        nitpick_counter = 0
+        outside_diff_counter = 0
+
+        for task in tasks:
+            if task['comment_id'].startswith('actionable_'):
+                task['comment_id'] = f"actionable_{actionable_counter}"
+                actionable_counter += 1
+            elif task['comment_id'].startswith('nitpick_'):
+                task['comment_id'] = f"nitpick_{nitpick_counter}"
+                nitpick_counter += 1
+            elif task['comment_id'].startswith('outside_diff_'):
+                task['comment_id'] = f"outside_diff_{outside_diff_counter}"
+                outside_diff_counter += 1
+
         return tasks
 
     def _is_meaningful_task(self, description: str, file_path: str) -> bool:
@@ -618,15 +710,15 @@ class LLMInstructionFormatter(BaseFormatter):
 
     def _extract_thread_inline_comments(self, thread: ThreadContext) -> List[Dict[str, Any]]:
         """Extract inline comments with IDs from thread context.
-        
+
         Args:
             thread: Thread context data
-            
+
         Returns:
             List of inline comment dictionaries with IDs
         """
         inline_comments = []
-        
+
         # Process chronological comments
         for comment_data in thread.chronological_comments:
             if self._is_coderabbit_comment(comment_data):
@@ -636,7 +728,7 @@ class LLMInstructionFormatter(BaseFormatter):
                     'content': comment_data.get('body', ''),
                     'created_at': comment_data.get('created_at', ''),
                 })
-        
+
         # Fallback to legacy format if no chronological_comments
         if not inline_comments:
             # Process main comment if it's from CodeRabbit
@@ -647,7 +739,7 @@ class LLMInstructionFormatter(BaseFormatter):
                     'content': thread.main_comment.get('body', ''),
                     'created_at': thread.main_comment.get('created_at', ''),
                 })
-            
+
             # Process replies from CodeRabbit
             for reply in thread.replies:
                 if self._is_coderabbit_comment(reply):
@@ -657,15 +749,15 @@ class LLMInstructionFormatter(BaseFormatter):
                         'content': reply.get('body', ''),
                         'created_at': reply.get('created_at', ''),
                     })
-        
+
         return inline_comments
 
     def _is_coderabbit_comment(self, comment_data: Dict[str, Any]) -> bool:
         """Check if comment is from CodeRabbit.
-        
+
         Args:
             comment_data: Comment data dictionary
-            
+
         Returns:
             True if comment is from CodeRabbit
         """
@@ -674,10 +766,10 @@ class LLMInstructionFormatter(BaseFormatter):
 
     def _thread_to_json(self, thread: ThreadContext) -> Dict[str, Any]:
         """Convert thread context to JSON-serializable dictionary.
-        
+
         Args:
             thread: Thread context object
-            
+
         Returns:
             JSON-serializable thread data
         """
@@ -694,31 +786,39 @@ class LLMInstructionFormatter(BaseFormatter):
 
     def _calculate_statistics(self, analyzed_comments: AnalyzedComments) -> Dict[str, int]:
         """Calculate statistics from analyzed comments.
-        
+
         Args:
             analyzed_comments: Analyzed comments data
-            
+
         Returns:
             Statistics dictionary
         """
         total_comments = len(analyzed_comments.review_comments)
         actionable_items = sum(
-            len(review.actionable_comments)
+            len(review.actionable_comments) + len(review.nitpick_comments) + len(review.outside_diff_comments)
             for review in analyzed_comments.review_comments
         )
-        
+
         high_priority = sum(
             1 for review in analyzed_comments.review_comments
             for comment in review.actionable_comments
             if comment.is_high_priority
         )
-        
+
+        # Add high priority outside diff comments
+        high_priority += sum(
+            1 for review in analyzed_comments.review_comments
+            for comment in review.outside_diff_comments
+            if self._determine_outside_diff_priority(comment.content) == 'HIGH'
+        )
+
         files_affected = len(set(
             comment.file_path
             for review in analyzed_comments.review_comments
-            for comment in review.actionable_comments
+            for comment in (review.actionable_comments + review.nitpick_comments + review.outside_diff_comments)
+            if comment.file_path
         ))
-        
+
         return {
             'total_comments': total_comments,
             'actionable_items': actionable_items,
@@ -726,13 +826,203 @@ class LLMInstructionFormatter(BaseFormatter):
             'files_affected': files_affected,
         }
 
+    def _should_skip_comment(self, content: str, file_path: str) -> bool:
+        """Determine if a comment should be skipped as noise.
+
+        Args:
+            content: Comment content
+            file_path: File path associated with the comment
+
+        Returns:
+            True if comment should be skipped
+        """
+        if not content or len(content.strip()) < 5:
+            return True
+
+        content_lower = content.lower()
+
+        # Skip LanguageTool grammar checks (these are low-value noise)
+        if '[grammar]' in content_lower or 'there might be a mistake here' in content_lower:
+            return True
+
+        # Skip HTML/XML tags and fragments
+        html_patterns = [
+            r'<[^>]+>',  # HTML tags
+            r'&[a-z]+;',  # HTML entities
+            r'```\s*$',   # Empty code blocks
+            r'^\s*\|\s*$',  # Empty table cells
+        ]
+
+        for pattern in html_patterns:
+            if re.search(pattern, content, re.IGNORECASE):
+                return True
+
+        # Skip metadata and formatting noise
+        noise_patterns = [
+            r'^\s*\([^)]+\)\s*$',  # Just parentheses content
+            r'^\s*\*\*[^*]+\*\*:\s*$',  # Just bold headers
+            r'^\s*-\s*$',  # Just dashes
+            r'^\s*\+\s*$',  # Just plus signs
+            r'^\s*```\s*$',  # Just code fence
+            r'^\s*\|\s*[^|]*\s*\|\s*$',  # Single table cells
+            r'^\s*#{1,6}\s*$',  # Empty headers
+            r'^\s*&[lg]t;\s*',  # HTML entities at start
+            r'^\s*\*\s*[^*]+$',  # Simple bullet points without context
+            r'^\s*\d+\s+hunks?\s*$',  # Just hunk numbers
+            r'^\s*\*\s*`[^`]+`\s*$',  # Just file names in backticks
+        ]
+
+        for pattern in noise_patterns:
+            if re.match(pattern, content, re.IGNORECASE):
+                return True
+
+        # Skip very short or meaningless content
+        meaningful_words = re.findall(r'\b[a-zA-Z]{3,}\b', content)
+        if len(meaningful_words) < 2:
+            return True
+
+        # Skip content that looks like diff fragments or code snippets without context
+        if re.search(r'^```diff\s*$', content.strip()):
+            return True
+
+        # Skip content that's just technical terms without meaningful sentences
+        if re.search(r'^[A-Z][a-z]*(\s+[A-Z][a-z]*)*\s*$', content.strip()):
+            return True
+
+        # Skip content that's mostly technical jargon without explanation
+        tech_only_patterns = [
+            r'^[A-Z]+(\s*[×/]\s*[A-Z]+)*\s*$',  # Just tech acronyms
+            r'^\*\*[^*]+\*\*\s*$',  # Just bold text
+            r'^[-+]\s*\*\*[^*]+\*\*\s*$',  # Just diff markers with bold
+            r'^###\s+[^#]+\s*$',  # Just headers without content
+        ]
+
+        for pattern in tech_only_patterns:
+            if re.match(pattern, content.strip()):
+                return True
+
+        # Skip file paths that are clearly noise
+        if file_path and any(noise in file_path.lower() for noise in [
+            '(qb_new_en)', 'unknown', '&gt;', '&lt;', '<details>', '<summary>'
+        ]):
+            return True
+
+        return False
+
+    def _should_skip_nitpick(self, comment) -> bool:
+        """Determine if a nitpick comment should be skipped.
+
+        Args:
+            comment: NitpickComment object
+
+        Returns:
+            True if nitpick should be skipped
+        """
+        # Only skip very obvious noise - be more permissive for nitpicks
+
+        # Skip if suggestion is extremely short
+        if len(comment.suggestion) < 10:
+            return True
+
+        # Skip if suggestion contains HTML entities (parsing errors)
+        if '&gt;' in comment.suggestion or '&lt;' in comment.suggestion:
+            return True
+
+        return False
+
+    def _should_skip_actionable(self, comment) -> bool:
+        """Determine if an actionable comment should be skipped.
+
+        Args:
+            comment: ActionableComment object
+
+        Returns:
+            True if actionable comment should be skipped
+        """
+        # Only skip very obvious noise - be more permissive for actionable comments
+
+        # Skip if description is extremely short
+        if len(comment.issue_description) < 10:
+            return True
+
+        # Skip if description is just punctuation
+        if re.match(r'^[:\-\+\*\s]+$', comment.issue_description.strip()):
+            return True
+
+        # Skip if description contains HTML entities (parsing errors)
+        if '&gt;' in comment.issue_description or '&lt;' in comment.issue_description:
+            return True
+
+        # Skip if description starts with "Disabled due to" (metadata)
+        if comment.issue_description.strip().startswith('Disabled due to'):
+            return True
+
+        return False
+
+    def _should_skip_outside_diff(self, comment) -> bool:
+        """Determine if an outside diff comment should be skipped.
+
+        Args:
+            comment: OutsideDiffComment object
+
+        Returns:
+            True if outside diff comment should be skipped
+        """
+        # Only skip very obvious noise - be more permissive for outside diff comments
+
+        # Skip if content is extremely short
+        if len(comment.content) < 15:
+            return True
+
+        # Skip if content contains HTML entities (parsing errors)
+        if '&gt;' in comment.content or '&lt;' in comment.content:
+            return True
+
+        return False
+
+    def _determine_outside_diff_priority(self, content: str) -> str:
+        """Determine priority for outside diff comments based on content.
+
+        Args:
+            content: Comment content
+
+        Returns:
+            Priority level (HIGH/MEDIUM/LOW)
+        """
+        content_lower = content.lower()
+
+        # HIGH priority keywords
+        high_keywords = [
+            'security', 'vulnerability', 'critical', 'error', 'crash',
+            'data loss', 'injection', 'xss', 'csrf', 'authentication',
+            'authorization', 'privilege', 'exploit', 'malicious'
+        ]
+
+        # MEDIUM priority keywords
+        medium_keywords = [
+            'performance', 'optimization', 'efficiency', 'memory', 'cpu',
+            'database', 'migration', 'config', 'environment', 'deployment',
+            'compatibility', 'breaking', 'deprecated', 'refactor'
+        ]
+
+        # Check for HIGH priority
+        if any(keyword in content_lower for keyword in high_keywords):
+            return 'HIGH'
+
+        # Check for MEDIUM priority
+        if any(keyword in content_lower for keyword in medium_keywords):
+            return 'MEDIUM'
+
+        # Default to MEDIUM for outside diff comments (they're usually important)
+        return 'MEDIUM'
+
     def _indent_text(self, text: str, spaces: int) -> str:
         """Indent text by specified number of spaces.
-        
+
         Args:
             text: Text to indent
             spaces: Number of spaces to indent
-            
+
         Returns:
             Indented text
         """

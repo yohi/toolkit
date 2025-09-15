@@ -98,6 +98,15 @@ class CommentAnalyzer:
             processed_review = self._process_review_comments(review_comments)
             processed_threads = self._process_thread_comments(inline_comments)
 
+            # Extract actionable comments from inline comments
+            inline_actionables = self._extract_inline_actionable_comments(inline_comments)
+
+            # Add inline actionables to review comments
+            if inline_actionables:
+                print(f"DEBUG: Adding {len(inline_actionables)} inline actionables to review comments")
+                for review_comment in processed_review:
+                    review_comment.actionable_comments.extend(inline_actionables)
+
             # Apply resolved marker filtering
             filtered_threads = self._filter_resolved_threads(processed_threads)
 
@@ -183,19 +192,28 @@ class CommentAnalyzer:
         for comment in comments:
             body = comment.get("body", "")
             comment_type = comment.get("comment_type", "")
+            comment_id = comment.get("id", "unknown")
+            path = comment.get("path", "N/A")
+            line = comment.get("line", "N/A")
+
+            print(f"DEBUG: Categorizing comment {comment_id} | type: {comment_type} | path: {path}:{line}")
+            print(f"DEBUG: Body preview: {body[:100]}...")
 
             # Check if it's a summary comment
             if "Summary by CodeRabbit" in body or "## Summary" in body:
+                print(f"DEBUG: -> SUMMARY comment")
                 summary_comments.append(comment)
                 self.stats.summary_comments += 1
 
             # Check if it's a review comment (actionable comments posted)
             elif "Actionable comments posted:" in body or comment_type == "review":
+                print(f"DEBUG: -> REVIEW comment")
                 review_comments.append(comment)
                 self.stats.review_comments += 1
 
             # Otherwise treat as inline comment
             else:
+                print(f"DEBUG: -> INLINE comment")
                 inline_comments.append(comment)
                 self.stats.inline_comments += 1
 
@@ -235,7 +253,9 @@ class CommentAnalyzer:
     def _process_thread_comments(self, comments: List[Dict[str, Any]]) -> List[ThreadContext]:
         """Process inline comments into thread contexts."""
         try:
+            print(f"DEBUG: Processing {len(comments)} inline comments as threads")
             threads = self.thread_processor.build_thread_context(comments)
+            print(f"DEBUG: Built {len(threads)} thread contexts")
             self.stats.threads_processed = len(threads)
             return threads
         except Exception as e:
@@ -243,6 +263,23 @@ class CommentAnalyzer:
             import logging
             logging.warning(f"Failed to process thread comments: {e}")
             return []
+
+    def _extract_inline_actionable_comments(self, inline_comments: List[Dict[str, Any]]) -> List:
+        """Extract actionable comments from inline comments."""
+        actionables = []
+
+        print(f"DEBUG: Extracting actionable comments from {len(inline_comments)} inline comments")
+
+        for comment in inline_comments:
+            try:
+                actionable = self.review_processor.extract_actionable_from_inline_comment(comment)
+                if actionable:
+                    actionables.append(actionable)
+            except Exception as e:
+                print(f"DEBUG: Error extracting actionable from inline comment: {e}")
+
+        print(f"DEBUG: Extracted {len(actionables)} actionable comments from inline")
+        return actionables
 
     def _filter_resolved_threads(self, threads: List[ThreadContext]) -> List[ThreadContext]:
         """Filter out resolved threads using resolved marker detection."""

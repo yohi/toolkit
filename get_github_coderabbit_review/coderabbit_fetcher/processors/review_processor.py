@@ -73,6 +73,8 @@ class ReviewProcessor:
     def extract_actionable_comments(self, content: str) -> List[ActionableComment]:
         """Extract actionable comments from review content.
 
+        Only extracts inline actionable comments, NOT from outside diff or nitpick sections.
+
         Args:
             content: Review comment body
 
@@ -80,28 +82,138 @@ class ReviewProcessor:
             List of ActionableComment objects
         """
         actionable_comments = []
+        print(f"DEBUG: extract_actionable_comments called with content length: {len(content)}")
+        print(f"DEBUG: Content preview: {content[:200]}...")
 
-        # Look for sections that contain actionable items
-        actionable_patterns = [
-            r"### Actionable comments[^#]*?(?=\n#{1,3}|\\Z)",
-            r"## Actionable comments[^#]*?(?=\n#{1,2}|\\Z)",
-            r"#### Actionable comments[^#]*?(?=\n#{1,4}|\\Z)",
-            r"\*\*Actionable comments posted:\s*(\d+)\*\*.*?(?=\n#{1,3}|\\Z)",
-        ]
+        # Extract actionable count from the header
+        actionable_count_match = re.search(r'\*\*Actionable comments posted:\s*(\d+)\*\*', content)
+        if not actionable_count_match:
+            print("DEBUG: No 'Actionable comments posted' found in content")
+            return actionable_comments
 
-        for pattern in actionable_patterns:
-            matches = re.finditer(pattern, content, re.DOTALL | re.IGNORECASE)
-            for match in matches:
-                section = match.group(0)
-                items = self._parse_actionable_items(section)
-                actionable_comments.extend(items)
+        expected_count = int(actionable_count_match.group(1))
+        print(f"DEBUG: Found actionable count: {expected_count}")
 
-        # If no specific actionable sections found, look for general issue patterns
-        if not actionable_comments:
-            items = self._parse_actionable_items(content)
-            actionable_comments.extend(items)
+        # If count is 0, return empty list
+        if expected_count == 0:
+            print("DEBUG: Expected count is 0, returning empty list")
+            return actionable_comments
+
+        # Look for inline actionable comments (NOT in outside diff or nitpick sections)
+        # These appear as direct file comments in the diff, not in summary sections
+
+        # Skip if this is just the summary comment with outside diff/nitpick sections
+        if "Outside diff range comments" in content or "Nitpick comments" in content:
+            print("DEBUG: This is a review body (contains Outside diff/Nitpick sections)")
+            print("DEBUG: Inline actionables should be processed separately")
+            return actionable_comments
+
+        print("DEBUG: This might be an inline actionable comment")
+        # For actual inline actionable comments, parse the content
+        items = self._parse_actionable_items(content)
+        print(f"DEBUG: Parsed {len(items)} actionable items")
+
+        # Limit to expected count to prevent over-extraction
+        actionable_comments = items[:expected_count]
+        print(f"DEBUG: Returning {len(actionable_comments)} actionable comments")
 
         return actionable_comments
+
+    def extract_actionable_from_inline_comment(self, comment: Dict[str, Any]) -> Optional[ActionableComment]:
+        """Extract ActionableComment from an inline comment.
+
+        Args:
+            comment: Inline comment data from GitHub API
+
+        Returns:
+            ActionableComment object or None if not actionable
+        """
+        try:
+            comment_id = comment.get("id", "unknown")
+            body = comment.get("body", "")
+            path = comment.get("path", "Unknown")
+            line = comment.get("line", 0)
+
+            print(f"DEBUG: Processing inline comment {comment_id} for actionable extraction")
+            print(f"DEBUG: Path: {path}, Line: {line}")
+            print(f"DEBUG: Body preview: {body[:100]}...")
+
+            # Check if this is an actionable comment (refactor suggestion, potential issue, etc.)
+            actionable_indicators = [
+                "_🛠️ Refactor suggestion_",
+                "_⚠️ Potential issue_",
+                "_🚨 Critical issue_",
+                "_💡 Suggestion_",
+                "**CRITICAL**",
+                "**WARNING**",
+                "**IMPORTANT**"
+            ]
+
+            is_actionable = any(indicator in body for indicator in actionable_indicators)
+
+            if not is_actionable:
+                print(f"DEBUG: Comment {comment_id} is not actionable")
+                return None
+
+            print(f"DEBUG: Comment {comment_id} is actionable!")
+
+            # Extract title from the body
+            lines = body.split('\n')
+            title = ""
+            description = body
+
+            # Try to extract the title (usually after _🛠️ Refactor suggestion_ etc.)
+            for i, line in enumerate(lines):
+                if line.startswith('**') and line.endswith('**') and len(line) > 4:
+                    title = line.strip('*').strip()
+                    # Rest of the content as description
+                    description = '\n'.join(lines[i+1:]).strip()
+                    break
+
+            if not title:
+                title = "Inline actionable comment"
+
+            # Determine priority based on indicators
+            priority = "medium"  # default - use lowercase for Pydantic enum
+            if "_🚨 Critical issue_" in body or "**CRITICAL**" in body:
+                priority = "high"
+            elif "_⚠️ Potential issue_" in body or "**WARNING**" in body:
+                priority = "medium"
+            else:
+                priority = "low"
+
+            # Determine comment type based on indicators
+            comment_type = "general"  # default
+            if "_🛠️ Refactor suggestion_" in body:
+                comment_type = "refactor_suggestion"
+            elif "_⚠️ Potential issue_" in body:
+                comment_type = "potential_issue"
+
+            print(f"DEBUG: Creating ActionableComment with priority: {priority}, type: {comment_type}")
+
+            # Create ActionableComment
+            try:
+                actionable_comment = ActionableComment(
+                    comment_id=f"actionable_inline_{comment_id}",
+                    file_path=path,
+                    line_range=str(line),
+                    issue_description=title,
+                    comment_type=comment_type,
+                    priority=priority,
+                    ai_agent_prompt=None,  # Could be extracted if needed
+                    raw_content=body
+                )
+            except Exception as validation_error:
+                print(f"DEBUG: Pydantic validation error: {validation_error}")
+                print(f"DEBUG: title: '{title}', priority: '{priority}', path: '{path}', line: '{line}'")
+                raise
+
+            print(f"DEBUG: Created ActionableComment: {actionable_comment.comment_id}")
+            return actionable_comment
+
+        except Exception as e:
+            print(f"DEBUG: Error processing inline comment {comment.get('id')}: {e}")
+            return None
 
     def extract_nitpick_comments(self, content: str) -> List[NitpickComment]:
         """Extract nitpick comments from review content.
@@ -114,20 +226,19 @@ class ReviewProcessor:
         """
         nitpick_comments = []
 
-        for pattern in self.nitpick_patterns:
-            # Look for nitpick sections
-            section_pattern = f"{pattern}[^#]*?(?=\n#{1,3}|\\Z)"
-            matches = re.finditer(section_pattern, content, re.DOTALL | re.IGNORECASE)
+        # Look for the specific "Nitpick comments" section
+        section_pattern = r'<summary>🧹 Nitpick comments \((\d+)\)</summary><blockquote>(.*?)(?=<details>\s*<summary>📜 Review details|<details>\s*<summary>🔇 Additional comments|\Z)'
+        section_match = re.search(section_pattern, content, re.DOTALL | re.IGNORECASE)
 
-            for match in matches:
-                section = match.group(0)
-                items = self._parse_nitpick_items(section)
-                nitpick_comments.extend(items)
+        if section_match:
+            expected_count = int(section_match.group(1))
+            section_content = section_match.group(2)
 
-        # If no nitpick sections found but emoji pattern exists, look for general suggestions
-        if not nitpick_comments and "🧹" in content:
-            items = self._parse_nitpick_items(content)
-            nitpick_comments.extend(items)
+            # Parse individual items from this section only
+            items = self._parse_nitpick_items(section_content)
+
+            # Limit to expected count
+            nitpick_comments = items[:expected_count]
 
         return nitpick_comments
 
@@ -142,20 +253,19 @@ class ReviewProcessor:
         """
         outside_diff_comments = []
 
-        for pattern in self.outside_diff_patterns:
-            # Look for outside diff sections
-            section_pattern = f"{pattern}[^#]*?(?=\n#{1,3}|\\Z)"
-            matches = re.finditer(section_pattern, content, re.DOTALL | re.IGNORECASE)
+        # Look for the specific "Outside diff range comments" section
+        section_pattern = r'<summary>⚠️ Outside diff range comments \((\d+)\)</summary><blockquote>(.*?)(?=<details>\s*<summary>🧹 Nitpick comments|\Z)'
+        section_match = re.search(section_pattern, content, re.DOTALL | re.IGNORECASE)
 
-            for match in matches:
-                section = match.group(0)
-                items = self._parse_outside_diff_items(section)
-                outside_diff_comments.extend(items)
+        if section_match:
+            expected_count = int(section_match.group(1))
+            section_content = section_match.group(2)
 
-        # If no outside diff sections found but pattern exists, look for general items
-        if not outside_diff_comments and ("⚠️" in content or "outside diff" in content.lower()):
-            items = self._parse_outside_diff_items(content)
-            outside_diff_comments.extend(items)
+            # Parse individual items from this section only
+            items = self._parse_outside_diff_items(section_content)
+
+            # Limit to expected count
+            outside_diff_comments = items[:expected_count]
 
         return outside_diff_comments
 
@@ -231,7 +341,9 @@ class ReviewProcessor:
         return 0
 
     def _parse_actionable_items(self, section: str) -> List[ActionableComment]:
-        """Parse actionable items from section with Phase 2 enhanced markdown structure analysis.
+        """Parse actionable items from section with integrated smart analysis.
+
+        Combines Phase 2 advanced markdown structure analysis with robust pattern matching.
 
         Args:
             section: Section text containing actionable items
@@ -241,14 +353,104 @@ class ReviewProcessor:
         """
         items = []
 
-        # Phase 2: Advanced markdown structure analysis
-        markdown_sections = self._analyze_markdown_structure(section)
-        
-        for markdown_section in markdown_sections:
-            # Extract meaningful actionable items from each structured section
-            actionable_items = self._extract_actionable_from_section(markdown_section)
-            items.extend(actionable_items)
-        
+        # Try advanced markdown structure analysis first (Phase 2 approach)
+        try:
+            markdown_sections = self._analyze_markdown_structure(section)
+            
+            if markdown_sections:
+                for markdown_section in markdown_sections:
+                    # Extract meaningful actionable items from each structured section
+                    actionable_items = self._extract_actionable_from_section(markdown_section)
+                    items.extend(actionable_items)
+                
+                # If we successfully extracted items using markdown analysis, return them
+                if items:
+                    return items
+        except Exception:
+            # Fall back to pattern-based approach if markdown analysis fails
+            pass
+
+        # Fallback: Enhanced pattern-based approach
+        patterns = [
+            # Pattern 1: `file_path:line_range`: **Description**
+            r"^(?:[-*+]|\d+\.)\s*`([^`]+)`:?\s*(.+?)$",
+
+            # Pattern 2: **file_path:line_range**: Description
+            r"^(?:[-*+]|\d+\.)\s*\*\*([^*:]+):?([^*]*)\*\*\s*(.+?)$",
+
+            # Pattern 3: file_path:line_range - Description
+            r"^(?:[-*+]|\d+\.)\s*([^:\-\n]+):?(\d+-?\d*)?[:\-]\s*(.+?)$",
+
+            # Pattern 4: LanguageTool pattern: [tool] ~line-line: description
+            r"^\[([^\]]+)\]\s+~(\d+)-?~?(\d+)?:\s*(.+?)$",
+
+            # Pattern 5: Generic markdown list item with description
+            r"^(?:[-*+]|\d+\.)\s*([^:\-\n]{3,}?)(?:[:\-]\s*(.+?))?$"
+        ]
+
+        # Split section into lines for better processing
+        lines = section.strip().split('\n')
+
+        for line in lines:
+            line = line.strip()
+            if not line or len(line) < 10:  # Skip very short lines
+                continue
+
+            matched = False
+
+            for i, pattern in enumerate(patterns):
+                match = re.match(pattern, line, re.IGNORECASE | re.MULTILINE)
+                if match:
+                    matched = True
+
+                    if i == 3:  # LanguageTool pattern
+                        tool_name = match.group(1)
+                        start_line = match.group(2)
+                        end_line = match.group(3)
+                        description = match.group(4).strip()
+
+                        file_path = "unknown"  # LanguageTool doesn't specify files
+                        line_range = f"{start_line}-{end_line}" if end_line else start_line
+
+                        # Clean description
+                        description = f"[{tool_name}] {description}"
+
+                    else:
+                        # Standard patterns
+                        file_info = match.group(1).strip() if match.group(1) else "unknown"
+
+                        if i == 1:  # Pattern 2: **file:line**: description
+                            line_info = match.group(2).strip() if match.group(2) else ""
+                            description = match.group(3).strip() if match.group(3) else ""
+                            file_path, line_range = self._parse_file_line_info(file_info, line_info)
+                        else:
+                            # Other patterns
+                            if match.lastindex >= 3:
+                                line_info = match.group(2) if match.group(2) else ""
+                                description = match.group(3).strip() if match.group(3) else file_info
+                            else:
+                                line_info = ""
+                                description = match.group(2).strip() if match.group(2) else file_info
+
+                            file_path, line_range = self._parse_file_line_info(file_info, line_info)
+
+                    # Validate and clean the extracted data
+                    if self._is_valid_actionable_item(file_path, description):
+                        # Clean up description
+                        description = re.sub(r'\s+', ' ', description).strip()
+                        description = re.sub(r'\*\*([^*]+)\*\*', r'\1', description)  # Remove markdown bold
+
+                        items.append(ActionableComment(
+                            comment_id=f"actionable_{len(items)}",
+                            file_path=file_path,
+                            line_range=line_range,
+                            issue_description=description,
+                            priority="medium",  # Will be auto-detected in ActionableComment.__init__
+                            raw_content=line
+                        ))
+
+                    break  # Stop trying other patterns if one matched
+
         return items
 
     def _analyze_markdown_structure(self, content: str) -> List[Dict[str, Any]]:
@@ -510,17 +712,17 @@ class ReviewProcessor:
 
     def _parse_file_line_info(self, file_info: str, line_info: str) -> tuple[str, str]:
         """Parse file path and line information from extracted groups.
-        
+
         Args:
             file_info: File information string
             line_info: Line information string
-            
+
         Returns:
             Tuple of (file_path, line_range)
         """
         # Clean file_info
         file_info = file_info.strip()
-        
+
         # Check if file_info contains line numbers (e.g., "file.py:123-125")
         if ':' in file_info:
             parts = file_info.split(':', 1)
@@ -529,7 +731,7 @@ class ReviewProcessor:
         else:
             file_path = file_info
             line_from_file = ""
-        
+
         # Determine line range
         if line_from_file:
             line_range = line_from_file
@@ -537,38 +739,38 @@ class ReviewProcessor:
             line_range = str(line_info).strip()
         else:
             line_range = "0"
-        
+
         # Clean up file path
         file_path = file_path.replace('`', '').strip()
-        
+
         # Handle special cases
         if not file_path or file_path in ['--', '-', '+', '*']:
             file_path = "unknown"
-        
+
         # Remove leading/trailing punctuation
         file_path = re.sub(r'^[-+*\s]+|[-+*\s]+$', '', file_path)
-        
+
         return file_path, line_range
 
     def _is_valid_actionable_item(self, file_path: str, description: str) -> bool:
         """Check if extracted item is a valid actionable comment.
-        
+
         Args:
             file_path: Extracted file path
             description: Extracted description
-            
+
         Returns:
             True if item appears to be valid
         """
         # Must have meaningful description (increased minimum length)
         if not description or len(description) < 15:
             return False
-        
-        # Filter out clearly invalid file paths
+
+        # Filter out clearly invalid file paths (enhanced)
         invalid_paths = {
             '--', '-', '+', '*', '**', '***', 
             'create', 'implement', 'add', 'update', 'fix',
-            # Phase 1: Add more invalid patterns found in output
+            # Enhanced: Add more invalid patterns found in output
             'for bin in aws fzf; do', 'command', 'if ! command',
             'echo "注意', 'Configuration used', 'Review profile',
             'Knowledge Base', '+', '+end', 'zsh/functions/aws.zsh',
@@ -582,7 +784,7 @@ class ReviewProcessor:
         if file_path.lower() in invalid_paths or file_path in invalid_paths:
             return False
         
-        # Phase 1: Filter out code fragments and metadata
+        # Enhanced: Filter out code fragments and metadata
         metadata_patterns = [
             r'^[\+\-\*]\s*',  # Git diff markers
             r'^\d+\s*hunks?\)',  # Hunk info
@@ -604,7 +806,7 @@ class ReviewProcessor:
             if re.match(pattern, description, re.IGNORECASE):
                 return False
         
-        # Phase 1: Filter out incomplete sentences/fragments
+        # Enhanced: Filter out incomplete sentences/fragments
         if description.count(' ') < 3:  # Less than 4 words
             return False
             
@@ -623,11 +825,10 @@ class ReviewProcessor:
         for pattern in code_fragment_patterns:
             if re.match(pattern, description, re.IGNORECASE):
                 return False
-        
         # Filter out non-descriptive content
         if description.lower() in {'', 'todo', 'fixme', 'note'}:
             return False
-        
+
         return True
 
     def _parse_nitpick_items(self, section: str) -> List[NitpickComment]:
@@ -641,26 +842,39 @@ class ReviewProcessor:
         """
         items = []
 
-        # Look for file:line patterns in nitpick sections
-        item_pattern = r"(?:`([^`]+)`|([^:\n]+)):?(\d+)?[:\-\s]*(.+?)(?=\n[-*+]|\n`|\n\n|\\Z)"
+        # First, extract file-specific sections
+        # Pattern: <summary>filename (count)</summary><blockquote> (no > prefix for nitpick)
+        file_section_pattern = r'<details>\s*<summary>([^(]+)\s*\(\d+\)</summary><blockquote>(.*?)(?=</blockquote></details>|\Z)'
+        file_sections = re.finditer(file_section_pattern, section, re.DOTALL | re.IGNORECASE)
 
-        matches = re.finditer(item_pattern, section, re.MULTILINE | re.DOTALL)
+        for file_section in file_sections:
+            file_path = file_section.group(1).strip()
+            file_content = file_section.group(2)
 
-        for match in matches:
-            file_path = match.group(1) or match.group(2) or ""
-            line_number = match.group(3) or "0"
-            suggestion = match.group(4).strip()
+            # Look for nitpick comment patterns within this file (no > prefix): `line-range`: **Title**
+            nitpick_pattern = r"`(\d+(?:-\d+)?)`: \*\*([^*]+)\*\*\s*(.*?)(?=\n`\d+(?:-\d+)?`:\s*\*\*|---|\n\n<details>|\Z)"
 
-            if len(suggestion) > 5 and file_path:
-                # Clean up the suggestion
-                suggestion = re.sub(r'\n+', ' ', suggestion)
-                suggestion = re.sub(r'\s+', ' ', suggestion)
+            matches = re.finditer(nitpick_pattern, file_content, re.MULTILINE | re.DOTALL)
+
+            for match in matches:
+                line_range = match.group(1)
+                title = match.group(2).strip()
+                content_body = match.group(3).strip()
+
+                # Combine title and content
+                full_suggestion = f"**{title}**"
+                if content_body:
+                    # Clean up content body
+                    content_body = re.sub(r'\n+', '\n', content_body)
+                    content_body = content_body.strip()
+                    if content_body:
+                        full_suggestion += f"\n\n{content_body}"
 
                 items.append(NitpickComment(
-                    file_path=file_path.strip(),
-                    line_range=line_number,
-                    suggestion=suggestion,
-                    raw_content=match.group(0)
+                    file_path=file_path,
+                    line_range=line_range,
+                    suggestion=full_suggestion,
+                    raw_content=match.group(0).strip()
                 ))
 
         return items
@@ -676,29 +890,42 @@ class ReviewProcessor:
         """
         items = []
 
-        # Look for file patterns in outside diff sections
-        item_pattern = r"(?:`([^`]+)`|([^:\n]+)):?(\d+)?[:\-\s]*(.+?)(?=\n[-*+]|\n`|\n\n|\\Z)"
+        # First, extract file-specific sections
+        # Pattern: <summary>filename (count)</summary><blockquote> (with > prefix on each line)
+        file_section_pattern = r'> <details>\s*\n> <summary>([^(]+)\s*\(\d+\)</summary><blockquote>(.*?)(?=> </blockquote></details>|\Z)'
+        file_sections = list(re.finditer(file_section_pattern, section, re.DOTALL | re.IGNORECASE))
 
-        matches = re.finditer(item_pattern, section, re.MULTILINE | re.DOTALL)
+        for i, file_section in enumerate(file_sections):
+            file_path = file_section.group(1).strip()
+            file_content = file_section.group(2)
 
-        for match in matches:
-            file_path = match.group(1) or match.group(2) or ""
-            line_number = match.group(3) or "0"
-            content = match.group(4).strip()
+            # Pattern to match individual outside diff comments within this file (with > prefix)
+            # Each comment starts with > `line-range`: **Title** and continues until next comment or section end
+            comment_pattern = r"> `(\d+(?:-\d+)?)`: \*\*([^*]+)\*\*\s*(.*?)(?=> `\d+(?:-\d+)?`:\s*\*\*|> ---|\Z)"
 
-            if len(content) > 10 and file_path:
-                # Clean up the content
-                content = re.sub(r'\n+', ' ', content)
-                content = re.sub(r'\s+', ' ', content)
+            matches = re.finditer(comment_pattern, file_content, re.MULTILINE | re.DOTALL)
+
+            for match in matches:
+                line_range = match.group(1)
+                title = match.group(2).strip()
+                content_body = match.group(3).strip()
+
+                # Combine title and content
+                full_content = f"**{title}**"
+                if content_body:
+                    # Clean up content body
+                    content_body = re.sub(r'\n+', '\n', content_body)
+                    content_body = content_body.strip()
+                    if content_body:
+                        full_content += f"\n\n{content_body}"
 
                 items.append(OutsideDiffComment(
-                    file_path=file_path.strip(),
-                    line_range=line_number,
-                    content=content,
+                    file_path=file_path,
+                    line_range=line_range,
+                    content=full_content,
                     reason="Outside diff range",
-                    raw_content=match.group(0)
+                    raw_content=match.group(0).strip()
                 ))
-
         return items
 
     def _extract_code_blocks(self, content: str) -> List[Dict[str, str]]:
