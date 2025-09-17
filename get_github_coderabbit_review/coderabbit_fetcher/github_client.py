@@ -449,6 +449,9 @@ class GitHubClient:
                         "comment_type": "review_comment",  # Mark as review comment
                         "path": comment.get("path"),
                         "line": comment.get("line"),
+                        "start_line": comment.get("start_line"),
+                        "original_line": comment.get("original_line"),
+                        "original_start_line": comment.get("original_start_line"),
                         "diff_hunk": comment.get("diff_hunk"),
                         "position": comment.get("position")
                     }

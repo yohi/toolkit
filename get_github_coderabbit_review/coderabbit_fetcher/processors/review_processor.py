@@ -133,10 +133,29 @@ class ReviewProcessor:
             body = comment.get("body", "")
             path = comment.get("path", "Unknown")
             line = comment.get("line", 0)
+            start_line = comment.get("start_line")
+            original_line = comment.get("original_line")
+            original_start_line = comment.get("original_start_line")
+
+            # Use start_line and line to create proper line range
+            line_range = self._create_line_range(start_line, line, original_start_line, original_line)
 
             print(f"DEBUG: Processing inline comment {comment_id} for actionable extraction")
             print(f"DEBUG: Path: {path}, Line: {line}")
             print(f"DEBUG: Body preview: {body[:100]}...")
+
+            # Check if the comment is resolved - skip if it is
+            resolved_markers = [
+                "✅ Addressed in commit",
+                "✅ Resolved",
+                "✅ Fixed in commit",
+                "✅ Done"
+            ]
+
+            for marker in resolved_markers:
+                if marker in body:
+                    print(f"DEBUG: Skipping resolved inline comment {comment_id} (found marker: {marker})")
+                    return None
 
             # Check if this is an actionable comment (refactor suggestion, potential issue, etc.)
             actionable_indicators = [
@@ -169,9 +188,22 @@ class ReviewProcessor:
                     # Rest of the content as description
                     description = '\n'.join(lines[i+1:]).strip()
                     break
+                # Also check for titles that might be split across lines due to markdown formatting
+                if line.startswith('**') and not line.endswith('**'):
+                    # Look for the closing ** in subsequent lines
+                    for j in range(i+1, min(i+3, len(lines))):  # Check next 2 lines
+                        if lines[j].endswith('**'):
+                            title = (line + ' ' + ' '.join(lines[i+1:j+1])).strip('*').strip()
+                            description = '\n'.join(lines[j+1:]).strip()
+                            break
+                    if title:  # Found a multi-line title
+                        break
 
             if not title:
                 title = "Inline actionable comment"
+
+            print(f"DEBUG: Extracted title: '{title}'")
+            print(f"DEBUG: Description preview: '{description[:100]}...'")
 
             # Determine priority based on indicators
             priority = "medium"  # default - use lowercase for Pydantic enum
@@ -191,16 +223,22 @@ class ReviewProcessor:
 
             print(f"DEBUG: Creating ActionableComment with priority: {priority}, type: {comment_type}")
 
+            # **REQUIREMENT FIX: Extract AI Agent prompt from inline comment (Requirements 4.5 & 9.2)**
+            ai_agent_prompt = None
+            ai_prompts = self.extract_ai_agent_prompts(body)
+            if ai_prompts:
+                ai_agent_prompt = ai_prompts[0]  # Use the first AI Agent prompt
+
             # Create ActionableComment
             try:
                 actionable_comment = ActionableComment(
                     comment_id=f"actionable_inline_{comment_id}",
                     file_path=path,
-                    line_range=str(line),
+                    line_range=line_range,
                     issue_description=title,
                     comment_type=comment_type,
                     priority=priority,
-                    ai_agent_prompt=None,  # Could be extracted if needed
+                    ai_agent_prompt=ai_agent_prompt,  # Now includes extracted AI Agent prompt
                     raw_content=body
                 )
             except Exception as validation_error:
@@ -270,51 +308,131 @@ class ReviewProcessor:
         return outside_diff_comments
 
     def extract_ai_agent_prompts(self, content: str) -> List[AIAgentPrompt]:
-        """Extract AI agent prompts from review content.
+        """Extract AI agent prompts from comment content.
+
+        Note: AI Agent prompts exist in inline comments but not in review-level comments.
+        This method handles both cases appropriately and excludes resolved comments.
 
         Args:
-            content: Review comment body
+            content: Comment body (review or inline comment)
 
         Returns:
             List of AIAgentPrompt objects
         """
         ai_prompts = []
 
-        for pattern in self.ai_agent_patterns:
-            # Look for AI agent prompt sections
-            section_pattern = f"<details>[^<]*?<summary>{pattern}</summary>(.*?)</details>"
-            matches = re.finditer(section_pattern, content, re.DOTALL | re.IGNORECASE)
+        # Debug: Check content type and length
+        print(f"DEBUG: Extracting AI Agent prompts from content ({len(content)} chars)")
+
+        # Check if the comment is resolved - skip if it is
+        resolved_markers = [
+            "✅ Addressed in commit",
+            "✅ Resolved",
+            "✅ Fixed in commit",
+            "✅ Done"
+        ]
+
+        for marker in resolved_markers:
+            if marker in content:
+                print(f"DEBUG: Skipping resolved comment (found marker: {marker})")
+                return []
+
+        # Check for AI Agent prompt patterns (primarily in inline comments)
+        ai_agent_patterns = [
+            # HTML details pattern (most common in inline comments)
+            r"<details>\s*<summary>🤖 Prompt for AI Agents</summary>\s*(.*?)\s*</details>",
+            # Alternative patterns
+            r"🤖 Prompt for AI Agents\s*```\s*(.*?)\s*```",
+            r"<summary>🤖 Prompt for AI Agents</summary>\s*(.*?)(?=</details>|$)",
+        ]
+
+        for pattern in ai_agent_patterns:
+            matches = re.finditer(pattern, content, re.DOTALL | re.IGNORECASE)
 
             for match in matches:
                 prompt_content = match.group(1).strip()
 
-                # Extract code blocks from the prompt
-                code_blocks = self._extract_code_blocks(prompt_content)
+                if prompt_content and len(prompt_content) > 10:  # Meaningful content
+                    print(f"DEBUG: Found AI Agent prompt content: {len(prompt_content)} chars")
+                    print(f"DEBUG: Content preview: {prompt_content[:200]}...")
 
-                if code_blocks:
-                    # Use first code block as main content
-                    main_code_block = code_blocks[0]
+                    # Clean up the prompt content
+                    # Remove extra backticks and code block markers
+                    clean_content = re.sub(r'^```\s*\n?', '', prompt_content)
+                    clean_content = re.sub(r'\n?```\s*$', '', clean_content)
+                    clean_content = clean_content.strip()
 
-                    # Extract description from prompt content
-                    lines = prompt_content.split('\n')
-                    description = next((line.strip() for line in lines if line.strip() and not line.strip().startswith('```')), "AI Agent Prompt")
+                    # Extract any code blocks within the prompt
+                    code_blocks = re.findall(r'```(\w*)\n(.*?)\n```', clean_content, re.DOTALL)
+                    code_block = ""
+                    language = "text"
 
-                    ai_prompts.append(AIAgentPrompt(
-                        code_block=main_code_block,
-                        description=description[:200] if description else "AI Agent Prompt",
-                        file_path="",  # Will be filled by context analysis
-                        line_range=""  # Will be filled by context analysis
-                    ))
-                else:
-                    # If no code blocks, create a prompt with the content as description
-                    ai_prompts.append(AIAgentPrompt(
-                        code_block=prompt_content,  # Use content as code block
-                        description=prompt_content[:200] if prompt_content else "AI Agent Prompt",
-                        file_path="",
-                        line_range=""
-                    ))
+                    if code_blocks:
+                        language, code_block = code_blocks[0]
+                        if not language:
+                            language = "text"
+                        # Remove code blocks from description
+                        description = re.sub(r'```[^`]*```', '', clean_content, flags=re.DOTALL).strip()
+                    else:
+                        description = clean_content
+                        code_block = ""
+
+                    ai_prompt = AIAgentPrompt(
+                        description=description if description else "AI Agent Prompt",
+                        code_block=code_block.strip() if code_block else "",
+                        language=language or "text",
+                        file_path="",  # Will be set by caller if available
+                        line_range=""  # Will be set by caller if available
+                    )
+
+                    ai_prompts.append(ai_prompt)
+                    print(f"DEBUG: Created AIAgentPrompt with {len(description)} char description")
+
+        if not ai_prompts:
+            print(f"DEBUG: No AI Agent prompts found in content")
+        else:
+            print(f"DEBUG: Successfully extracted {len(ai_prompts)} AI Agent prompts")
 
         return ai_prompts
+
+    def _create_line_range(self, start_line, end_line, original_start_line, original_end_line) -> str:
+        """Create line range string from GitHub API line information.
+
+        Args:
+            start_line: Start line from GitHub API
+            end_line: End line from GitHub API
+            original_start_line: Original start line from GitHub API
+            original_end_line: Original end line from GitHub API
+
+        Returns:
+            Line range string (e.g., "26-33" or "33")
+        """
+        # Check original lines first (these are the actual file lines)
+        if original_start_line is not None and original_end_line is not None:
+            if original_start_line != original_end_line:
+                return f"{original_start_line}-{original_end_line}"
+            else:
+                return str(original_end_line)
+
+        # Fall back to regular lines
+        if start_line is not None and end_line is not None:
+            if start_line != end_line:
+                return f"{start_line}-{end_line}"
+            else:
+                return str(end_line)
+
+        # Single line cases
+        if original_end_line is not None:
+            return str(original_end_line)
+        elif end_line is not None:
+            return str(end_line)
+        elif original_start_line is not None:
+            return str(original_start_line)
+        elif start_line is not None:
+            return str(start_line)
+
+        # Fallback
+        return "0"
 
     def _extract_actionable_count(self, content: str) -> int:
         """Extract the number of actionable comments from content.

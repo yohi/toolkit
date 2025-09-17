@@ -105,6 +105,14 @@ class PersonaManager:
             # This is a warning, not an error - allow flexible persona formats
             pass
 
+    def get_default_persona(self) -> str:
+        """Get default persona for backward compatibility.
+
+        Returns:
+            Default persona string
+        """
+        return self.default_persona_generator.generate()
+
     def clear_cache(self) -> None:
         """Clear persona cache."""
         self._persona_cache.clear()

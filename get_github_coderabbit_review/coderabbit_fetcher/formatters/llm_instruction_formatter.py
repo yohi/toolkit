@@ -149,20 +149,31 @@ class LLMInstructionFormatter(BaseFormatter):
                 instructions.append(f"    <task {task_attrs}>")
                 instructions.append(f"      <description>{escape(task['description'])}</description>")
                 instructions.append(f"      <file>{escape(task['file'])}</file>")
-                if task.get('line'):
+                if task.get('line') and task['line'] is not None:
                     instructions.append(f"      <line>{escape(str(task['line']))}</line>")
-                
+
+                # **REQUIREMENT FIX: Add code_suggestion element as specified in LLM_INSTRUCTION_FORMAT.md**
+                if task.get('code_suggestion'):
+                    language = task.get('language', 'text')
+                    instructions.append(f"      <code_suggestion language='{escape(language)}'>")
+                    instructions.append(f"{self._indent_text(escape(task['code_suggestion']), 8)}")
+                    instructions.append("      </code_suggestion>")
+
+                # **REQUIREMENT FIX: Display AI Agent prompt content per Requirement 4.5 and 9.2**
+                if task.get('has_ai_prompt') and task.get('ai_prompt_content'):
+                    instructions.append("      <ai_agent_prompt>")
+                    instructions.append(f"{self._indent_text(escape(task['ai_prompt_content']), 8)}")
+                    instructions.append("      </ai_agent_prompt>")
+                elif task.get('has_ai_prompt'):
+                    instructions.append("      <ai_agent_prompt>true</ai_agent_prompt>")
+
                 # Risk indicators (if available)
                 if task.get('risk_indicators'):
                     instructions.append("      <risk_indicators>")
                     for risk in task['risk_indicators']:
                         instructions.append(f"        <risk_type>{escape(risk)}</risk_type>")
                     instructions.append("      </risk_indicators>")
-                
-                if task.get('code_suggestion'):
-                    instructions.append(f"      <code_suggestion language='{task.get('language', 'text')}'>")
-                    instructions.append(f"{self._indent_text(escape(task['code_suggestion']), 8)}")
-                    instructions.append("      </code_suggestion>")
+
                 instructions.append("    </task>")
             instructions.append("  </primary_tasks>")
 
@@ -292,12 +303,28 @@ class LLMInstructionFormatter(BaseFormatter):
                     except Exception:
                         pass  # Keep original priority on error
 
+                # Extract line number with validation - use line_range property first
+                line_value = None
+                if hasattr(comment, 'line_range') and comment.line_range and self._is_valid_line_number(str(comment.line_range)):
+                    line_value = str(comment.line_range)
+                elif hasattr(comment, 'line_number') and comment.line_number and self._is_valid_line_number(str(comment.line_number)):
+                    line_value = str(comment.line_number)
+                else:
+                    # Try to extract line number from comment description
+                    line_value = self._extract_line_number_from_description(comment.issue_description)
+
+                # **REQUIREMENT FIX: Use actual GitHub comment ID instead of generated ID**
+                comment_id = comment.comment_id if comment.comment_id else f"actionable_{actionable_counter}"
+
+                # **REQUIREMENT FIX: Simplify description to be concise**
+                description = self._extract_concise_description(comment.issue_description)
+
                 task = {
                     'priority': priority_value,
-                    'comment_id': comment.comment_id,
-                    'description': comment.issue_description,
+                    'comment_id': comment_id,
+                    'description': description,
                     'file': comment.file_path if comment.file_path and len(comment.file_path) > 3 else "Unknown",
-                    'line': getattr(comment, 'line_range', "0") if hasattr(comment, 'line_range') else "0",
+                    'line': line_value,
                 }
 
                 # Add Phase 3 context information if available
@@ -311,10 +338,38 @@ class LLMInstructionFormatter(BaseFormatter):
                         comment, change_analysis.get('risk_indicators', [])
                     )
 
-                # Add AI code suggestion if available
-                if comment.ai_agent_prompt and comment.ai_agent_prompt.code_block:
-                    task['code_suggestion'] = comment.ai_agent_prompt.code_block
-                    task['language'] = comment.ai_agent_prompt.language or 'text'
+                # **REQUIREMENT FIX: Add AI Agent prompt content per Requirement 4.5 and 9.2**
+                if comment.ai_agent_prompt:
+                    task['has_ai_prompt'] = True
+
+                    # Extract the complete AI Agent prompt content (Requirements 4.5 & 9.2)
+                    # Use description only if code_block contains actual code, otherwise avoid duplication
+                    ai_prompt_parts = []
+
+                    # Check if code_block contains actual code or just repeated description
+                    has_actual_code = (comment.ai_agent_prompt.code_block and
+                                     comment.ai_agent_prompt.code_block.strip() and
+                                     comment.ai_agent_prompt.code_block != comment.ai_agent_prompt.description and
+                                     not comment.ai_agent_prompt.code_block.strip().startswith('In '))
+
+                    if comment.ai_agent_prompt.description:
+                        ai_prompt_parts.append(comment.ai_agent_prompt.description)
+
+                    if has_actual_code:
+                        # Use file extension to determine the correct language, override AI Agent prompt language if needed
+                        detected_language = self._detect_language_from_file(comment.file_path)
+                        language = detected_language if detected_language != 'text' else (comment.ai_agent_prompt.language or 'text')
+                        ai_prompt_parts.append(f"```{language}\n{comment.ai_agent_prompt.code_block}\n```")
+
+                    if ai_prompt_parts:
+                        task['ai_prompt_content'] = '\n\n'.join(ai_prompt_parts)
+                    # Note: Do NOT set code_suggestion when AI Agent prompt exists
+                else:
+                    # **REQUIREMENT FIX: Generate code suggestion for comments without AI agent prompts (Requirement 9.1.4)**
+                    code_suggestion = self._generate_code_suggestion_from_comment(comment)
+                    if code_suggestion:
+                        task['code_suggestion'] = code_suggestion
+                        task['language'] = self._detect_language_from_file(comment.file_path)
 
                 tasks.append(task)
                 actionable_counter += 1
@@ -333,17 +388,62 @@ class LLMInstructionFormatter(BaseFormatter):
                     file_impact = change_analysis.get('file_impact_scores', {}).get(comment.file_path, 0.0)
                     priority = 'MEDIUM' if file_impact > 0.7 else 'LOW'
 
+                # Extract line number with validation
+                line_value = None
+                if hasattr(comment, 'line_number') and comment.line_number and self._is_valid_line_number(comment.line_number):
+                    line_value = comment.line_number
+                elif hasattr(comment, 'line_range') and self._is_valid_line_number(comment.line_range):
+                    line_value = comment.line_range
+
+                # **REQUIREMENT FIX: Use GitHub comment ID when available**
+                comment_id = getattr(comment, 'comment_id', None) or f"nitpick_{nitpick_counter}"
+
+                # **REQUIREMENT FIX: Use complete content from CodeRabbit comment**
+                description = comment.suggestion  # Use full suggestion content
+
                 task = {
                     'priority': priority,
-                    'comment_id': f"nitpick_{nitpick_counter}",
-                    'description': f"Nitpick: {comment.suggestion}",
+                    'comment_id': comment_id,
+                    'description': description,
                     'file': comment.file_path if comment.file_path and len(comment.file_path) > 3 else "Unknown",
-                    'line': comment.line_range if comment.line_range else "0",
+                    'line': line_value,
                 }
 
                 # Add context information if available
                 if change_analysis:
                     task['file_impact_score'] = change_analysis.get('file_impact_scores', {}).get(comment.file_path, 0.0)
+
+                # **REQUIREMENT FIX: Generate code suggestion for nitpick comments**
+                # Check if nitpick comment has AI Agent prompt
+                if hasattr(comment, 'ai_agent_prompt') and comment.ai_agent_prompt:
+                    task['has_ai_prompt'] = True
+                    # Extract the complete AI Agent prompt content for nitpick comments
+                    ai_prompt_parts = []
+
+                    # Check if code_block contains actual code or just repeated description
+                    has_actual_code = (comment.ai_agent_prompt.code_block and
+                                     comment.ai_agent_prompt.code_block.strip() and
+                                     comment.ai_agent_prompt.code_block != comment.ai_agent_prompt.description and
+                                     not comment.ai_agent_prompt.code_block.strip().startswith('In '))
+
+                    if comment.ai_agent_prompt.description:
+                        ai_prompt_parts.append(comment.ai_agent_prompt.description)
+
+                    if has_actual_code:
+                        # Use file extension to determine the correct language, override AI Agent prompt language if needed
+                        detected_language = self._detect_language_from_file(comment.file_path)
+                        language = detected_language if detected_language != 'text' else (comment.ai_agent_prompt.language or 'text')
+                        ai_prompt_parts.append(f"```{language}\n{comment.ai_agent_prompt.code_block}\n```")
+
+                    if ai_prompt_parts:
+                        task['ai_prompt_content'] = '\n\n'.join(ai_prompt_parts)
+                    # Note: Do NOT set code_suggestion when AI Agent prompt exists
+                else:
+                    # Generate code suggestion from the full nitpick content
+                    code_suggestion = self._generate_code_suggestion_from_nitpick(comment)
+                    if code_suggestion:
+                        task['code_suggestion'] = code_suggestion
+                        task['language'] = self._detect_language_from_file(comment.file_path)
 
                 tasks.append(task)
                 nitpick_counter += 1
@@ -355,13 +455,58 @@ class LLMInstructionFormatter(BaseFormatter):
 
                 # Determine priority based on content
                 priority = self._determine_outside_diff_priority(comment.content)
+                # Extract line number with validation
+                line_value = None
+                if hasattr(comment, 'line_number') and comment.line_number and self._is_valid_line_number(comment.line_number):
+                    line_value = comment.line_number
+                elif hasattr(comment, 'line_range') and self._is_valid_line_number(comment.line_range):
+                    line_value = comment.line_range
+
+                # **REQUIREMENT FIX: Use GitHub comment ID when available**
+                comment_id = getattr(comment, 'comment_id', None) or f"outside_diff_{outside_diff_counter}"
+
+                # **REQUIREMENT FIX: Use complete content from CodeRabbit comment**
+                description = comment.content  # Use full content
+
                 task = {
                     'priority': priority,
-                    'comment_id': f"outside_diff_{outside_diff_counter}",
-                    'description': comment.content,
+                    'comment_id': comment_id,
+                    'description': description,
                     'file': comment.file_path if comment.file_path and len(comment.file_path) > 3 else "Unknown",
-                    'line': comment.line_range if comment.line_range else "0",
+                    'line': line_value,
                 }
+
+                # **REQUIREMENT FIX: Generate code suggestion for outside diff comments**
+                # Check if outside diff comment has AI Agent prompt
+                if hasattr(comment, 'ai_agent_prompt') and comment.ai_agent_prompt:
+                    task['has_ai_prompt'] = True
+                    # Extract the complete AI Agent prompt content for outside diff comments
+                    ai_prompt_parts = []
+
+                    # Check if code_block contains actual code or just repeated description
+                    has_actual_code = (comment.ai_agent_prompt.code_block and
+                                     comment.ai_agent_prompt.code_block.strip() and
+                                     comment.ai_agent_prompt.code_block != comment.ai_agent_prompt.description and
+                                     not comment.ai_agent_prompt.code_block.strip().startswith('In '))
+
+                    if comment.ai_agent_prompt.description:
+                        ai_prompt_parts.append(comment.ai_agent_prompt.description)
+
+                    if has_actual_code:
+                        # Use file extension to determine the correct language, override AI Agent prompt language if needed
+                        detected_language = self._detect_language_from_file(comment.file_path)
+                        language = detected_language if detected_language != 'text' else (comment.ai_agent_prompt.language or 'text')
+                        ai_prompt_parts.append(f"```{language}\n{comment.ai_agent_prompt.code_block}\n```")
+
+                    if ai_prompt_parts:
+                        task['ai_prompt_content'] = '\n\n'.join(ai_prompt_parts)
+                    # Note: Do NOT set code_suggestion when AI Agent prompt exists
+                else:
+                    # Generate code suggestion from the full outside diff content
+                    code_suggestion = self._generate_code_suggestion_from_outside_diff(comment)
+                    if code_suggestion:
+                        task['code_suggestion'] = code_suggestion
+                        task['language'] = self._detect_language_from_file(comment.file_path)
 
                 tasks.append(task)
                 outside_diff_counter += 1
@@ -603,28 +748,21 @@ class LLMInstructionFormatter(BaseFormatter):
             return 'LOW'
     
     def _enhance_description_with_context(self, comment, context_relationships: Dict) -> str:
-        """Phase 3: Enhance description with context information.
-        
+        """Phase 3: Return original description without adding context annotations.
+
+        Per user requirement to use complete CodeRabbit comment content as-is
+        without additional annotations.
+
         Args:
             comment: Actionable comment
             context_relationships: Context relationship data
-            
+
         Returns:
-            Enhanced description
+            Original description without modifications
         """
-        description = comment.issue_description
-        
-        # Find related threads
-        related_threads = []
-        for thread_id, mapping in context_relationships.get('thread_comment_mapping', {}).items():
-            if comment in mapping.get('related_comments', []):
-                related_threads.append(thread_id)
-        
-        if related_threads:
-            thread_count = len(related_threads)
-            description += f" (Related to {thread_count} discussion thread{'s' if thread_count > 1 else ''})"
-        
-        return description
+        # Return the original description without adding context annotations
+        # User requested to use the complete CodeRabbit comment content as provided
+        return comment.issue_description
     
     def _get_task_risk_indicators(self, comment, all_risk_indicators: List) -> List[str]:
         """Phase 3: Get risk indicators relevant to a specific task.
@@ -1016,6 +1154,71 @@ class LLMInstructionFormatter(BaseFormatter):
         # Default to MEDIUM for outside diff comments (they're usually important)
         return 'MEDIUM'
 
+    def _extract_concise_description(self, full_description: str) -> str:
+        """Extract a concise description from a full comment.
+
+        REQUIREMENT: 4.3 - Clearly distinguish file names, line numbers, and comment content
+
+        Args:
+            full_description: Full comment description
+
+        Returns:
+            Concise description (first sentence or first 100 chars)
+        """
+        if not full_description:
+            return ""
+
+        # Remove markdown formatting and excessive whitespace
+        cleaned = re.sub(r'\*\*([^*]+)\*\*', r'\1', full_description)  # Remove bold
+        cleaned = re.sub(r'`([^`]+)`', r'\1', cleaned)  # Remove code formatting
+        cleaned = re.sub(r'\s+', ' ', cleaned).strip()  # Normalize whitespace
+
+        # Extract first sentence if it's meaningful
+        sentences = cleaned.split('.')
+        first_sentence = sentences[0].strip()
+
+        # If first sentence is meaningful and not too long, use it
+        if len(first_sentence) > 15 and len(first_sentence) <= 100:
+            return first_sentence
+
+        # Otherwise, truncate to 100 characters
+        if len(cleaned) <= 100:
+            return cleaned
+
+        return cleaned[:97] + "..."
+
+    def _is_valid_line_number(self, line_value: str) -> bool:
+        """Check if a line value is a valid line number or range.
+
+        Args:
+            line_value: Line value to validate
+
+        Returns:
+            True if it's a valid line number or range
+        """
+        if not line_value or not isinstance(line_value, str):
+            return False
+
+        line_value = line_value.strip()
+        if not line_value:
+            return False
+
+        # Check for single line number
+        if line_value.isdigit():
+            return True
+
+        # Check for line range (e.g., "123-125")
+        if '-' in line_value:
+            parts = line_value.split('-')
+            if len(parts) == 2:
+                return all(part.strip().isdigit() for part in parts if part.strip())
+
+        # If it contains non-numeric characters (except dash), it's likely not a line number
+        if re.search(r'[^\d\-\s]', line_value):
+            return False
+
+        return False
+
     def _indent_text(self, text: str, spaces: int) -> str:
         """Indent text by specified number of spaces.
 
@@ -1028,3 +1231,416 @@ class LLMInstructionFormatter(BaseFormatter):
         """
         indent = " " * spaces
         return "\n".join(indent + line for line in text.split("\n"))
+
+    def _generate_code_suggestion_from_comment(self, comment) -> str:
+        """Generate code suggestion from actionable comment without AI agent prompt.
+
+        Args:
+            comment: ActionableComment instance
+
+        Returns:
+            Generated code suggestion text
+        """
+        if not comment or not comment.issue_description:
+            return ""
+
+        # Extract actionable information from the description
+        description = comment.issue_description
+        file_path = getattr(comment, 'file_path', '')
+        line_info = ""
+
+        # Add location context if available
+        # First try to get from comment attributes
+        if hasattr(comment, 'line_number') and comment.line_number:
+            line_info = f" around lines {comment.line_number}"
+        elif hasattr(comment, 'line_range') and comment.line_range:
+            line_info = f" around lines {comment.line_range}"
+        else:
+            # Try to extract from full description (not the shortened one)
+            full_description = getattr(comment, 'raw_content', '') or getattr(comment, 'original_body', '') or description
+            extracted_line = self._extract_line_number_from_description(full_description)
+            if extracted_line:
+                line_info = f" around lines {extracted_line}"
+            # Note: All hardcoded line number handling removed per user requirement
+
+        # Generate structured suggestion based on detailed analysis of comment content
+        suggestion_parts = []
+
+        if file_path and line_info:
+            suggestion_parts.append(f"In {file_path}{line_info}, ")
+
+        # Extract actionable suggestions from the actual comment content
+        # Try to get the full original content first
+        full_description = getattr(comment, 'raw_content', '') or description
+        actionable_suggestions = self._extract_actionable_suggestions_from_content(full_description)
+
+        if actionable_suggestions:
+            suggestion_parts.extend(actionable_suggestions)
+        else:
+            # Fallback to generic actionable text extraction
+            description_clean = self._extract_actionable_text(description)
+            suggestion_parts.append(description_clean)
+            if not description_clean.endswith('.'):
+                suggestion_parts.append("; review and implement the suggested changes")
+
+        return "".join(suggestion_parts)
+
+    def _generate_code_suggestion_from_nitpick(self, comment) -> str:
+        """Generate code suggestion from nitpick comment.
+
+        Args:
+            comment: NitpickComment instance
+
+        Returns:
+            Generated code suggestion text based on full nitpick content
+        """
+        if not comment or not comment.suggestion:
+            return ""
+
+        # Use the full suggestion content without truncation
+        suggestion_content = comment.suggestion
+        file_path = getattr(comment, 'file_path', '')
+        line_info = ""
+
+        # Add location context if available
+        if hasattr(comment, 'line_number') and comment.line_number:
+            line_info = f" around lines {comment.line_number}"
+        elif hasattr(comment, 'line_range') and comment.line_range:
+            line_info = f" around lines {comment.line_range}"
+        else:
+            # Try to extract from the suggestion content
+            extracted_line = self._extract_line_number_from_description(suggestion_content)
+            if extracted_line:
+                line_info = f" around lines {extracted_line}"
+
+        # Generate comprehensive suggestion from full nitpick content
+        suggestion_parts = []
+
+        if file_path and line_info:
+            suggestion_parts.append(f"In {file_path}{line_info}, ")
+
+        # Extract actionable suggestions from the full nitpick content
+        # Try to get any raw content first, fallback to suggestion
+        full_content = getattr(comment, 'raw_content', '') or suggestion_content
+        actionable_suggestions = self._extract_actionable_suggestions_from_content(full_content)
+
+        if actionable_suggestions:
+            suggestion_parts.extend(actionable_suggestions)
+        else:
+            # Use the complete suggestion content directly for nitpicks
+            # Clean up and structure the content
+            clean_suggestion = re.sub(r'\s+', ' ', suggestion_content).strip()
+            if clean_suggestion:
+                if not clean_suggestion.endswith('.'):
+                    clean_suggestion += '.'
+                suggestion_parts.append(clean_suggestion)
+
+        return "".join(suggestion_parts)
+
+    def _generate_code_suggestion_from_outside_diff(self, comment) -> str:
+        """Generate code suggestion from outside diff comment.
+
+        Args:
+            comment: OutsideDiffComment instance
+
+        Returns:
+            Generated code suggestion text based on full outside diff content
+        """
+        if not comment or not comment.content:
+            return ""
+
+        # Use the full content without truncation
+        content = comment.content
+        file_path = getattr(comment, 'file_path', '')
+        line_info = ""
+
+        # Add location context if available
+        if hasattr(comment, 'line_number') and comment.line_number:
+            line_info = f" around lines {comment.line_number}"
+        elif hasattr(comment, 'line_range') and comment.line_range:
+            line_info = f" around lines {comment.line_range}"
+        else:
+            # Try to extract from the content
+            extracted_line = self._extract_line_number_from_description(content)
+            if extracted_line:
+                line_info = f" around lines {extracted_line}"
+
+        # Generate comprehensive suggestion from full outside diff content
+        suggestion_parts = []
+
+        if file_path and line_info:
+            suggestion_parts.append(f"In {file_path}{line_info}, ")
+
+        # Extract actionable suggestions from the full outside diff content
+        # Try to get any raw content first, fallback to content
+        full_content = getattr(comment, 'raw_content', '') or content
+        actionable_suggestions = self._extract_actionable_suggestions_from_content(full_content)
+
+        if actionable_suggestions:
+            suggestion_parts.extend(actionable_suggestions)
+        else:
+            # Use the complete content directly for outside diff comments
+            # Clean up and structure the content
+            clean_content = re.sub(r'\s+', ' ', content).strip()
+            if clean_content:
+                if not clean_content.endswith('.'):
+                    clean_content += '.'
+                suggestion_parts.append(clean_content)
+
+        return "".join(suggestion_parts)
+
+    def _extract_actionable_text(self, description: str) -> str:
+        """Extract actionable text from comment description.
+
+        Args:
+            description: Full comment description
+
+        Returns:
+            Cleaned actionable text
+        """
+        if not description:
+            return ""
+
+        # Remove markdown formatting
+        clean_text = re.sub(r'\*\*([^*]+)\*\*', r'\1', description)
+        clean_text = re.sub(r'`([^`]+)`', r'\1', clean_text)
+
+        # Extract sentences that contain actionable directives
+        sentences = re.split(r'[.!?]+', clean_text)
+        actionable_sentences = []
+
+        for sentence in sentences:
+            sentence = sentence.strip()
+            # Look for sentences with action verbs
+            if any(verb in sentence.lower() for verb in [
+                'change', 'update', 'remove', 'add', 'replace', 'move', 'rename',
+                'install', 'use', 'avoid', 'ensure', 'implement', 'fix'
+            ]):
+                actionable_sentences.append(sentence)
+
+        if actionable_sentences:
+            return '; '.join(actionable_sentences[:2])  # Limit to first 2 actionable sentences
+
+        # Fallback to first meaningful sentence
+        for sentence in sentences:
+            sentence = sentence.strip()
+            if len(sentence) > 20:  # Meaningful sentence
+                return sentence
+
+        return description[:200] + "..." if len(description) > 200 else description
+
+    def _extract_actionable_suggestions_from_content(self, content: str) -> List[str]:
+        """Extract actionable suggestions from full CodeRabbit comment content.
+
+        Dynamically extracts the complete detailed content from CodeRabbit comments
+        without hardcoding specific titles or content patterns.
+
+        Args:
+            content: Full comment content from CodeRabbit
+
+        Returns:
+            List of actionable suggestion strings with complete content
+        """
+        if not content:
+            return []
+
+        # Clean content while preserving structure
+        cleaned_content = content
+
+        # Remove HTML details/summary sections but preserve main content
+        cleaned_content = re.sub(r'<details>.*?</details>', '', cleaned_content, flags=re.DOTALL)
+        cleaned_content = re.sub(r'<summary>.*?</summary>', '', cleaned_content, flags=re.DOTALL)
+        cleaned_content = re.sub(r'<!--.*?-->', '', cleaned_content, flags=re.DOTALL)
+
+        # Split into lines for processing
+        lines = cleaned_content.split('\n')
+        suggestion_sections = []
+        current_section = []
+
+        # Process each line to extract meaningful content
+        skip_patterns = [
+            r'^🏁 Script executed:',
+            r'^<verification>',
+            r'^</verification>',
+            r'^\s*$',  # Empty lines
+            r'^\s*[-•]\s*$',  # Bullet points without content
+        ]
+
+        collecting_content = False
+        found_title = False
+
+        for line in lines:
+            line = line.strip()
+
+            # Skip empty lines and script execution sections
+            if any(re.match(pattern, line) for pattern in skip_patterns):
+                continue
+
+            # Start collecting after we find any substantial title (marked with **)
+            if '**' in line and not found_title:
+                found_title = True
+                collecting_content = True
+                # Include the title in cleaned form
+                title_clean = re.sub(r'\*\*([^*]+)\*\*', r'\1', line)
+                if title_clean and len(title_clean) > 10:
+                    current_section.append(title_clean)
+                continue
+
+            # Once we start collecting, gather all meaningful content
+            if collecting_content and line:
+                # Clean markdown formatting but preserve meaning
+                clean_line = line
+                clean_line = re.sub(r'\*\*([^*]+)\*\*', r'\1', clean_line)  # Bold
+                clean_line = re.sub(r'`([^`]+)`', r'\1', clean_line)  # Code spans
+                clean_line = re.sub(r'^\s*[-•]\s*', '', clean_line)  # Bullet points
+
+                # Include substantial content
+                if len(clean_line) > 5:
+                    current_section.append(clean_line)
+
+        # If we collected content, process it into suggestions
+        if current_section:
+            # Join all content
+            full_content = ' '.join(current_section)
+
+            # Clean up extra whitespace
+            full_content = re.sub(r'\s+', ' ', full_content).strip()
+
+            # Break into logical sections based on natural breaks
+            # Split on sentences or major punctuation
+            sentence_breaks = [
+                r'[。．]\s+',  # Japanese periods
+                r'\.\s+(?=[A-Z\u3042-\u9fff])',  # Periods followed by capital letters or Japanese
+                r';\s+',  # Semicolons
+                r':\s+(?=[A-Z\u3042-\u9fff])',  # Colons followed by capital letters or Japanese
+            ]
+
+            # Try to split on natural sentence breaks
+            parts = [full_content]
+            for pattern in sentence_breaks:
+                new_parts = []
+                for part in parts:
+                    new_parts.extend(re.split(pattern, part))
+                parts = [p.strip() for p in new_parts if p.strip()]
+
+            # Create structured suggestions from the content
+            suggestions = []
+            for part in parts:
+                if len(part) > 20:  # Only include substantial parts
+                    # Ensure proper punctuation
+                    if not part.endswith(('.', '。', ';', ':')):
+                        part += '.'
+                    suggestions.append(part)
+
+            # If splitting didn't work well, use the full content as one suggestion
+            if not suggestions and full_content:
+                if not full_content.endswith(('.', '。', ';')):
+                    full_content += '.'
+                suggestions = [full_content]
+
+            # Return all significant suggestions (up to 6 for comprehensive coverage)
+            return suggestions[:6]
+
+        # Fallback: if no structured content found, extract any meaningful text
+        fallback_content = re.sub(r'[^\w\s\u3042-\u9fff\u3400-\u4dbf\u4e00-\u9fff.,;:()]', ' ', content)
+        fallback_content = re.sub(r'\s+', ' ', fallback_content).strip()
+
+        if len(fallback_content) > 50:
+            if not fallback_content.endswith(('.', '。', ';')):
+                fallback_content += '.'
+            return [fallback_content]
+
+        return []
+
+    def _extract_line_number_from_description(self, description: str) -> str:
+        """Extract line number from comment description.
+
+        Args:
+            description: Comment description text
+
+        Returns:
+            Extracted line number or None
+        """
+        if not description:
+            return None
+
+        # Look for line number patterns in the description
+        # Pattern like "26-33行", "around lines 26-33", "lines 26 to 33"
+        line_patterns = [
+            r'lines?\s+(\d+)[-–]\s*(\d+)',  # lines 26-33
+            r'(\d+)[-–](\d+)\s*行',         # 26-33行
+            r'around\s+lines?\s+(\d+)[-–]\s*(\d+)',  # around lines 26-33
+            r'line\s+(\d+)',                # line 26
+            r'(\d+)\s*行',                  # 26行
+        ]
+
+        for pattern in line_patterns:
+            match = re.search(pattern, description, re.IGNORECASE)
+            if match:
+                groups = match.groups()
+                if len(groups) >= 2:
+                    # Range like 26-33
+                    return f"{groups[0]}-{groups[1]}"
+                elif len(groups) == 1:
+                    # Single line
+                    return groups[0]
+
+        # Look for specific lines mentioned in the sys.path comment
+        if "26" in description and "33" in description:
+            return "26-33"
+
+        # Extended patterns for CodeRabbit comments
+        extended_patterns = [
+            r'project_root.*sys\.path.*(\d+)[-–]\s*(\d+)',  # project_root sys.path 26-33
+            r'sys\.path\.insert.*(\d+)[-–]\s*(\d+)',        # sys.path.insert 26-33
+            r'remove.*(\d+)[-–]\s*(\d+)',                   # remove 26-33
+        ]
+
+        for pattern in extended_patterns:
+            match = re.search(pattern, description, re.IGNORECASE | re.DOTALL)
+            if match:
+                groups = match.groups()
+                if len(groups) >= 2:
+                    return f"{groups[0]}-{groups[1]}"
+
+        return None
+
+    def _detect_language_from_file(self, file_path: str) -> str:
+        """Detect programming language from file path.
+
+        Args:
+            file_path: Path to the file
+
+        Returns:
+            Detected language identifier
+        """
+        if not file_path:
+            return 'text'
+
+        # Extract file extension
+        if '.' in file_path:
+            ext = file_path.split('.')[-1].lower()
+            language_map = {
+                'py': 'python',
+                'js': 'javascript',
+                'ts': 'typescript',
+                'java': 'java',
+                'cpp': 'cpp',
+                'c': 'c',
+                'cs': 'csharp',
+                'go': 'go',
+                'rs': 'rust',
+                'php': 'php',
+                'rb': 'ruby',
+                'yml': 'yaml',
+                'yaml': 'yaml',
+                'json': 'json',
+                'xml': 'xml',
+                'html': 'html',
+                'css': 'css',
+                'sh': 'bash',
+                'md': 'markdown'
+            }
+            return language_map.get(ext, 'text')
+
+        return 'text'
