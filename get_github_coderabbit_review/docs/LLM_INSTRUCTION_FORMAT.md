@@ -2,11 +2,18 @@
 
 ## 概要
 
-CodeRabbit Comment FetcherのLLM指示フォーマット（`llm-instruction`）は、GitHub PRのCodeRabbitコメントからClaude 4最適化された構造化指示プロンプトを生成します。このフォーマットは、ルールベースの分類と優先度付けエンジンを活用して、豊富なコンテキスト情報を持つ実行可能なタスクリストを提供し、AnthropicのClaude 4ベストプラクティスに準拠しています。
+CodeRabbit Comment FetcherのLLM指示フォーマット（`llm-instruction`）は、**GitHub CLIで取得したPRのCodeRabbitコメントデータを機械的に処理**してClaude 4最適化された構造化指示プロンプトを生成します。この処理は**LLMを一切使用せず**、GitHub APIレスポンスに対する**決定論的なルールベース変換**により、豊富なコンテキスト情報を持つ実行可能なタスクリストを提供し、AnthropicのClaude 4ベストプラクティスに準拠しています。
 
 ## 設計原則
 
-### 🎯 Claude 4ベストプラクティス準拠
+### 🔧 機械的処理の制約
+- **LLM非使用**: システム内部では一切LLMや機械学習を使用せず、純粋に決定論的処理
+- **GitHub CLI依存**: GitHub APIレスポンスをGitHub CLIで取得し、Pythonで機械的に変換
+- **ルールベース変換**: 正規表現、文字列操作、条件分岐のみによるデータ変換
+- **予測可能性**: 同じ入力に対して常に同じ出力を生成する決定論的システム
+- **デバッグ可能性**: 全処理ステップが機械的で追跡・検証が容易
+
+### 🎯 Claude 4ベストプラクティス準拠（出力フォーマット）
 - **XML構造化レスポンス**: Claude 4の望ましいレスポンス形式を示すXMLタグの活用
 - **明示的な指示**: 動機的コンテキストを含む明確で具体的なタスク定義
 - **思考プロセスの組み込み**: 構造化プロンプトによる反省と推論能力のサポート
@@ -14,11 +21,12 @@ CodeRabbit Comment FetcherのLLM指示フォーマット（`llm-instruction`）�
 - **解決志向**: テスト通過より堅牢で汎用的な解決策を重視
 
 ### 🚀 パフォーマンス最適化
-- **トークン効率**: LLM消費に最適化されたストリームライン出力
-- **実行指向**: 具体的なアクション項目とコード修正提案を優先
+- **トークン効率**: LLM消費に最適化されたストリームライン出力、不要な詳細の排除
+- **実行指向**: 具体的なアクション項目とコード修正提案を優先、メタ分析の最小化
 - **追跡可能性**: 説明責任のためのコメントIDベース追跡
 - **多言語サポート**: 英語指示フレームワークで元のCodeRabbitコンテンツ言語を保持
 - **コンテキスト明確性**: 理解向上のための明示的な動機と目標説明
+- **簡潔性**: 要件に必要な最小限の情報のみ含める
 
 ## 出力構造（Claude 4最適化）
 
@@ -458,17 +466,10 @@ Claude 4のペルソナ設定と能力定義を行います。
     - `description`: タスクの簡潔な説明
     - `file`: 対象ファイルパス
     - `line`: 対象行番号または範囲
-    - `impact_analysis` (影響分析)
-      - `problem`: 現在の問題の詳細
-      - `solution_benefit`: 解決策の利益
-      - `effort_estimate`: 作業時間の予想
     - `ai_agent_prompt` (AIエージェントプロンプト)
       - 具体的な実装指示とコード修正手順
       - ファイル、行番号、修正内容の詳細
-      - 後方互換性とエラーハンドリングの考慮事項
-    - `verification_steps` (検証ステップ)
-      - `step`: 個別の検証手順
-      - テストケース、互換性確認、リグレッションテスト
+      - 簡潔で実行可能な指示
 - `implementation_guidance` (実装ガイダンス)
   - `systematic_approach`: 体系的アプローチ
     - 優先度実行: HIGH優先度項目を最初に対処
@@ -499,29 +500,16 @@ Claude 4のペルソナ設定と能力定義を行います。
   </instruction_philosophy>
 
   <primary_tasks parallel_processing="recommended">
-    <task priority='HIGH' comment_id='actionable_0' context_strength='0.85' file_impact='0.97'>
-      <description>str.formatをTemplate.safe_substituteに置換してブレースを含むdiffでのKeyErrorを防止</description>
-      <file>lazygit-llm/src/base_provider.py</file>
-      <line>91-103</line>
-      <impact_analysis>
-        <problem>現在のstr.formatは{}文字を含むJSON/テンプレートdiffで破綻する</problem>
-        <solution_benefit>任意のdiffコンテンツの安全な処理、後方互換性の維持</solution_benefit>
-        <effort_estimate>15分</effort_estimate>
-      </impact_analysis>
-      <ai_agent_prompt>
-        lazygit-llm/src/base_provider.pyの91-103行付近で、_format_prompt
-        は現在raw `{}`を含むdiffでstr.formatを使用して破綻する; これを
-        string.Template.safe_substituteを$diffプレースホルダーで使用するよう変更:
-        prompt_templateを受け入れるようメソッドを更新し、レガシー`{diff}`の
-        出現を検出して`$diff`に置換してからstring.Templateを作成し、
-        safe_substitute({'diff': diff})を呼び出してフォーマットされたプロンプトを生成する。
-      </ai_agent_prompt>
-      <verification_steps>
-        <step>ブレースを含むJSONオブジェクトを持つdiffでテスト</step>
-        <step>既存の{diff}テンプレートとの後方互換性を確認</step>
-        <step>リグレッションがないことを確認するため単体テストを実行</step>
-      </verification_steps>
-    </task>
+      <task comment_id='actionable_0' category='actionable'>
+        <description>例外処理でのカスタム例外クラス使用</description>
+        <file>lazygit-llm/lazygit_llm/api_providers/__init__.py</file>
+        <line>30</line>
+        <ai_agent_prompt>
+          lazygit-llm/lazygit_llm/api_providers/__init__.pyの30行で、長い例外メッセージを
+          カスタム例外クラスに移動する。ProviderNotFoundErrorクラスを定義し、
+          ValueErrorの代わりに使用する。
+        </ai_agent_prompt>
+      </task>
   </primary_tasks>
 
   <implementation_guidance>
@@ -803,6 +791,24 @@ crf https://github.com/yohi/lazygit-llm-commit-generator/pull/2 --output-file pr
 
 ## 技術仕様
 
+### 機械的処理アルゴリズム
+
+**データ取得フロー:**
+1. `gh pr view <url> --json comments,reviews` でRAWデータ取得
+2. JSON解析によるCodeRabbitコメント抽出（`author.login == "coderabbitai"`）
+3. 正規表現による構造化データ抽出（Summary、Actionable、Nitpick等）
+4. 条件分岐による優先度分類（HIGH/MEDIUM/LOW）
+5. テンプレートベースXML生成
+
+**ルールベース優先度分類:**
+- **HIGH**: `security|vulnerability|critical|urgent|breaking` パターンマッチ
+- **MEDIUM**: `error|bug|issue|problem|failure|fix` パターンマッチ
+- **LOW**: `style|formatting|convention|documentation` パターンマッチ
+
+**決定論的処理:**
+- 同一PRに対して常に同一XML出力を生成
+- ランダム性や学習による変動は一切なし
+
 ### コメントID生成
 
 - **レビューコメント**: `actionable_N` (Nは連番)
@@ -818,8 +824,8 @@ crf https://github.com/yohi/lazygit-llm-commit-generator/pull/2 --output-file pr
 ### パフォーマンス特性
 
 - **メモリ効率**: ストリーミング処理でメモリ使用量を最小化
-- **処理速度**: 大規模PRでも数秒で処理完了
-- **並列化**: 独立タスクの並列実行推奨
+- **処理速度**: 大規模PRでも数秒で処理完了（GitHub CLI呼び出し時間除く）
+- **並列化**: 独立タスクの並列実行推奨（出力XML内での指示）
 
 ## 専門用途向けカスタマイズ
 
@@ -913,6 +919,11 @@ jobs:
 2. **CodeRabbitコメント**: CodeRabbitによるコメントのみ処理対象
 3. **XMLサイズ**: 非常に大きなPRの場合、出力サイズが大きくなる可能性
 4. **言語サポート**: コード提案の言語検出は基本的なヒューリスティクス
+5. **機械的処理の限界**:
+   - 複雑なコンテキスト理解や推論は不可能
+   - 正規表現とキーワードマッチのみによる分類
+   - CodeRabbitコメントの構造変更に脆弱
+   - LLMのような柔軟な解釈は一切不可
 
 ## トラブルシューティング
 
