@@ -1,0 +1,360 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coderabbit_instructions generated="2025-01-18T10:30:00Z">
+  <!-- Agent Context: Establishes clear role and capabilities -->
+  <agent_context>
+    <persona language="english">
+      # Senior Software Development Consultant
+
+      ## Role Definition
+      You are a seasoned software development consultant specializing in code quality, security, and architectural excellence. Your expertise spans multiple programming languages, frameworks, and industry best practices.
+
+      ## Core Competencies
+      - **Code Quality Analysis**: Identify maintainability, readability, and performance issues
+      - **Security Assessment**: Detect vulnerabilities and recommend secure coding practices
+      - **Architecture Review**: Evaluate design patterns and structural improvements
+      - **Best Practice Enforcement**: Ensure adherence to industry standards and conventions
+
+      ## Task Execution Approach
+      1. **Systematic Analysis**: Address issues by priority level (HIGH → MEDIUM → LOW)
+      2. **Contextual Solutions**: Provide solutions that consider the broader codebase context
+      3. **Actionable Recommendations**: Deliver specific, implementable improvements
+      4. **Educational Value**: Explain the "why" behind each recommendation
+
+      ## Output Requirements
+      Your response should be structured in &lt;analysis_sections&gt; tags with:
+      - Clear problem identification
+      - Specific solution recommendations
+      - Implementation guidance
+      - Impact assessment
+    </persona>
+
+    <thinking_guidance>
+      Use interleaved thinking throughout your analysis:
+      - Reflect after examining each code issue
+      - Consider relationships between different problems
+      - Evaluate solution trade-offs before recommending
+      - Think about long-term maintainability implications
+    </thinking_guidance>
+
+    <capabilities>
+      <capability>Multi-language code analysis and review</capability>
+      <capability>Security vulnerability identification</capability>
+      <capability>Performance optimization recommendations</capability>
+      <capability>Architecture and design pattern evaluation</capability>
+      <capability>Best practice enforcement and education</capability>
+    </capabilities>
+  </agent_context>
+
+  <!-- Task Definition: Explicit instructions with motivational context -->
+  <task_overview>
+    <objective>Transform CodeRabbit feedback into systematic code quality improvements</objective>
+
+    <motivation>
+      Code review feedback represents critical insights for maintaining high-quality, secure, and maintainable software.
+      Each recommendation addresses specific technical debt, security concerns, or performance opportunities that directly
+      impact user experience and development velocity.
+    </motivation>
+
+    <scope_analysis>
+      <total_comments>2</total_comments>
+      <actionable_items>7</actionable_items>
+      <priority_distribution>
+        <high_priority>2</high_priority>      <!-- Security, critical errors -->
+        <medium_priority>3</medium_priority>  <!-- Performance, best practices -->
+        <low_priority>2</low_priority>         <!-- Style, documentation -->
+      </priority_distribution>
+      <impact_assessment>
+        <files_affected>4</files_affected>
+        <estimated_effort>1-2 hours</estimated_effort>
+        <risk_level>Medium</risk_level>
+      </impact_assessment>
+    </scope_analysis>
+
+    <execution_strategy>
+      <approach>Systematic priority-based implementation with parallel processing for independent tasks</approach>
+      <priority_order>HIGH (security/critical) → MEDIUM (performance/practices) → LOW (style/docs)</priority_order>
+      <parallel_opportunities>Independent file modifications, documentation updates, test additions</parallel_opportunities>
+      <verification_requirements>Test thoroughly, validate security improvements, check performance impact</verification_requirements>
+    </execution_strategy>
+  </task_overview>
+
+  <!-- Execution Framework: Structured for parallel processing -->
+  <execution_instructions>
+    <instruction_philosophy>
+      <!-- Claude 4 Best Practice: Tell what TO do, not what to avoid -->
+      Focus on positive, constructive improvements rather than problem identification alone.
+      Each task should provide clear implementation guidance with expected outcomes.
+    </instruction_philosophy>
+
+    <primary_tasks parallel_processing="recommended">
+      <task priority='HIGH' comment_id='actionable_0' context_strength='0.95' file_impact='0.90'>
+        <description>Fix exception handling - remove unused variable 'e' in exception blocks</description>
+        <file>lazygit-llm/lazygit_llm/main.py</file>
+        <line>179, 184</line>
+        <impact_analysis>
+          <problem>Local variables 'e' are assigned but never used in exception handlers</problem>
+          <solution_benefit>Cleaner code, removes linting warnings, follows Python best practices</solution_benefit>
+          <effort_estimate>5 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/main.py at lines 179 and 184, remove the unused variable 'e'
+          from exception handlers. Change "except ProviderTimeoutError as e:" to "except ProviderTimeoutError:"
+          and similar pattern for other exception handlers where the exception variable is not used.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Run linter to confirm removal of F841 warnings</step>
+          <step>Test exception handling still works correctly</step>
+          <step>Verify no functional changes in error behavior</step>
+        </verification_steps>
+      </task>
+
+      <task priority='HIGH' comment_id='actionable_1' context_strength='0.90' file_impact='0.85'>
+        <description>Move return statement to else block for clearer try-except structure</description>
+        <file>lazygit-llm/lazygit_llm/main.py</file>
+        <line>176-178</line>
+        <impact_analysis>
+          <problem>Return statement placement could be clearer in try-except structure</problem>
+          <solution_benefit>Improved code readability and explicit success path indication</solution_benefit>
+          <effort_estimate>5 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/main.py around lines 176-178, move the "return 0" statement
+          to an else block after the try-except structure to make the success path more explicit.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Verify function behavior remains unchanged</step>
+          <step>Check that success and error paths are clearly separated</step>
+          <step>Test all execution paths work as expected</step>
+        </verification_steps>
+      </task>
+
+      <task priority='MEDIUM' comment_id='actionable_2' context_strength='0.75' file_impact='0.70'>
+        <description>Replace long exception messages with custom exception classes</description>
+        <file>lazygit-llm/lazygit_llm/api_providers/__init__.py</file>
+        <line>30</line>
+        <impact_analysis>
+          <problem>Long error messages specified outside exception class violate TRY003 rule</problem>
+          <solution_benefit>Better error handling architecture, improved maintainability</solution_benefit>
+          <effort_estimate>15 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/api_providers/__init__.py at line 30, create a custom
+          ProviderNotFoundError exception class and move the long error message into the class
+          definition instead of specifying it inline with ValueError.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Define custom exception class with descriptive message</step>
+          <step>Update error raising code to use new exception</step>
+          <step>Test error handling behavior is preserved</step>
+        </verification_steps>
+      </task>
+
+      <task priority='MEDIUM' comment_id='actionable_3' context_strength='0.75' file_impact='0.70'>
+        <description>Replace long exception messages with custom exception classes</description>
+        <file>lazygit-llm/lazygit_llm/cli_providers/__init__.py</file>
+        <line>29</line>
+        <impact_analysis>
+          <problem>Long error messages specified outside exception class violate TRY003 rule</problem>
+          <solution_benefit>Consistent error handling pattern across providers</solution_benefit>
+          <effort_estimate>15 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/cli_providers/__init__.py at line 29, create a custom
+          CLIProviderNotFoundError exception class and move the long error message into the class
+          definition instead of specifying it inline with ValueError.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Define custom exception class with descriptive message</step>
+          <step>Update error raising code to use new exception</step>
+          <step>Ensure consistency with api_providers error handling</step>
+        </verification_steps>
+      </task>
+
+      <task priority='MEDIUM' comment_id='actionable_4' context_strength='0.65' file_impact='0.60'>
+        <description>Improve exception handling in base_provider.py</description>
+        <file>lazygit-llm/lazygit_llm/base_provider.py</file>
+        <line>92-94</line>
+        <impact_analysis>
+          <problem>Abstract raise pattern and logging.error instead of logging.exception</problem>
+          <solution_benefit>Better error reporting with stack traces, cleaner exception handling</solution_benefit>
+          <effort_estimate>10 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/base_provider.py at lines 92-94, abstract the raise statement
+          to an inner function and replace logging.error with logging.exception for better stack trace capture.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Create inner function for exception raising</step>
+          <step>Update logging call to use exception() method</step>
+          <step>Test that stack traces are properly captured</step>
+        </verification_steps>
+      </task>
+
+      <task priority='LOW' comment_id='actionable_5' context_strength='0.50' file_impact='0.40'>
+        <description>Fix docstring formatting - replace full-width parentheses with half-width</description>
+        <file>lazygit-llm/lazygit_llm/api_providers/__init__.py</file>
+        <line>47</line>
+        <impact_analysis>
+          <problem>Docstring contains ambiguous full-width parentheses characters</problem>
+          <solution_benefit>Consistent documentation formatting, better tool compatibility</solution_benefit>
+          <effort_estimate>2 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/api_providers/__init__.py at line 47, replace the full-width
+          parentheses （） in the docstring with standard half-width parentheses ().
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Update docstring formatting</step>
+          <step>Check documentation generation works correctly</step>
+          <step>Verify no encoding issues</step>
+        </verification_steps>
+      </task>
+
+      <task priority='LOW' comment_id='actionable_6' context_strength='0.50' file_impact='0.40'>
+        <description>Fix docstring formatting and sort __all__ list</description>
+        <file>lazygit-llm/lazygit_llm/cli_providers/__init__.py</file>
+        <line>46, 51</line>
+        <impact_analysis>
+          <problem>Docstring formatting issue and unsorted __all__ list</problem>
+          <solution_benefit>Consistent code style, improved maintainability</solution_benefit>
+          <effort_estimate>3 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/cli_providers/__init__.py, fix line 46 docstring by replacing
+          full-width parentheses with half-width ones, and sort the __all__ list alphabetically at line 51.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Update docstring formatting</step>
+          <step>Sort __all__ list alphabetically</step>
+          <step>Run import tests to ensure no issues</step>
+        </verification_steps>
+      </task>
+    </primary_tasks>
+
+    <implementation_guidance>
+      <systematic_approach>
+        1. **Priority Execution**: Address HIGH priority items first - they often block other improvements
+        2. **Parallel Opportunities**: Independent file changes can be implemented simultaneously
+        3. **Context Preservation**: Maintain existing code style and architectural patterns
+        4. **Incremental Validation**: Test each change before proceeding to the next
+      </systematic_approach>
+
+      <solution_requirements>
+        <!-- Claude 4 Best Practice: Focus on robust, general solutions -->
+        - Implement solutions that work for all valid inputs, not just test cases
+        - Consider edge cases and error handling in all modifications
+        - Ensure solutions are maintainable and follow established patterns
+        - Document any architectural decisions or trade-offs made
+      </solution_requirements>
+
+      <quality_standards>
+        <code_quality>Follow existing conventions, maintain readability, add appropriate comments</code_quality>
+        <security>Validate all inputs, avoid introduction of new vulnerabilities</security>
+        <performance>Consider impact on execution speed and memory usage</performance>
+        <maintainability>Write code that future developers can easily understand and modify</maintainability>
+      </quality_standards>
+    </implementation_guidance>
+  </execution_instructions>
+
+  <!-- Rich Context: Supporting detailed reasoning -->
+  <context_data>
+    <summary_information>
+      <summary>
+        <content>
+LazyGit LLM Commit Message Generator の基本プロジェクト構造を実装：
+
+- LazyGit LLM専用ディレクトリ構造作成 (lazygit-llm/)
+- ベースプロバイダーインターフェース定義 (base_provider.py)
+- メインエントリーポイント作成 (main.py)
+- API/CLIプロバイダーディレクトリとレジストリ作成
+- 設定ファイル例・setup.py・requirements.txt作成
+- 日本語コメント完備、Google Style Guide準拠
+- デグレチェック完了: 既存ファイル保護確認済み
+- タスクリスト更新: .specs/tasks.md L3-9
+        </content>
+        <walkthrough>
+Task-01: Set up project structure and core interfaces
+Requirements: 1.1, 2.1, 5.1
+Design-ref: .specs/design.md
+Affected: lazygit-llm/ (new), .specs/tasks.md
+Test: 基本構造作成完了
+        </walkthrough>
+      </summary>
+    </summary_information>
+
+    <thread_contexts>
+      <thread id='review_thread_main' resolved='false'>
+        <file_context>Multiple files</file_context>
+        <line_context>Various</line_context>
+        <inline_comments>
+          <comment id='coderabbit_review_main'>
+            <author>coderabbitai[bot]</author>
+            <content>
+**Actionable comments posted: 7**
+
+🧹 Nitpick comments (2)
+
+lazygit-llm/lazygit_llm/api_providers/__init__.py (2)
+- `47-47`: **docstring内の全角括弧を半角に修正**
+- `51-51`: **__all__のソート順を修正**
+
+lazygit-llm/lazygit_llm/cli_providers/__init__.py (2)
+- `46-46`: **docstring内の全角括弧を半角に修正**
+- `51-51`: **__all__のソート順を修正**
+
+🔇 Additional comments (1)
+
+lazygit-llm/lazygit_llm/main.py (1)
+- `27-31`: **インポート先が見つかりません — 修正/確認が必要**
+
+Ruff (0.12.2) violations:
+- TRY003: Avoid specifying long messages outside the exception class
+- RUF002: Docstring contains ambiguous characters
+- RUF022: __all__ is not sorted
+- TRY301: Abstract raise to an inner function
+- TRY400: Use logging.exception instead of logging.error
+- TRY300: Consider moving statement to else block
+- F841: Local variable assigned but never used
+            </content>
+            <timestamp>2025-01-17T09:19:00Z</timestamp>
+          </comment>
+        </inline_comments>
+        <structured_data>
+          {
+            "thread_id": "review_thread_main",
+            "participants": ["coderabbitai[bot]", "yohi"],
+            "context_summary": "CodeRabbit review of project structure implementation with actionable comments about code quality and linting issues",
+            "resolution_status": "unresolved",
+            "last_activity": "2025-01-17T09:19:00Z"
+          }
+        </structured_data>
+      </thread>
+
+      <thread id='import_issues_thread' resolved='false'>
+        <file_context>lazygit-llm/lazygit_llm/main.py</file_context>
+        <line_context>27-31</line_context>
+        <inline_comments>
+          <comment id='missing_imports_comment'>
+            <author>coderabbitai[bot]</author>
+            <content>
+**インポート先が見つかりません — 修正/確認が必要**
+
+lazygit-llm/lazygit_llm/main.py（27–31行）で ConfigManager, GitDiffProcessor, ProviderFactory, MessageFormatter をインポートしていますが、リポジトリ内に対応するモジュールファイルが見つかりません（確認できるのは __init__.py、base_provider.py、api_providers、cli_providers、main.py のみ）。
+対応案: 実装ファイルを追加する、インポートパスを正しい場所に修正する、またはこれらが外部依存であることを明記してください。
+            </content>
+            <timestamp>2025-01-17T09:19:00Z</timestamp>
+          </comment>
+        </inline_comments>
+        <structured_data>
+          {
+            "thread_id": "import_issues_thread",
+            "participants": ["coderabbitai[bot]"],
+            "context_summary": "Missing import modules issue requiring either implementation or path correction",
+            "resolution_status": "unresolved",
+            "last_activity": "2025-01-17T09:19:00Z"
+          }
+        </structured_data>
+      </thread>
+    </thread_contexts>
+  </context_data>
+</coderabbit_instructions>

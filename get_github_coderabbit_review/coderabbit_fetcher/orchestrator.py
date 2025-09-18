@@ -418,7 +418,13 @@ class CodeRabbitOrchestrator:
         try:
             start_time = time.time()
 
-            formatter = self.formatters.get(self.config.output_format)
+            # In quiet mode, force use of MarkdownFormatter for simplified XML output
+            if self.config.quiet:
+                formatter = self.formatters.get('markdown')
+                logger.debug("Using MarkdownFormatter for quiet mode")
+            else:
+                formatter = self.formatters.get(self.config.output_format)
+            
             if not formatter:
                 raise CodeRabbitFetcherError(f"Unsupported output format: {self.config.output_format}")
 

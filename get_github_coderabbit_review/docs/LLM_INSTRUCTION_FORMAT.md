@@ -2,7 +2,7 @@
 
 ## 概要
 
-CodeRabbit Comment FetcherのLLM指示フォーマット（`llm-instruction`）は、**GitHub CLIで取得したPRのCodeRabbitコメントデータを機械的に処理**してClaude 4最適化された構造化指示プロンプトを生成します。この処理は**LLMを一切使用せず**、GitHub APIレスポンスに対する**決定論的なルールベース変換**により、豊富なコンテキスト情報を持つ実行可能なタスクリストを提供し、AnthropicのClaude 4ベストプラクティスに準拠しています。
+CodeRabbit Comment FetcherのLLM指示フォーマット（`llm-instruction`）は、**GitHub CLIで取得したPRのCodeRabbitコメントデータを機械的に処理**してClaude 4最適化された構造化指示プロンプトを生成します。この処理は**LLMを一切使用せず**、GitHub APIレスポンスに対する**決定論的なルールベース変換**により、豊富なコンテキスト情報を持つ実行可能なタスクリストを提供し、[Claude 4ベストプラクティス](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/claude-4-best-practices.md)に完全準拠しています。
 
 ## 設計原則
 
@@ -14,11 +14,14 @@ CodeRabbit Comment FetcherのLLM指示フォーマット（`llm-instruction`）�
 - **デバッグ可能性**: 全処理ステップが機械的で追跡・検証が容易
 
 ### 🎯 Claude 4ベストプラクティス準拠（出力フォーマット）
-- **XML構造化レスポンス**: Claude 4の望ましいレスポンス形式を示すXMLタグの活用
-- **明示的な指示**: 動機的コンテキストを含む明確で具体的なタスク定義
-- **思考プロセスの組み込み**: 構造化プロンプトによる反省と推論能力のサポート
-- **並列処理**: 同時ツール呼び出しに最適化
-- **解決志向**: テスト通過より堅牢で汎用的な解決策を重視
+**[Claude 4公式ガイダンス](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/claude-4-best-practices.md)完全準拠:**
+- **明示的指示**: "何をすべきか"を明確に指示（"避けるべきこと"ではなく）
+- **動機的コンテキスト**: 行動の重要性を説明して理解を促進
+- **XML形式指示子**: レスポンス構造をガイドするXMLタグの活用
+- **thinking & interleaved thinking**: 反省と推論能力のサポート
+- **並列ツール実行**: 同時ツール呼び出しに最適化
+- **汎用的解決策**: テスト通過より堅牢で一般化された解決策を重視
+- **詳細と品質向上**: "Go beyond the basics"の精神でプロンプト設計
 
 ### 🚀 パフォーマンス最適化
 - **トークン効率**: LLM消費に最適化されたストリームライン出力、不要な詳細の排除
@@ -32,36 +35,75 @@ CodeRabbit Comment FetcherのLLM指示フォーマット（`llm-instruction`）�
 
 ### Claude 4ベストプラクティスに準拠したXMLスキーマ
 
+**[Claude 4公式ガイダンス](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/claude-4-best-practices.md)準拠の設計要素:**
+- **明示的指示**: "何をすべきか"を具体的に指示
+- **動機的コンテキスト**: 作業の重要性を説明
+- **XML形式指示子**: レスポンス構造の明確な指定
+- **並列ツール実行**: 複数操作の同時実行推奨
+- **汎用的解決策**: 堅牢で一般化された実装推奨
+
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <coderabbit_instructions generated="ISO8601_TIMESTAMP">
   <!-- Agent Context: Establishes clear role and capabilities -->
   <agent_context>
-    <persona language="english">Your response should be composed of thoughtful, comprehensive analysis in <analysis_sections> tags</persona>
-    <thinking_guidance>Leverage interleaved thinking - reflect after each analysis step</thinking_guidance>
-    <capabilities>Code analysis, issue prioritization, solution generation</capabilities>
+    <persona language="english">
+      Your response should be composed of thoughtful, comprehensive analysis in <analysis_sections> tags.
+      Go beyond the basics to create a fully-featured implementation.
+      Include as many relevant features and interactions as possible.
+    </persona>
+    <thinking_guidance>
+      After receiving tool results, carefully reflect on their quality and determine optimal next steps before proceeding.
+      Use your thinking to plan and iterate based on this new information, and then take the best next action.
+    </thinking_guidance>
+    <parallel_tool_guidance>
+      For maximum efficiency, whenever you need to perform multiple independent operations,
+      invoke all relevant tools simultaneously rather than sequentially.
+    </parallel_tool_guidance>
+    <capabilities>Code analysis, issue prioritization, solution generation, multi-format output</capabilities>
   </agent_context>
 
   <!-- Task Definition: Explicit instructions with motivational context -->
   <task_overview>
-    <objective>Transform CodeRabbit feedback into actionable development improvements</objective>
-    <motivation>Enhance code quality, security, and maintainability through systematic review implementation</motivation>
-    <execution_approach>Address systematically by priority, invoke relevant tools simultaneously</execution_approach>
-    <statistics>Quantified scope and impact metrics</statistics>
+    <objective>Transform CodeRabbit feedback into systematic code quality improvements</objective>
+    <motivation>
+      Each recommendation addresses specific technical debt, security concerns, or performance opportunities
+      that directly impact user experience and development velocity. Your implementation should work correctly
+      for all valid inputs, not just test cases.
+    </motivation>
+    <execution_approach>
+      Address systematically by priority, invoke relevant tools simultaneously, implement robust solutions
+    </execution_approach>
+    <statistics>Quantified scope and impact metrics with detailed categorization</statistics>
   </task_overview>
 
   <!-- Execution Framework: Structured for parallel processing -->
   <execution_instructions>
-    <instruction_format>Tell Claude what to do, not what to avoid</instruction_format>
-    <primary_tasks priority_based="true">Concrete, actionable items with context</primary_tasks>
-    <solution_requirements>Focus on robust, general solutions for all valid inputs</solution_requirements>
+    <instruction_philosophy>
+      Tell Claude what to do, not what to avoid. Focus on robust, general solutions that work for all valid inputs.
+      Implement the actual logic that solves the problem generally, not just specific test cases.
+    </instruction_philosophy>
+    <primary_tasks priority_based="true">
+      Concrete, actionable items with context, including Summary processing, Comment classification,
+      AI Agent prompts, Thread analysis, and Resolved marker management
+    </primary_tasks>
+    <solution_requirements>
+      Provide a principled implementation that follows best practices and software design principles.
+      The solution should be robust, maintainable, and extendable.
+    </solution_requirements>
+    <file_cleanup_guidance>
+      If you create any temporary new files, scripts, or helper files for iteration,
+      clean up these files by removing them at the end of the task.
+    </file_cleanup_guidance>
   </execution_instructions>
 
   <!-- Rich Context: Supporting detailed reasoning -->
   <context_data>
-    <coderabbit_analysis>Original CodeRabbit insights preserved</coderabbit_analysis>
-    <thread_relationships>Inter-comment dependencies and resolution status</thread_relationships>
-    <ai_agent_prompts>Specialized prompts for specific improvements</ai_agent_prompts>
+    <summary_information>Complete Summary by CodeRabbit content with structured data</summary_information>
+    <review_classification>Actionable, Nitpick, and Outside diff range comments with categorization</review_classification>
+    <thread_relationships>Inter-comment dependencies, chronological order, and resolution status</thread_relationships>
+    <ai_agent_prompts>Specialized prompts for specific improvements with preserved code blocks</ai_agent_prompts>
+    <resolved_markers>Detection and management of resolution status indicators</resolved_markers>
   </context_data>
 </coderabbit_instructions>
 ```
@@ -793,25 +835,60 @@ crf https://github.com/yohi/lazygit-llm-commit-generator/pull/2 --output-file pr
 
 ### 機械的処理アルゴリズム
 
-**データ取得フロー:**
+**Requirements.mdとDesign.md準拠のデータ取得フロー:**
 1. `gh pr view <url> --json comments,reviews` でRAWデータ取得
-2. JSON解析によるCodeRabbitコメント抽出（`author.login == "coderabbitai"`）
-3. 正規表現による構造化データ抽出（Summary、Actionable、Nitpick等）
-4. 条件分岐による優先度分類（HIGH/MEDIUM/LOW）
-5. テンプレートベースXML生成
+2. JSON解析によるCodeRabbitコメント抽出（`author.login == "coderabbitai[bot]"`）
+3. **Summary Comment処理** (Requirement 3):
+   - "Summary by CodeRabbit"セクション抽出
+   - New Features/Documentation/Tests分離
+   - Walkthrough内容抽出
+   - Changes Table構造化
+   - Sequence Diagrams（Mermaid）抽出
+4. **Review Comment分類** (Requirement 5):
+   - "Actionable comments posted"件数抽出
+   - "🧹 Nitpick comments"分類
+   - "⚠️ Outside diff range comments"分類
+   - 各コメントタイプの視覚的区別マーカー付与
+5. **AI Agent Prompt処理** (Requirement 9):
+   - "🤖 Prompt for AI Agents"セクション特別抽出
+   - コードブロック内容as-is保持
+   - 専用視覚的区別マーカー付与
+6. **Thread Context分析** (Requirement 10):
+   - スレッド構造全体分析
+   - 時系列CodeRabbitコメント整理
+   - main comments/replies/resolution status区別
+7. **Resolved Marker検出** (Requirement 8.2):
+   - "🔒 CODERABBIT_RESOLVED 🔒"パターンマッチ
+   - CodeRabbitの最終返信での解決マーカー確認
+   - 解決済みコメント除外処理
+8. 条件分岐による優先度分類（HIGH/MEDIUM/LOW）
+9. テンプレートベースXML生成
 
-**ルールベース優先度分類:**
-- **HIGH**: `security|vulnerability|critical|urgent|breaking` パターンマッチ
-- **MEDIUM**: `error|bug|issue|problem|failure|fix` パターンマッチ
-- **LOW**: `style|formatting|convention|documentation` パターンマッチ
+**Design.md準拠のプロセッサー分類:**
+- **SummaryProcessor**: Summary by CodeRabbit全セクション処理
+- **ReviewProcessor**: Actionable/Nitpick/Outside diff分類処理
+- **ThreadProcessor**: スレッド構造と時系列分析
+
+**ルールベース優先度分類（拡張版）:**
+- **HIGH**: `security|vulnerability|critical|urgent|breaking|exception|error` パターンマッチ
+- **MEDIUM**: `bug|issue|problem|failure|fix|performance|best.*practice` パターンマッチ
+- **LOW**: `style|formatting|convention|documentation|nitpick` パターンマッチ
 
 **決定論的処理:**
 - 同一PRに対して常に同一XML出力を生成
 - ランダム性や学習による変動は一切なし
+- 全プロセッサーが決定論的ルールベース処理
 
-### コメントID生成
+### コメントID生成（Requirements.md準拠）
 
-- **レビューコメント**: `actionable_N` (Nは連番)
+**Requirements.md準拠の包括的ID管理:**
+- **Summary Comments**: `summary_N` (Nは連番)
+- **Actionable Comments**: `actionable_N` (Nは連番)
+- **Nitpick Comments**: `nitpick_N` (Nは連番)
+- **Outside Diff Comments**: `outside_diff_N` (Nは連番)
+- **AI Agent Prompts**: `ai_agent_N` (Nは連番)
+- **Thread Contexts**: `thread_N` (Nは連番)
+- **Resolved Markers**: `resolved_N` (Nは連番)
 - **インラインコメント**: GitHub APIから提供される実際のコメントID
 - **スレッド**: GitHub APIから提供される実際のスレッドID
 
@@ -915,15 +992,23 @@ jobs:
 
 ## 制限事項
 
+**技術的制約:**
 1. **GitHub CLI依存**: GitHub CLIの認証と設定が必要
 2. **CodeRabbitコメント**: CodeRabbitによるコメントのみ処理対象
 3. **XMLサイズ**: 非常に大きなPRの場合、出力サイズが大きくなる可能性
 4. **言語サポート**: コード提案の言語検出は基本的なヒューリスティクス
-5. **機械的処理の限界**:
-   - 複雑なコンテキスト理解や推論は不可能
-   - 正規表現とキーワードマッチのみによる分類
-   - CodeRabbitコメントの構造変更に脆弱
-   - LLMのような柔軟な解釈は一切不可
+
+**機械的処理の限界（LLM非使用制約）:**
+- **複雑なコンテキスト理解**: 意味的解釈や推論は不可能
+- **正規表現とキーワードマッチのみ**: 分類ロジックは決定論的ルールベース
+- **CodeRabbitフォーマット依存**: コメント構造変更に脆弱
+- **LLMのような柔軟性なし**: 自然言語理解は一切不可
+
+**Requirements.md/Design.md準拠での追加制約:**
+- **Summary構造解析**: 表形式データの複雑な解析は正規表現に依存
+- **Thread関係性**: 時系列分析は API timestamp に依存
+- **AI Agent Prompt抽出**: マークダウンコードブロック形式に依存
+- **Resolved Marker検出**: 特定文字列パターンのみ検出可能
 
 ## トラブルシューティング
 
@@ -945,11 +1030,27 @@ crf https://github.com/owner/repo/pull/123 --show-stats
 
 ## バージョン情報
 
-- **現在のバージョン**: 1.0.0
-- **対応Claude版**: Claude 4最適化
-- **XML仕様**: XML 1.0
+- **現在のバージョン**: 2.0.0
+- **対応Claude版**: Claude 4最適化（[Claude 4ベストプラクティス](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/claude-4-best-practices.md)完全準拠）
+- **要件準拠**: Requirements.md + Design.md完全対応
+- **XML仕様**: XML 1.0標準準拠
 - **文字セット**: UTF-8
+- **アーキテクチャ**: SummaryProcessor + ReviewProcessor + ThreadProcessor
+
+## 更新履歴
+
+### v2.0.0 - Requirements.md/Design.md完全準拠版
+- **Summary Comment処理**: New Features/Documentation/Tests/Walkthrough/Changes Table対応
+- **Review Comment分類**: Actionable/Nitpick/Outside diff range完全分類
+- **AI Agent Prompt処理**: 🤖マーク付きセクション特別処理
+- **Thread Context分析**: スレッド構造・時系列・解決状況管理
+- **Resolved Marker管理**: 🔒 CODERABBIT_RESOLVED 🔒検出・除外
+- **Claude 4ベストプラクティス**: 明示的指示・動機的コンテキスト・並列処理・汎用解決策
+- **3プロセッサーアーキテクチャ**: SummaryProcessor/ReviewProcessor/ThreadProcessor
+
+### v1.0.0 - 初期版
+- 基本的なCodeRabbitコメント抽出機能
 
 ---
 
-*このドキュメントは、CodeRabbit Comment Fetcher v1.0.0のLLM指示プロンプト機能について記述しています。*
+*このドキュメントは、CodeRabbit Comment Fetcher v2.0.0のLLM指示プロンプト機能について記述しています。Requirements.md、Design.md、および[Claude 4ベストプラクティス](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/claude-4-best-practices.md)に完全準拠しています。*
