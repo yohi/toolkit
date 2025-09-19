@@ -261,23 +261,19 @@ the ccusage command fails.
 
 ## Nitpick Comments (5 total)
 
-### Nitpick 1: mk/help.mk:27-28 Issue
+### Nitpick 1: mk/variables.mk:19-20 Issue
 **Issue**: Style/quality suggestion
 **Suggestion**: Code improvement
 
 **Proposed Diff**:
 ```diff
-@echo "  make install-packages-playwright      - Playwright E2Eテストフレームワークをインストール"
-  @echo "  make install-packages-gemini-cli      - Gemini CLIをインストール"
-  @echo "  make install-packages-ccusage         - ccusage (bunx) をインストール"
-+ @echo "  make install-ccusage                  - ccusage をインストール（後方互換エイリアス）"
+-        fonts-setup fonts-install fonts-install-nerd fonts-install-google fonts-install-japanese fonts-clean fonts-update fonts-list fonts-refresh fonts-debug fonts-backup fonts-configure \
+-        install-gemini-cli install-packages-ccusage install-ccusage
++        fonts-setup fonts-install fonts-install-nerd fonts-install-google fonts-install-japanese fonts-clean fonts-update fonts-list fonts-refresh fonts-debug fonts-backup fonts-configure \
++        install-gemini-cli install-packages-gemini-cli install-packages-ccusage install-ccusage
 ```
 
-### Nitpick 2: mk/install.mk:1392-1399 Issue
-**Issue**: Style/quality suggestion
-**Suggestion**: Code improvement
-
-### Nitpick 3: mk/setup.mk:543-545 Issue
+### Nitpick 2: mk/setup.mk:543-545 Issue
 **Issue**: Style/quality suggestion
 **Suggestion**: Code improvement
 
@@ -305,27 +301,33 @@ the ccusage command fails.
 +    fi
 ```
 
-### Nitpick 4: mk/setup.mk:565-569 Issue
+### Nitpick 3: mk/setup.mk:599-602 Issue
 **Issue**: Style/quality suggestion
 **Suggestion**: Code improvement
 
 **Proposed Diff**:
 ```diff
--    @echo "✅ Claude設定が完了しました。"
-+    @echo "✅ Claude設定が完了しました（保存先は ~/.claude 配下です）。"
+-# 設定ファイル・コンフィグセットアップ系
+-setup-config-claude: setup-claude
+-setup-config-lazygit: setup-lazygit
++# （重複定義削除）上部の階層ターゲット群に集約
 ```
 
-### Nitpick 5: mk/variables.mk:19-20 Issue
+### Nitpick 4: mk/help.mk:27-28 Issue
 **Issue**: Style/quality suggestion
 **Suggestion**: Code improvement
 
 **Proposed Diff**:
 ```diff
--        fonts-setup fonts-install fonts-install-nerd fonts-install-google fonts-install-japanese fonts-clean fonts-update fonts-list fonts-refresh fonts-debug fonts-backup fonts-configure \
--        install-gemini-cli install-packages-ccusage install-ccusage
-+        fonts-setup fonts-install fonts-install-nerd fonts-install-google fonts-install-japanese fonts-clean fonts-update fonts-list fonts-refresh fonts-debug fonts-backup fonts-configure \
-+        install-gemini-cli install-packages-gemini-cli install-packages-ccusage install-ccusage
+@echo "  make install-packages-playwright      - Playwright E2Eテストフレームワークをインストール"
+  @echo "  make install-packages-gemini-cli      - Gemini CLIをインストール"
+  @echo "  make install-packages-ccusage         - ccusage (bunx) をインストール"
++ @echo "  make install-ccusage                  - ccusage をインストール（後方互換エイリアス）"
 ```
+
+### Nitpick 5: mk/install.mk:1392-1399 Issue
+**Issue**: Style/quality suggestion
+**Suggestion**: Code improvement
 
 ---
 

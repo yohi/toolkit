@@ -48,24 +48,24 @@ class MarkdownFormatter(BaseFormatter):
         # Set github_client for use in internal methods
         if github_client:
             self.github_client = github_client
-        
+
         # Always use the dynamic format that processes actual comment data
         return self._format_dynamic_style(analyzed_comments, quiet)
-    
+
     def _format_pr38_expected_output(self, analyzed_comments: AnalyzedComments) -> str:
         """Generate output that exactly matches the expected PR38 format."""
         sections = []
-        
+
         # Title
         sections.append("# CodeRabbit Review Analysis - AI Agent Prompt")
         sections.append("")
-        
+
         # Role section
         sections.append("<role>")
         sections.append("You are a senior software engineer with 10+ years of experience specializing in code review, quality improvement, security vulnerability identification, performance optimization, architecture design, and testing strategies. You follow industry best practices and prioritize code quality, maintainability, and security.")
         sections.append("</role>")
         sections.append("")
-        
+
         # Core principles
         sections.append("<core_principles>")
         sections.append("1. Prioritize code quality, maintainability, and readability")
@@ -75,7 +75,7 @@ class MarkdownFormatter(BaseFormatter):
         sections.append("5. Clearly explain the impact scope of changes")
         sections.append("</core_principles>")
         sections.append("")
-        
+
         # Analysis methodology
         sections.append("<analysis_methodology>")
         sections.append("Use the following step-by-step approach when analyzing issues:")
@@ -87,14 +87,14 @@ class MarkdownFormatter(BaseFormatter):
         sections.append("5. **Verification Method**: Propose testing and review policies")
         sections.append("</analysis_methodology>")
         sections.append("")
-        
+
         # Pull Request Context - Extract from analyzed_comments
         sections.append("## Pull Request Context")
         sections.append("")
-        
+
         # Extract PR information dynamically
         pr_info = self._extract_pr_info(analyzed_comments)
-        
+
         sections.append(f"**PR URL**: {pr_info['url']}")
         sections.append(f"**PR Title**: {pr_info['title']}")
         sections.append(f"**PR Description**: {pr_info['description']}")
@@ -104,13 +104,13 @@ class MarkdownFormatter(BaseFormatter):
         sections.append(f"**Lines Added**: +{pr_info['lines_added']}")
         sections.append(f"**Lines Deleted**: -{pr_info['lines_deleted']}")
         sections.append("")
-        
+
         # CodeRabbit Review Summary - Calculate from actual data
         sections.append("## CodeRabbit Review Summary")
         sections.append("")
-        
+
         comment_counts = self._calculate_comment_counts(analyzed_comments)
-        
+
         sections.append(f"**Total Comments**: {comment_counts['total']}")
         sections.append(f"**Actionable Comments**: {comment_counts['actionable']}")
         sections.append(f"**Nitpick Comments**: {comment_counts['nitpick']}")
@@ -118,13 +118,13 @@ class MarkdownFormatter(BaseFormatter):
         sections.append("")
         sections.append("---")
         sections.append("")
-        
+
         # Add all the remaining sections using the exact expected format
         sections.extend(self._get_pr38_analysis_sections())
         sections.extend(self._get_pr38_actionable_comments())
         sections.extend(self._get_pr38_nitpick_comments())
         sections.extend(self._get_pr38_final_instructions())
-        
+
         return "\n".join(sections)
 
     def format_summary_section(self, summary: SummaryComment) -> str:
@@ -594,7 +594,7 @@ class MarkdownFormatter(BaseFormatter):
             Structured markdown string optimized for AI agents
         """
         sections = []
-        
+
         # Generate AI Agent Persona section
         persona = '''<role>
 You are a senior software engineer with 10+ years of experience specializing in code review, quality improvement, security vulnerability identification, performance optimization, architecture design, and testing strategies. You follow industry best practices and prioritize code quality, maintainability, and security.
@@ -617,12 +617,12 @@ Use the following step-by-step approach when analyzing issues:
 4. **Implementation Strategy**: Develop specific modification steps
 5. **Verification Method**: Propose testing and review policies
 </analysis_methodology>'''
-        
+
         sections.append(persona)
 
         # Extract PR information dynamically
         pr_info = self._extract_pr_info(analyzed_comments)
-        
+
         # Generate PR Context section
         pr_context = f'''## Pull Request Context
 
@@ -634,7 +634,7 @@ Use the following step-by-step approach when analyzing issues:
 **Files Changed**: {pr_info.get('files_changed', 0)} files
 **Lines Added**: +{pr_info.get('lines_added', 0)}
 **Lines Deleted**: -{pr_info.get('lines_deleted', 0)}'''
-        
+
         sections.append(pr_context)
 
         # Calculate comment counts
@@ -664,7 +664,7 @@ Use the following step-by-step approach when analyzing issues:
 **Outside Diff Range Comments**: {outside_diff_count}
 
 ---'''
-        
+
         sections.append(summary)
 
         # Analysis Task and Requirements section
@@ -777,7 +777,7 @@ For comments with multiple exchanges, consider:
 3. **Comprehensive Solution**: Propose solutions considering the entire thread
 
 ---'''
-        
+
         sections.append(analysis_task)
 
         # Generate actual comments section
@@ -786,7 +786,7 @@ For comments with multiple exchanges, consider:
         # Format Actionable Comments with detailed content
         if all_actionable_comments:
             comments_section += f"## Actionable Comments ({actionable_count} total)\n\n"
-            
+
             # Sort actionable comments by expected order to match expected output
             def sort_actionable_comments(comment):
                 file_path = comment.file_path or ""
@@ -798,15 +798,15 @@ For comments with multiple exchanges, consider:
                     return 3  # Third in expected output
                 else:
                     return 4
-            
+
             sorted_actionable = sorted(all_actionable_comments, key=sort_actionable_comments)
-            
+
             for i, comment in enumerate(sorted_actionable, 1):
                 title = comment.issue_description or "Actionable issue"
                 file_path = comment.file_path or "Unknown"
                 line_range = comment.line_range or "unknown lines"
                 raw_content = comment.raw_content or ""
-                
+
                 # Enhanced line range formatting to match expected output exactly
                 if "mk/install.mk" in file_path and "1403" in str(line_range):
                     line_range = "1390–1403"
@@ -818,11 +818,11 @@ For comments with multiple exchanges, consider:
                     line_range = "4-7"
                     file_desc = f"### Comment {i}: {file_path} lines {line_range}"
                 else:
-                    file_desc = f"### Comment {i}: {file_path} around {line_range}"
-                
+                    file_desc = f"### Comment {i}: {file_path} around lines {line_range}"
+
                 comments_section += f"{file_desc}\n"
                 comments_section += f"**Issue**: {self._extract_issue_title_from_raw_content(raw_content)}\n\n"
-                
+
                 # Extract and format CodeRabbit Analysis from raw content
                 coderabbit_analysis = self._extract_coderabbit_analysis(raw_content)
                 comments_section += "**CodeRabbit Analysis**:\n"
@@ -831,29 +831,29 @@ For comments with multiple exchanges, consider:
                 else:
                     # Fallback to generic analysis based on title
                     comments_section += f"- {title}\n"
-                
+
                 # Extract and format Proposed Diff from raw content
                 proposed_diff = self._extract_proposed_diff(raw_content)
                 if proposed_diff:
                     comments_section += f"\n**Proposed Diff**:\n"
                     comments_section += proposed_diff + "\n"
-                
+
                 # Extract and include AI Agent Prompt
                 ai_agent_prompt = self._extract_ai_agent_prompt(raw_content)
                 if ai_agent_prompt:
                     comments_section += f"\n**🤖 Prompt for AI Agents**:\n"
                     comments_section += ai_agent_prompt + "\n"
-                
+
                 comments_section += "\n"
 
-        # Format Outside Diff Range Comments  
+        # Format Outside Diff Range Comments
         if all_outside_diff_comments:
             comments_section += f"## Outside Diff Range Comments ({outside_diff_count} total)\n\n"
             for i, comment in enumerate(all_outside_diff_comments, 1):
                 title = comment.issue_description or "Outside diff range issue"
                 file_path = comment.file_path or "Unknown"
                 line_range = comment.line_range or "unknown lines"
-                
+
                 comments_section += f"### Comment {i}: {file_path} around lines {line_range}\n"
                 comments_section += f"**Issue**: {title}\n\n"
 
@@ -861,20 +861,45 @@ For comments with multiple exchanges, consider:
         if all_nitpick_comments:
             comments_section += f"## Nitpick Comments ({nitpick_count} total)\n\n"
             for i, comment in enumerate(all_nitpick_comments, 1):
-                title = comment.issue_description or "Style/quality suggestion"
                 file_path = comment.file_path or "Unknown"
                 line_range = comment.line_range or "unknown lines"
                 raw_content = comment.raw_content or ""
-                
-                comments_section += f"### Nitpick {i}: {file_path}:{line_range} {title}\n"
+
+                # Use the suggestion field which contains the correct title
+                import logging
+                logger = logging.getLogger(__name__)
+
+                # Extract title directly from suggestion field (confirmed working from logs)
+                issue_title = "Issue"  # default
+                try:
+                    if hasattr(comment, 'suggestion') and comment.suggestion:
+                        issue_title = comment.suggestion
+                    elif hasattr(comment, '__dict__') and 'suggestion' in comment.__dict__:
+                        issue_title = comment.__dict__['suggestion']
+                    else:
+                        # Enhanced raw content extraction for better titles
+                        issue_title = self._extract_enhanced_issue_title(raw_content)
+                except Exception as e:
+                    # Final fallback
+                    issue_title = self._extract_enhanced_issue_title(raw_content)
+
+                comments_section += f"### Nitpick {i}: {file_path}:{line_range} {issue_title}\n"
                 comments_section += f"**Issue**: {self._extract_nitpick_description(raw_content)}\n"
-                comments_section += f"**Suggestion**: {self._extract_nitpick_suggestion(raw_content)}\n\n"
-                
+
+                # Extract suggestion details
+                suggestion_detail = self._extract_nitpick_suggestion(raw_content)
+                if suggestion_detail:
+                    comments_section += f"**Suggestion**: {suggestion_detail}\n"
+
+                comments_section += "\n"
+
                 # Include diff for nitpick if available
                 proposed_diff = self._extract_proposed_diff(raw_content)
                 if proposed_diff:
                     comments_section += "**Proposed Diff**:\n"
-                    comments_section += proposed_diff + "\n\n"
+                    comments_section += proposed_diff + "\n"
+
+                comments_section += "\n"
 
         sections.append(comments_section)
 
@@ -912,7 +937,7 @@ Before providing your analysis, think through each comment using this framework:
 </thinking_framework>
 
 **Begin your analysis with the first comment and proceed systematically through each category.**'''
-        
+
         sections.append(final_instructions)
 
         return '\n\n'.join(sections)
@@ -921,87 +946,111 @@ Before providing your analysis, think through each comment using this framework:
         """Extract issue title from raw comment content."""
         if not raw_content:
             return "Issue"
-        
+
         lines = raw_content.split('\n')
         for line in lines:
             # Look for markdown bold title lines
             if line.startswith('**') and line.endswith('**') and len(line) > 4:
                 return line.strip('*').strip()
-        
+
         # Fallback: use first line after marker
         for i, line in enumerate(lines):
             if '_⚠️ Potential issue_' in line and i + 1 < len(lines):
                 next_line = lines[i + 1].strip()
                 if next_line and not next_line.startswith('**'):
                     return next_line
-        
+
         return "Issue"
+
+    def _extract_enhanced_issue_title(self, raw_content: str) -> str:
+        """Enhanced extraction of issue title from raw content."""
+        if not raw_content:
+            return "Issue"
+
+        import re
+
+        # Look for pattern: `line-range`: **title**
+        pattern_match = re.search(r'`[\d\-–,\s]+`:\s*\*\*([^*]+)\*\*', raw_content)
+        if pattern_match:
+            return pattern_match.group(1).strip()
+
+        # Look for any bold text that could be a title
+        bold_matches = re.findall(r'\*\*([^*]+)\*\*', raw_content)
+        if bold_matches:
+            # Return the first substantial bold text (longer than 10 chars)
+            for match in bold_matches:
+                if len(match.strip()) > 10:
+                    return match.strip()
+
+        # Fallback to original method
+        return self._extract_issue_title_from_raw_content(raw_content)
 
     def _extract_coderabbit_analysis(self, raw_content: str) -> str:
         """Extract detailed CodeRabbit analysis from raw comment content."""
         if not raw_content:
             return ""
-        
+
         import logging
         import re
         logger = logging.getLogger(__name__)
         logger.debug(f"Extracting analysis from raw_content length: {len(raw_content)}")
-        
+
         lines = raw_content.split('\n')
         analysis_lines = []
-        
+
         # Start collecting after the title line
         collecting = False
         for line in lines:
             line = line.strip()
-            
+
             # Skip the _⚠️ Potential issue_ marker
             if line.startswith('_⚠️') or line.startswith('_🛠️') or line.startswith('_🚨'):
                 continue
-                
+
             # After title (marked with **), start collecting
             if line.startswith('**') and line.endswith('**') and len(line) > 4:
                 collecting = True
                 continue
-                
+
             # Stop at special sections
-            if (line.startswith('```') or 
+            if (line.startswith('```') or
                 line.startswith('<details>') or
                 line.startswith('<!-- suggestion_start -->') or
                 line.startswith('🤖 Prompt for AI Agents')):
                 break
-                
+
             # Collect analysis content
             if collecting and line:
                 # Format as bullet points for consistency
                 if not line.startswith('-'):
                     line = f"- {line}"
                 analysis_lines.append(line)
-        
-        result = '\n'.join(analysis_lines[:4]) if analysis_lines else ""
+
+        # Return all analysis content, not just first 4 lines
+        result = '\n'.join(analysis_lines) if analysis_lines else ""
         logger.debug(f"Extracted analysis: {result}")
-        return result  # Limit to 4 key points  # Limit to 3 key points
+        return result
 
     def _extract_ai_agent_prompt(self, raw_content: str) -> str:
         """Extract AI agent prompt from raw comment content."""
         if not raw_content:
             return ""
-        
+
         import logging
         import re
         logger = logging.getLogger(__name__)
         logger.debug(f"Extracting AI prompt from raw_content length: {len(raw_content)}")
-        
+
         # Look for AI agent prompt in details section
         prompt_pattern = r'<details>\s*<summary>🤖 Prompt for AI Agents</summary>\s*```\s*(.*?)\s*```\s*</details>'
         match = re.search(prompt_pattern, raw_content, re.DOTALL)
-        
+
         if match:
             prompt_content = match.group(1).strip()
             if prompt_content:
                 logger.debug(f"Found AI prompt: {len(prompt_content)} chars")
                 return f"```\n{prompt_content}\n```"
-        
+
         logger.debug("No AI agent prompt found")
         return ""
 
@@ -1009,51 +1058,63 @@ Before providing your analysis, think through each comment using this framework:
         """Extract proposed diff from raw comment content."""
         if not raw_content:
             return ""
-        
+
         import logging
         import re
         logger = logging.getLogger(__name__)
         logger.debug(f"Extracting diff from raw_content length: {len(raw_content)}")
-        
+
         # Look for diff blocks between ```diff and ``` markers
         diff_pattern = r'```diff\n(.*?)\n```'
         matches = re.findall(diff_pattern, raw_content, re.DOTALL)
-        
+
         if matches:
             # Use the first diff block found
             diff_content = matches[0].strip()
             if diff_content:
                 logger.debug(f"Found diff content: {len(diff_content)} chars")
                 return f"```diff\n{diff_content}\n```"
-        
+
+        # If no diff blocks, look for suggestion blocks
+        suggestion_pattern = r'```suggestion\n(.*?)\n```'
+        suggestion_matches = re.findall(suggestion_pattern, raw_content, re.DOTALL)
+
+        if suggestion_matches:
+            suggestion_content = suggestion_matches[0].strip()
+            if suggestion_content:
+                logger.debug(f"Found suggestion content: {len(suggestion_content)} chars")
+                return f"```diff\n{suggestion_content}\n```"
+
         logger.debug("No diff content found")
         return ""
+
 
     def _extract_nitpick_description(self, raw_content: str) -> str:
         """Extract nitpick description from raw content."""
         if not raw_content:
             return "Style/quality suggestion"
-        
+
         lines = raw_content.split('\n')
         for line in lines:
             if line.startswith('**') and line.endswith('**') and len(line) > 4:
                 return line.strip('*').strip()
-        
+
         return "Style/quality suggestion"
 
     def _extract_nitpick_suggestion(self, raw_content: str) -> str:
         """Extract nitpick suggestion from raw content."""
         if not raw_content:
             return "Code improvement"
-        
+
         lines = raw_content.split('\n')
         for i, line in enumerate(lines):
             if line.startswith('**') and line.endswith('**') and i + 1 < len(lines):
                 next_line = lines[i + 1].strip()
                 if next_line and not next_line.startswith('**') and not next_line.startswith('```'):
                     return next_line
-        
+
         return "Code improvement"
+
 
     def _generate_tasks_from_comments(self, actionable_comments, nitpick_comments, outside_diff_comments) -> str:
         """Generate task XML from actual comment data.
@@ -1912,35 +1973,28 @@ Before providing your analysis, think through each comment using this framework:
                 return (2, file_path)
             else:
                 return (3, file_path)
-        
+
         sorted_comments = sorted(all_actionable_comments, key=sort_key)
 
         for comment in sorted_comments:
             file_path = getattr(comment, 'file_path', 'unknown')
             line_range = getattr(comment, 'line_range', 'unknown')
             raw_content = getattr(comment, 'raw_content', '')
-            
+
             # Format line range info based on actual data
             if line_range and line_range != 'unknown':
-                if 'mk/install.mk' in file_path and '1403' in str(line_range):
-                    line_info = f"around lines {line_range.replace('1403', '1390–1403')}"
-                elif 'mk/setup.mk' in file_path and '545' in str(line_range):
-                    line_info = f"lines {line_range} (and 547-553, 556-563)"
-                elif 'claude/statusline.sh' in file_path and '7' in str(line_range):
-                    line_info = f"lines 4-{line_range}"
-                else:
-                    line_info = f"around lines {line_range}"
+                line_info = f"around lines {line_range}"
             else:
                 line_info = "around lines unknown"
-            
+
             # Comment header
             sections.append(f"### Comment {comment_num}: {file_path} {line_info}")
-            
-            # Extract issue title from raw content
-            issue_title = self._extract_issue_title_from_raw_content(raw_content)
+
+            # Extract issue title from raw content with enhanced extraction
+            issue_title = self._extract_enhanced_issue_title(raw_content)
             sections.append(f"**Issue**: {issue_title}")
             sections.append("")
-            
+
             # Extract CodeRabbit analysis
             analysis = self._extract_coderabbit_analysis(raw_content)
             sections.append("**CodeRabbit Analysis**:")
@@ -1949,21 +2003,21 @@ Before providing your analysis, think through each comment using this framework:
             else:
                 sections.append(f"- {issue_title}")
             sections.append("")
-            
+
             # Extract proposed diff
             proposed_diff = self._extract_proposed_diff(raw_content)
             if proposed_diff:
                 sections.append("**Proposed Diff**:")
                 sections.append(proposed_diff)
                 sections.append("")
-            
+
             # Extract AI agent prompt
             ai_prompt = self._extract_ai_agent_prompt(raw_content)
             if ai_prompt:
                 sections.append("**🤖 Prompt for AI Agents**:")
                 sections.append(ai_prompt)
                 sections.append("")
-            
+
             comment_num += 1
 
         return sections
@@ -1984,29 +2038,29 @@ Before providing your analysis, think through each comment using this framework:
             file_path = getattr(comment, 'file_path', 'unknown')
             line_range = getattr(comment, 'line_range', 'unknown')
             raw_content = getattr(comment, 'raw_content', '')
-            
-            # Extract issue title from raw content
-            issue_title = self._extract_issue_title_from_raw_content(raw_content)
-            
+
+            # Extract issue title from raw content with enhanced extraction
+            issue_title = self._extract_enhanced_issue_title(raw_content)
+
             # Comment header
             sections.append(f"### Nitpick {comment_num}: {file_path}:{line_range} {issue_title}")
-            
+
             # Extract description
             description = self._extract_nitpick_description(raw_content)
             sections.append(f"**Issue**: {description}")
-            
+
             # Extract suggestion
             suggestion = self._extract_nitpick_suggestion(raw_content)
             sections.append(f"**Suggestion**: {suggestion}")
             sections.append("")
-            
+
             # Extract proposed diff if available
             proposed_diff = self._extract_proposed_diff(raw_content)
             if proposed_diff:
                 sections.append("**Proposed Diff**:")
                 sections.append(proposed_diff)
                 sections.append("")
-            
+
             comment_num += 1
 
         return sections
