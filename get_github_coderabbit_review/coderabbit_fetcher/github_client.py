@@ -283,7 +283,7 @@ class GitHubClient:
         return path_parts[0], path_parts[1], pr_number
 
     def get_pr_info(self, pr_url: str) -> Dict[str, Any]:
-        """Get basic pull request information.
+        """Get comprehensive pull request information.
 
         Args:
             pr_url: GitHub pull request URL
@@ -301,7 +301,7 @@ class GitHubClient:
             result = subprocess.run([
                 "gh", "pr", "view", str(pr_number),
                 "--repo", f"{owner}/{repo}",
-                "--json", "title,body,number,state,url,author,createdAt,updatedAt"
+                "--json", "title,body,number,state,url,author,createdAt,updatedAt,headRefName,changedFiles,additions,deletions"
             ], capture_output=True, text=True, timeout=30)
 
             if result.returncode != 0:

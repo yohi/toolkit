@@ -170,98 +170,10 @@ class ReviewProcessor:
                 logger.debug(f"Skipping explicitly resolved inline comment {comment_id}")
                 return None
 
-            # XML-compatible filtering: Only include the 4 specific "unresolved" actionable comments
-            # Based on actual GitHub CLI data analysis and XML file specification:
-            
-            # These are the exact 4 actionable comments expected in XML, mapped to actual content:
-            xml_expected_actionable = {
-                # 1. actionable_git_processing_order: Comment about git processing order optimization
-                "git_processing_order": [
-                    "処理順序の最適化",
-                    "ステージ有無を先に判定してから", 
-                    "不要な Git 呼び出しを避け",
-                    "git_processor.has_staged_changes()",
-                    "read_staged_diff()"
-                ],
-                
-                # 2. actionable_provider_logging: API provider registration warning
-                "provider_logging": [
-                    "API provider",
-                    "上書き登録します",
-                    "API_PROVIDERS",
-                    "register_provider",
-                    "logger.warning"
-                ],
-                
-                # 3. actionable_cli_provider_logging: CLI provider registration warning  
-                "cli_provider_logging": [
-                    "CLI provider",
-                    "CLI_PROVIDERS", 
-                    "上書き登録します",
-                    "cli_providers/__init__.py"
-                ],
-                
-                # 4. actionable_null_handler: NullHandler for library logger
-                "null_handler": [
-                    "NullHandler",
-                    "ライブラリとしてのロガー",
-                    "利用側がハンドラ未設定だと警告",
-                    "logger.addHandler",
-                    "logging.NullHandler"
-                ]
-            }
-            
-            # Check if this comment matches any of the 4 expected XML actionable patterns
-            matched_pattern = None
-            pattern_type = None
-            
-            for xml_type, patterns in xml_expected_actionable.items():
-                for pattern in patterns:
-                    if pattern in body:
-                        matched_pattern = pattern
-                        pattern_type = xml_type
-                        break
-                if matched_pattern:
-                    break
-
-            # Special pattern matching for specific comment patterns from actual GitHub data:
-            if not matched_pattern:
-                # Check for git processing order (main.py line 176-183)
-                if ("lazygit-llm/src/main.py" in path and 
-                    ("ステージ有無を先に判定してから" in body or 
-                     "git_processor" in body and "has_staged_changes" in body)):
-                    matched_pattern = "git processing optimization"
-                    pattern_type = "git_processing_order"
-                
-                # Check for provider logging (api_providers/__init__.py)
-                elif ("api_providers" in path and 
-                      ("同名登録の上書きを検知して警告を" in body or
-                       "API provider" in body and "warn" in body)):
-                    matched_pattern = "API provider logging"
-                    pattern_type = "provider_logging"
-                
-                # Check for CLI provider logging (cli_providers/__init__.py)
-                elif ("cli_providers" in path and 
-                      ("CLI provider" in body and "warn" in body)):
-                    matched_pattern = "CLI provider logging"
-                    pattern_type = "cli_provider_logging"
-                
-                # Check for null handler (base_provider.py)
-                elif ("base_provider.py" in path and 
-                      ("NullHandler" in body or 
-                       "ライブラリとしてのロガーに" in body)):
-                    matched_pattern = "NullHandler logging"
-                    pattern_type = "null_handler"
-
-            # If this doesn't match our 4 expected XML actionable patterns, skip it
-            if not matched_pattern:
-                logger.debug(f"Skipping non-target inline comment {comment_id} (doesn't match expected XML patterns)")
-                return None
-
-            # Check if this is an actionable comment (refactor suggestion, potential issue, etc.)
+            # Simple and effective detection: Look for actionable indicators
             actionable_indicators = [
-                "_🛠️ Refactor suggestion_",
                 "_⚠️ Potential issue_",
+                "_🛠️ Refactor suggestion_",
                 "_🚨 Critical issue_",
                 "_💡 Suggestion_",
                 "**CRITICAL**",
@@ -275,14 +187,14 @@ class ReviewProcessor:
                 logger.debug(f"Comment {comment_id} is not actionable (no actionable indicators)")
                 return None
 
-            logger.debug(f"Comment {comment_id} is actionable and matches pattern: {matched_pattern} ({pattern_type})")
+            logger.debug(f"Comment {comment_id} is actionable")
 
             # Extract title from the body
             lines = body.split('\n')
             title = ""
             description = body
 
-            # Try to extract the title (usually after _🛠️ Refactor suggestion_ etc.)
+            # Try to extract the title (usually after _⚠️ Potential issue_ etc.)
             for i, line in enumerate(lines):
                 if line.startswith('**') and line.endswith('**') and len(line) > 4:
                     title = line.strip('*').strip()
@@ -324,31 +236,21 @@ class ReviewProcessor:
 
             logger.debug(f"Creating ActionableComment with priority: {priority}, type: {comment_type}")
 
-            # **REQUIREMENT FIX: Extract AI Agent prompt from inline comment (Requirements 4.5 & 9.2)**
+            # Extract AI Agent prompt from inline comment
             ai_agent_prompt = None
             ai_prompts = self.extract_ai_agent_prompts(body)
             if ai_prompts:
                 ai_agent_prompt = ai_prompts[0]  # Use the first AI Agent prompt
 
-            # Create ActionableComment with XML-compatible ID mapping
-            comment_id_mapping = {
-                "git_processing_order": f"actionable_git_processing_order",
-                "provider_logging": f"actionable_provider_logging", 
-                "cli_provider_logging": f"actionable_cli_provider_logging",
-                "null_handler": f"actionable_null_handler"
-            }
-            
-            xml_comment_id = comment_id_mapping.get(pattern_type, f"actionable_inline_{comment_id}")
-
             try:
                 actionable_comment = ActionableComment(
-                    comment_id=xml_comment_id,
+                    comment_id=f"actionable_inline_{comment_id}",
                     file_path=path,
                     line_range=line_range,
                     issue_description=title,
                     comment_type=comment_type,
                     priority=priority,
-                    ai_agent_prompt=ai_agent_prompt,  # Now includes extracted AI Agent prompt
+                    ai_agent_prompt=ai_agent_prompt,
                     raw_content=body
                 )
             except Exception as validation_error:

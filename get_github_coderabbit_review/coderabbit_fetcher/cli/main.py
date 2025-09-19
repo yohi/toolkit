@@ -82,8 +82,8 @@ Examples:
     parser.add_argument(
         '--output-format', '-f',
         choices=['markdown', 'json', 'plain', 'llm-instruction'],
-        default='llm-instruction',
-        help='Output format (default: llm-instruction)'
+        default='markdown',
+        help='Output format (default: markdown)'
     )
 
     parser.add_argument(
@@ -158,12 +158,12 @@ def run_fetch_command(args) -> int:
             # In quiet mode, show only warnings and errors
             logging.getLogger().setLevel(logging.WARNING)
             # Also suppress logging from other modules
-            for log_name in ['coderabbit_fetcher.orchestrator', 
+            for log_name in ['coderabbit_fetcher.orchestrator',
                            'coderabbit_fetcher.github_client',
                            'coderabbit_fetcher.comment_analyzer',
                            'coderabbit_fetcher.formatters.markdown_formatter']:
                 logging.getLogger(log_name).setLevel(logging.WARNING)
-        
+
         # Create execution configuration
         config = ExecutionConfig(
             pr_url=args.pr_url,

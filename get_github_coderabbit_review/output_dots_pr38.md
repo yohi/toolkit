@@ -156,42 +156,32 @@ For comments with multiple exchanges, consider:
 
 ## Actionable Comments (3 total)
 
-### Comment 1: mk/install.mk around lines 1390–1403
-**Issue**: The recipe wrongly uses "bun install -g ccusage" (which doesn't place global binaries as expected) and mixes Makefile and shell PATH syntax
+### Comment 1: mk/install.mk around lines 1390-1390–1403
+**Issue**: `bun install -g ccusage`は誤用—`bun add -g`または`bunx`を使用
 
 **CodeRabbit Analysis**:
-- Wrong global install command: `bun install -g ccusage` should be `bun add -g ccusage`
-- Incorrect PATH syntax: `export PATH="$$HOME/.bun/bin:$$PATH"` should use shell variable escaped for Makefiles
-- PATH references need to be escaped as `$$PATH` for shell execution
+- Bunのグローバル導入は`bun add -g <pkg>`です。現状だと期待通りにバイナリが配置されない可能性があります。PATH拡張も`$$PATH`へ統一を。
 
 **Proposed Diff**:
 ```diff
--install-packages-ccusage:
--	@echo "📦 Install ccusage (bun global package)"
--	@if command -v bun >/dev/null 2>&1; then \
--		export PATH="$$HOME/.bun/bin:$PATH"; \
--		if ! command -v ccusage >/dev/null 2>&1; then \
--			bun install -g ccusage; \
--		else \
--			echo "✅ ccusage is already installed"; \
--		fi; \
--	else \
--		echo "❌ bun が見つかりません。先に 'make install-packages-bun' を実行してください。"; \
--		exit 1; \
--	fi
-+install-packages-ccusage:
-+	@echo "📦 Install ccusage (bun global package)"
-+	@if command -v bun >/dev/null 2>&1; then \
-+		export PATH="$(HOME)/.bun/bin:$$PATH"; \
-+		if ! command -v ccusage >/dev/null 2>&1; then \
-+			bun add -g ccusage; \
-+		else \
-+			echo "✅ ccusage is already installed"; \
-+		fi; \
-+	else \
-+		echo "❌ bun が見つかりません。先に 'make install-packages-bun' を実行してください。"; \
-+		exit 1; \
-+	fi
+install-packages-ccusage:
+ 	@echo "📦 ccusage をインストールしています..."
+ 	@if ! command -v bun >/dev/null 2>&1; then \
+ 		echo "bun が見つからないため、インストールします..."; \
+ 		curl -fsSL https://bun.sh/install | bash; \
+-		export PATH="$(HOME)/.bun/bin:$PATH"; \
++		export PATH="$$HOME/.bun/bin:$$PATH"; \
+ 		if ! command -v bun >/dev/null 2>&1; then \
+ 			echo "❌ bun のインストールに失敗しました。PATHを確認してください。"; \
+ 			exit 1; \
+ 		fi \
+ 	fi
+-	@bun install -g ccusage
++	@echo "🔧 ccusage をグローバル導入中（bun add -g）..."
++	@bun add -g ccusage || (echo "⚠️  bun add -g に失敗。bunxでの実行にフォールバックします" && true)
++	@echo "🔍 動作確認: ccusage --version（bunx経由）"
++	@bunx -y ccusage --version >/dev/null 2>&1 || echo "⚠️  bunx 実行確認に失敗しました（ネットワーク状況を確認してください）"
+ 	@echo "✅ ccusage のインストールが完了しました。"
 ```
 
 **🤖 Prompt for AI Agents**:
@@ -206,26 +196,21 @@ recipe are escaped as $$PATH so the shell sees them.
 ```
 
 ### Comment 2: mk/setup.mk lines 539-545 (and 547-553, 556-563)
-**Issue**: `$(date +%Y%m%d_%H%M%S)` is expanded by Make instead of being executed in the shell, producing empty suffix and risking overwrites
+**Issue**: `$(date ...)`がMake展開で空になる—バックアップファイル名が壊れます
 
 **CodeRabbit Analysis**:
-- Command substitution happens at Make time instead of shell runtime
-- Results in empty backup suffix like `.backup.` instead of timestamped names
-- Risk of overwriting existing backup files
+- シェル実行時のコマンド置換は`$$(...)`が必要です。現状だと`.backup.`のような固定名になり上書き事故のリスクがあります。
 
 **Proposed Diff**:
 ```diff
- setup-claude: setup-claude-directories
- 	@echo "🔧 Setting up Claude configuration files..."
--	@if [ -f "$(HOME_DIR)/.claude/settings.json" ]; then mv "$(HOME_DIR)/.claude/settings.json" "$(HOME_DIR)/.claude/settings.json.backup.$(date +%Y%m%d_%H%M%S)"; fi
-+	@if [ -f "$(HOME_DIR)/.claude/settings.json" ]; then mv "$(HOME_DIR)/.claude/settings.json" "$(HOME_DIR)/.claude/settings.json.backup.$$(date +%Y%m%d_%H%M%S)"; fi
- 	@ln -sfn $(DOTFILES_DIR)/claude/claude-settings.json $(HOME_DIR)/.claude/settings.json
--	@if [ -f "$(HOME_DIR)/.claude/CLAUDE.md" ]; then mv "$(HOME_DIR)/.claude/CLAUDE.md" "$(HOME_DIR)/.claude/CLAUDE.md.backup.$(date +%Y%m%d_%H%M%S)"; fi
-+	@if [ -f "$(HOME_DIR)/.claude/CLAUDE.md" ]; then mv "$(HOME_DIR)/.claude/CLAUDE.md" "$(HOME_DIR)/.claude/CLAUDE.md.backup.$$(date +%Y%m%d_%H%M%S)"; fi
- 	@ln -sfn $(DOTFILES_DIR)/claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md
--	@if [ -f "$(HOME_DIR)/.claude/statusline.sh" ]; then mv "$(HOME_DIR)/.claude/statusline.sh" "$(HOME_DIR)/.claude/statusline.sh.backup.$(date +%Y%m%d_%H%M%S)"; fi
-+	@if [ -f "$(HOME_DIR)/.claude/statusline.sh" ]; then mv "$(HOME_DIR)/.claude/statusline.sh" "$(HOME_DIR)/.claude/statusline.sh.backup.$$(date +%Y%m%d_%H%M%S)"; fi
- 	@ln -sfn $(DOTFILES_DIR)/claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh
+-        mv $(HOME_DIR)/.claude/settings.json $(HOME_DIR)/.claude/settings.json.backup.$(date +%Y%m%d_%H%M%S); \
++        mv $(HOME_DIR)/.claude/settings.json $(HOME_DIR)/.claude/settings.json.backup.$$(date +%Y%m%d_%H%M%S); \
+...
+-        mv $(HOME_DIR)/.claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md.backup.$(date +%Y%m%d_%H%M%S); \
++        mv $(HOME_DIR)/.claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md.backup.$$(date +%Y%m%d_%H%M%S); \
+...
+-        mv $(HOME_DIR)/.claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh.backup.$(date +%Y%m%d_%H%M%S); \
++        mv $(HOME_DIR)/.claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh.backup.$$(date +%Y%m%d_%H%M%S); \
 ```
 
 **🤖 Prompt for AI Agents**:
@@ -237,14 +222,11 @@ the shell, producing an empty suffix and risking overwrites; replace each $(date
 at shell runtime when mv runs, ensuring unique backups.
 ```
 
-### Comment 3: claude/statusline.sh lines 4-7
+### Comment 3: claude/statusline.sh lines 4-4-7
 **Issue**: ユーザー固定パスを$HOMEに置換＋失敗時の扱いを追加（移植性/堅牢性）
 
 **CodeRabbit Analysis**:
-- Hardcoded user path `/home/y_ohi` breaks portability on other machines
-- Missing error handling for bun/bunx availability
-- Should use `$HOME` variable for cross-platform compatibility
-- Need robust execution with proper fallback mechanisms
+- `/home/y_ohi`固定は他環境で壊れます。`bunx`利用でグローバル未導入でも実行可に。
 
 **Proposed Diff**:
 ```diff
@@ -277,13 +259,11 @@ exit with a non-zero status, and ensure the script propagates the exit code if
 the ccusage command fails.
 ```
 
-## Outside Diff Range Comments (0 total)
-
 ## Nitpick Comments (5 total)
 
-### Nitpick 1: mk/variables.mk:19-20 PHONYにinstall-packages-gemini-cliも追加してください
-**Issue**: ヘルプに掲載され、エイリアスも定義されていますが、PHONY未登録です。将来の依存解決の揺れを避けるため明示しておきましょう。
-**Suggestion**: PHONY行に`install-packages-gemini-cli`を追加
+### Nitpick 1: mk/variables.mk:19-20 Issue
+**Issue**: Style/quality suggestion
+**Suggestion**: Code improvement
 
 **Proposed Diff**:
 ```diff
@@ -293,9 +273,9 @@ the ccusage command fails.
 +        install-gemini-cli install-packages-gemini-cli install-packages-ccusage install-ccusage
 ```
 
-### Nitpick 2: mk/setup.mk:543-545 リンク元の存在チェックを追加してください（壊れたシンボリックリンク防止）
-**Issue**: `ln -sfn`前にソース有無を検証し、欠如時は警告してスキップすると運用が安定します。
-**Suggestion**: ファイル存在チェック条件を追加してからシンボリックリンク作成
+### Nitpick 2: mk/setup.mk:543-545 Issue
+**Issue**: Style/quality suggestion
+**Suggestion**: Code improvement
 
 **Proposed Diff**:
 ```diff
@@ -321,9 +301,9 @@ the ccusage command fails.
 +    fi
 ```
 
-### Nitpick 3: mk/setup.mk:599-602 setup-config-claudeとsetup-config-lazygitの二重定義を解消
-**Issue**: 上部(行 513–528)にも同名エイリアスがあります。重複は混乱の元なので片方へ集約を。
-**Suggestion**: 重複定義を削除し、上部の階層ターゲット群に集約
+### Nitpick 3: mk/setup.mk:599-602 Issue
+**Issue**: Style/quality suggestion
+**Suggestion**: Code improvement
 
 **Proposed Diff**:
 ```diff
@@ -333,27 +313,21 @@ the ccusage command fails.
 +# （重複定義削除）上部の階層ターゲット群に集約
 ```
 
-### Nitpick 4: mk/help.mk:27-28 ヘルプにエイリアスinstall-ccusageも載せると発見性が上がります
-**Issue**: 直接ターゲットを案内したい場合に便利です。
-**Suggestion**: ヘルプ出力に`install-ccusage`エイリアスの説明を追加
+### Nitpick 4: mk/help.mk:27-28 Issue
+**Issue**: Style/quality suggestion
+**Suggestion**: Code improvement
 
 **Proposed Diff**:
 ```diff
-  @echo "  make install-packages-playwright      - Playwright E2Eテストフレームワークをインストール"
+@echo "  make install-packages-playwright      - Playwright E2Eテストフレームワークをインストール"
   @echo "  make install-packages-gemini-cli      - Gemini CLIをインストール"
   @echo "  make install-packages-ccusage         - ccusage (bunx) をインストール"
 + @echo "  make install-ccusage                  - ccusage をインストール（後方互換エイリアス）"
 ```
 
-### Nitpick 5: mk/install.mk:1392-1399 PATH拡張の変数展開を統一（可搬性）
-**Issue**: `$PATH`より`$$PATH`の方がMakeの二重展開を避けられ、意図どおりにシェル時点で連結されます。
-**Suggestion**: PATH変数参照を`$$PATH`に統一
-
-**Proposed Diff**:
-```diff
-# PATH拡張の変数展開を統一（具体的なdiffはコンテキストに依存）
-# $PATH → $$PATH への変更を複数箇所で適用
-```
+### Nitpick 5: mk/install.mk:1392-1399 Issue
+**Issue**: Style/quality suggestion
+**Suggestion**: Code improvement
 
 ---
 

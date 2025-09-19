@@ -301,48 +301,36 @@ class CommentAnalyzer:
         return actionables
 
     def _deduplicate_actionable_comments(self, actionable_comments: List[ActionableComment]) -> List[ActionableComment]:
-        """Remove duplicate actionable comments based on comment_id.
-        
-        Ensures only the 4 XML-expected actionable comments are included.
+        """Remove duplicate actionable comments based on comment_id and content.
         
         Args:
             actionable_comments: List of actionable comments that may contain duplicates
             
         Returns:
-            Deduplicated list of actionable comments (should be exactly 4)
+            Deduplicated list of actionable comments
         """
-        # XML-expected actionable comment IDs in priority order
-        xml_expected_ids = [
-            "actionable_git_processing_order",
-            "actionable_provider_logging", 
-            "actionable_cli_provider_logging",
-            "actionable_null_handler"
-        ]
-        
         seen_ids = set()
+        seen_content = set()
         deduplicated = []
         
-        # First pass: add XML-expected actionables in order
-        for expected_id in xml_expected_ids:
-            for comment in actionable_comments:
-                if comment.comment_id == expected_id and expected_id not in seen_ids:
-                    deduplicated.append(comment)
-                    seen_ids.add(expected_id)
-                    logger.debug(f"Added XML-expected actionable: {expected_id}")
-                    break
-        
-        # Second pass: add any other unique actionables (if needed for debugging)
-        # Note: For XML compliance, we should only have the 4 expected ones
-        extra_count = 0
         for comment in actionable_comments:
-            if comment.comment_id not in seen_ids and extra_count < 2:  # Limit extras for debugging
-                deduplicated.append(comment)
-                seen_ids.add(comment.comment_id)
-                extra_count += 1
-                logger.debug(f"Added additional actionable: {comment.comment_id}")
+            # Use comment_id as primary deduplication key
+            if comment.comment_id in seen_ids:
+                logger.debug(f"Skipping duplicate actionable comment ID: {comment.comment_id}")
+                continue
+                
+            # Also check content similarity as fallback
+            content_key = (comment.file_path, comment.line_range, comment.issue_description)
+            if content_key in seen_content:
+                logger.debug(f"Skipping duplicate actionable comment content: {content_key}")
+                continue
+            
+            deduplicated.append(comment)
+            seen_ids.add(comment.comment_id)
+            seen_content.add(content_key)
+            logger.debug(f"Added actionable comment: {comment.comment_id}")
         
         logger.debug(f"Deduplicated actionables: {len(actionable_comments)} -> {len(deduplicated)}")
-        logger.debug(f"XML-expected actionables found: {len([c for c in deduplicated if c.comment_id in xml_expected_ids])}")
         return deduplicated
 
     def _filter_resolved_threads(self, threads: List[ThreadContext]) -> List[ThreadContext]:

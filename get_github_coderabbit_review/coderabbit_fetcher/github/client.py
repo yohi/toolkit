@@ -260,11 +260,11 @@ class GitHubClient:
 
         console.print(f"📥 [blue]Fetching PR data for {owner}/{repo}#{pr_number}[/blue]")
 
-        # Fetch PR data with comments and reviews
+        # Fetch PR data with comments, reviews, and additional metadata
         pr_data = self._execute_gh_command([
             "pr", "view", str(pr_number),
             "--repo", f"{owner}/{repo}",
-            "--json", "number,title,body,comments,reviews,state,author,createdAt,updatedAt"
+            "--json", "number,title,body,comments,reviews,state,author,createdAt,updatedAt,headRefName,changedFiles,additions,deletions"
         ])
 
         # Fetch additional comment details (reviews contain inline comments)

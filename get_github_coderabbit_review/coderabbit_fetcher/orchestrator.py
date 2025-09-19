@@ -32,7 +32,7 @@ class ExecutionConfig:
     """Configuration for main execution flow."""
     pr_url: str
     persona_file: Optional[str] = None
-    output_format: str = 'llm-instruction'
+    output_format: str = 'markdown'
     output_file: Optional[str] = None
     resolved_marker: str = '🔒 CODERABBIT_RESOLVED 🔒'
     post_resolution_request: bool = False
@@ -257,7 +257,7 @@ class CodeRabbitOrchestrator:
             # Initialize formatters
             self.formatters = {
                 'markdown': MarkdownFormatter(
-                    include_metadata=not self.config.quiet, 
+                    include_metadata=not self.config.quiet,
                     include_toc=not self.config.quiet
                 ),
                 'json': JSONFormatter(),
@@ -324,10 +324,10 @@ class CodeRabbitOrchestrator:
 
     def _load_persona(self) -> str:
         """Load persona configuration.
-        
+
         Returns:
             Persona content as string
-            
+
         Raises:
             PersonaFileError: If persona loading fails
         """
@@ -418,17 +418,19 @@ class CodeRabbitOrchestrator:
         try:
             start_time = time.time()
 
-            # In quiet mode, force use of MarkdownFormatter for simplified XML output
-            if self.config.quiet:
-                formatter = self.formatters.get('markdown')
-                logger.debug("Using MarkdownFormatter for quiet mode")
-            else:
-                formatter = self.formatters.get(self.config.output_format)
-            
+            # Use the configured formatter
+            formatter = self.formatters.get(self.config.output_format)
+            logger.debug(f"Using formatter for output format: {self.config.output_format}")
+
             if not formatter:
                 raise CodeRabbitFetcherError(f"Unsupported output format: {self.config.output_format}")
 
-            formatted_content = formatter.format(persona, analyzed_comments, self.config.quiet)
+            # Pass github_client to formatter if it supports it (like MarkdownFormatter)
+            if hasattr(formatter, 'format') and 'github_client' in formatter.format.__code__.co_varnames:
+                formatted_content = formatter.format(persona, analyzed_comments, self.config.quiet, github_client=self.github_client)
+            else:
+                formatted_content = formatter.format(persona, analyzed_comments, self.config.quiet)
+            
             format_time = time.time() - start_time
 
             self.metrics.formatting_time = format_time

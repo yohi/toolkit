@@ -752,14 +752,14 @@ Claude 4が生成すべきレスポンスの構造を定義します。
 ### 基本的な使用方法
 
 ```bash
-# Generate Claude 4-optimized instruction format (default)
-crf https://github.com/yohi/lazygit-llm-commit-generator/pull/2
+# Generate Markdown AI Agent Prompt (default)
+crf https://github.com/yohi/dots/pull/38
 
-# Explicit format specification
+# Explicit format specification for XML format
 crf https://github.com/owner/repo/pull/123 --output-format llm-instruction
 
 # Save to file for Claude 4 analysis
-crf https://github.com/owner/repo/pull/123 --output-file claude_instructions.xml
+crf https://github.com/owner/repo/pull/123 --output-file ai_agent_prompt.md
 
 # Quiet mode for AI-optimized output
 crf https://github.com/owner/repo/pull/123 --quiet
@@ -769,12 +769,31 @@ crf https://github.com/owner/repo/pull/123 --quiet
 
 **ステップ1: 指示プロンプトの生成**
 ```bash
-crf https://github.com/yohi/lazygit-llm-commit-generator/pull/2 --output-file pr_analysis.xml
+# Markdown形式（デフォルト）
+crf https://github.com/yohi/dots/pull/38 --output-file pr_analysis.md
+
+# XML形式（llm-instruction）
+crf https://github.com/yohi/dots/pull/38 --output-format llm-instruction --output-file pr_analysis.xml
 ```
 
 **ステップ2: Claude 4分析**
-生成されたXMLを以下のメタプロンプトと共にClaude 4に送信します:
+生成されたMarkdownまたはXMLを以下のメタプロンプトと共にClaude 4に送信します:
 
+**Markdown形式の場合:**
+```
+以下のMarkdownで提供されるCodeRabbitフィードバックを分析してください。構造化された
+指示とペルソナガイダンスに従って、包括的なコード改善推奨事項を提供してください。
+
+指示に従って、各コメントに対して以下の構造で分析してください:
+1. 🔍 Problem Analysis - 問題の根本原因と影響度
+2. 💡 Solution Proposal - 推奨アプローチと代替案
+3. 📋 Implementation Guidelines - 具体的な実装手順
+4. ⚡ Priority Assessment - 優先度判定と理由
+
+[生成されたMarkdownをここに貼り付け]
+```
+
+**XML形式の場合:**
 ```
 以下のXMLで提供されるCodeRabbitフィードバックを分析してください。構造化された
 指示とペルソナガイダンスに従って、包括的なコード改善推奨事項を提供してください。
@@ -825,25 +844,31 @@ crf https://github.com/yohi/lazygit-llm-commit-generator/pull/2 --output-file pr
 
 **検証済み実際のテスト結果（2025-09-19）:**
 
-#### PR #2 (LazyGit LLM Commit Generator)
-`https://github.com/yohi/lazygit-llm-commit-generator/pull/2`
+#### PR #38 (GitHub Dots) - Markdown出力
+`https://github.com/yohi/dots/pull/38`
 ```bash
-uvx --from . -n crf https://github.com/yohi/lazygit-llm-commit-generator/pull/2 --output-format llm-instruction --quiet
+uvx --from . -n crf https://github.com/yohi/dots/pull/38 --quiet
 ```
 **生成結果:**
-- **出力サイズ**: 537行のXML構造化プロンプト
-- **データ内容**: 86タスク（Actionable: 4件、Nitpick: 81件、Outside diff: 1件）
-- **影響範囲**: 25+ファイル、推定作業時間8-12時間
-- **優先度分布**: High: 0件、Medium: 5件、Low: 82件
-- **品質メトリクス**: 完了率0%（全項目未解決）、重要ブロッキング問題0件
+- **出力フォーマット**: Markdown形式のAI Agent Prompt（デフォルト）
+- **PR情報**: 動的抽出（PR URL, タイトル「claude周り更新」, 作成者「yohi」）
+- **コメント分析**: Total: 5件、Actionable: 0件、Nitpick: 5件、Outside diff: 0件
+- **動的処理**: 実際のPRデータから情報を抽出、ハードコードなし
+- **コメント内容**: 実際のCodeRabbitコメントを動的に表示
 
-#### PR #38 (GitHub Dots)
-`https://github.com/yohi/dots/pull/38`
+#### PR #37 (GitHub Dots) - 異なるPRでの動作確認
+`https://github.com/yohi/dots/pull/37`
+**生成結果:**
+- **PR情報**: 動的抽出（PR URL, タイトル「Feature/zsh function」, 作成者「yohi」）
+- **ポータビリティ**: 異なるPRで異なる情報が正しく表示されることを確認
+- **ハードコード解決**: PR固有の情報が動的に変更されることを実証
+
+#### XML形式での出力例（llm-instruction）
 ```bash
 uvx --from . -n crf https://github.com/yohi/dots/pull/38 --output-format llm-instruction --quiet
 ```
 **生成結果:**
-- **出力サイズ**: 442行のXML構造化プロンプト
+- **出力サイズ**: 400+行のXML構造化プロンプト
 - **データ内容**: Makefileベースの自動化プロセス改善
 - **フォーカス**: 開発環境セットアップとビルドプロセス最適化
 - **実装ガイダンス**: 具体的なスクリプト修正と設定変更手順
@@ -851,9 +876,11 @@ uvx --from . -n crf https://github.com/yohi/dots/pull/38 --output-format llm-ins
 **共通の技術的検証:**
 - ✅ GitHub CLIによる実際のPRデータ取得
 - ✅ CodeRabbitコメントの自動検出・分類
-- ✅ XML形式での構造化出力
+- ✅ Markdown/XML両形式での構造化出力
 - ✅ 機械的処理（LLM非使用）の実証
 - ✅ 決定論的変換（同じ入力→同じ出力）
+- ✅ 動的データ抽出（ハードコード問題の解決）
+- ✅ ポータビリティ確認（複数PR間での動作検証）
 
 ## 技術仕様
 
@@ -1068,11 +1095,13 @@ crf https://github.com/owner/repo/pull/123 --show-stats
 ### v2.1.0 - 完全実装・テスト検証版（2025-09-19）
 - **実装完了**: `crf`コマンドが全機能で正常動作確認
 - **GitHub CLI統合**: 実際のPRからCodeRabbitデータを動的取得
-- **XML出力検証**: PR #2（537行）、PR #38（442行）で実際の出力確認
+- **Markdown出力検証**: PR #38（claude周り更新）、PR #37（Feature/zsh function）で動的データ抽出を確認
+- **ハードコード問題解決**: PR情報とコメント内容の完全動的抽出を実装・検証
+- **ポータビリティ確認**: 異なるPR間での正常動作とデータ変化を実証
 - **機械的処理実証**: LLM非使用の決定論的変換を実装・検証
 - **uvx互換性**: `uvx --from . -n crf [PR_URL]`で完全動作
 - **PersonaManager統合**: カスタムペルソナとデフォルトペルソナの動的生成
-- **多出力形式対応**: llm-instruction（デフォルト）、markdown、json、plain
+- **多出力形式対応**: markdown（デフォルト）、llm-instruction、json、plain
 - **品質保証**: 3つの仕様書（Requirements.md, Design.md, AI_AGENT_PROMPT_SPECIFICATION.md）完全準拠確認
 
 ### v2.0.0 - Requirements.md/Design.md完全準拠版
