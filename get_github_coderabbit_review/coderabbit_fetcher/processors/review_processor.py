@@ -212,14 +212,11 @@ class ReviewProcessor:
 
             return ActionableComment(
                 comment_id=comment_id,
-                title=title,
-                description=description,
                 file_path=file_path,
                 line_range=line_range,
+                issue_description=description,
                 raw_content=content,
-                priority_level="medium",
-                proposed_diff=proposed_diff,
-                ai_agent_prompt=ai_agent_prompt
+                proposed_diff=proposed_diff
             )
 
         except Exception as e:

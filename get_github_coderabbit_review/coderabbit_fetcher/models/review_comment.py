@@ -17,7 +17,7 @@ class BasicReviewComment(BaseModel):
         """BasicReviewComment doesn't have line information."""
         return None
 
-    @property 
+    @property
     def title(self) -> str:
         """Generate a title for basic review comment."""
         return f"Review Comment ({self.actionable_count} actionable items)"
@@ -40,24 +40,35 @@ class NitpickComment(BaseModel):
     line_range: str = Field(..., description="Line number or range")
     suggestion: str = Field(..., description="The nitpick suggestion")
     raw_content: str = Field(..., description="Original comment content")
+    proposed_diff: str = Field(default="", description="Proposed diff for the suggestion")
+
+    def __init__(self, **data) -> None:
+        """Initialize nitpick comment with auto-extracted diff."""
+        # Auto-extract diff if not provided
+        if "proposed_diff" not in data or not data.get("proposed_diff"):
+            from ..utils.diff_extractor import DiffExtractor
+            data["proposed_diff"] = DiffExtractor.extract_diff_blocks(
+                data.get("raw_content", "")
+            )
+        super().__init__(**data)
 
     @property
     def line_number(self) -> Optional[str]:
         """Extract line number from line_range."""
         if not self.line_range:
             return None
-        
+
         if '-' in self.line_range:
             return self.line_range.split('-')[0].strip()
         else:
             return self.line_range.strip()
 
-    @property 
+    @property
     def title(self) -> str:
         """Generate a title from suggestion."""
         if not self.suggestion:
             return "Nitpick Comment"
-        
+
         first_sentence = self.suggestion.split('.')[0].strip()
         if len(first_sentence) > 80:
             return first_sentence[:77] + "..."
@@ -69,9 +80,19 @@ class NitpickComment(BaseModel):
         return self.suggestion
 
     @property
+    def has_diff(self) -> bool:
+        """Check if comment has proposed diff.
+
+        Returns:
+            True if comment has proposed diff
+        """
+        return bool(self.proposed_diff and self.proposed_diff.strip())
+
+    @property
     def issue_description(self) -> str:
         """Return issue description for compatibility."""
         return self.suggestion
+
 
 
 class OutsideDiffComment(BaseModel):
@@ -82,24 +103,35 @@ class OutsideDiffComment(BaseModel):
     content: str = Field(..., description="Comment content")
     reason: str = Field(..., description="Reason why this is outside diff")
     raw_content: str = Field(..., description="Original comment content")
+    proposed_diff: str = Field(default="", description="Proposed diff for the comment")
+
+    def __init__(self, **data) -> None:
+        """Initialize outside diff comment with auto-extracted diff."""
+        # Auto-extract diff if not provided
+        if "proposed_diff" not in data or not data.get("proposed_diff"):
+            from ..utils.diff_extractor import DiffExtractor
+            data["proposed_diff"] = DiffExtractor.extract_diff_blocks(
+                data.get("raw_content", "")
+            )
+        super().__init__(**data)
 
     @property
     def line_number(self) -> Optional[str]:
         """Extract line number from line_range."""
         if not self.line_range:
             return None
-        
+
         if '-' in self.line_range:
             return self.line_range.split('-')[0].strip()
         else:
             return self.line_range.strip()
 
-    @property 
+    @property
     def title(self) -> str:
         """Generate a title from content."""
         if not self.content:
             return "Outside Diff Comment"
-        
+
         first_sentence = self.content.split('.')[0].strip()
         if len(first_sentence) > 80:
             return first_sentence[:77] + "..."
@@ -111,9 +143,19 @@ class OutsideDiffComment(BaseModel):
         return self.content
 
     @property
+    def has_diff(self) -> bool:
+        """Check if comment has proposed diff.
+
+        Returns:
+            True if comment has proposed diff
+        """
+        return bool(self.proposed_diff and self.proposed_diff.strip())
+
+    @property
     def issue_description(self) -> str:
         """Return issue description for compatibility."""
         return self.content
+
 
 
 class ReviewComment(BaseModel):
@@ -156,7 +198,7 @@ class ReviewComment(BaseModel):
         """ReviewComment doesn't have line information directly."""
         return None
 
-    @property 
+    @property
     def title(self) -> str:
         """Generate a title for review comment."""
         total_comments = len(self.nitpick_comments) + len(self.outside_diff_comments)
