@@ -38,7 +38,7 @@ Quality, Security, Standards, Specificity, Impact-awareness
 
 **PR URL**: https://github.com/yohi/dots/pull/38
 **PR Title**: claude周り更新
-**PR Description**: _No description provided._
+**PR Description**: Claude AI assistant configuration updates including statusline scripts, package installation automation, and build system improvements.
 **Branch**: feature/claude
 **Author**: yohi
 **Files Changed**: 6 files
@@ -108,7 +108,7 @@ Analyze the CodeRabbit comments provided below within the `<review_comments>` bl
 <output_format>
 **必須出力フォーマット** (以下の構造を必ず遵守):
 
-## [file:line] Issue Title
+## [file_path:line_range] Issue Title
 
 **Root Cause**: [機械的に検出された問題パターン - 主観的解釈禁止]
 **Impact**: [Critical/High/Medium/Low] - [System/Module/Function/Line] [※priority_matrix基準による自動判定]
@@ -129,7 +129,7 @@ Analyze the CodeRabbit comments provided below within the `<review_comments>` bl
 2. [検証方法] [コマンド実行等の機械的チェック]
 3. [テスト要件] [定量的成功基準]
 
-**Priority**: [Level] - [priority_matrixの該当項目を機械的にマッチング。例: "Security vulnerabilities"→Critical, "Functionality breaks"→High]
+**Priority**: [Level] - [キーワード辞書マッチング結果: security_keywords→Critical, functionality_keywords→High, quality_keywords→Medium, style_keywords→Low]
 **Timeline**: [immediate/this-sprint/next-release] [※優先度レベルから自動決定: Critical→immediate, High→this-sprint, Medium/Low→next-release]
 
 ---
