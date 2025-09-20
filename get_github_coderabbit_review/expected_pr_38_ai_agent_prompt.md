@@ -96,6 +96,24 @@ Quality, Security, Standards, Specificity, Impact-awareness
 
 Analyze the CodeRabbit comments provided below within the `<review_comments>` block. For each `<review_comment>`, understand the issue, the proposed diff, and the instructions from CodeRabbit. Then, generate a structured response following the format specified in the `<output_requirements>` section.
 
+<thinking_process>
+For each comment, follow this step-by-step analysis:
+1. **Extract metadata**: file_path, line_range, comment_type from XML attributes
+2. **Keyword matching**: Apply static dictionaries to issue description
+3. **Count keywords**: Calculate totals per category (security/functionality/quality/style)
+4. **Determine priority**: Select highest count category, apply tie-breaking rules
+5. **Template application**: Insert extracted data into predefined format
+6. **Validation**: Verify all required fields are populated with deterministic values
+</thinking_process>
+
+<error_handling>
+- **Missing XML attributes**: Use "unknown" as default value
+- **Empty code sections**: Mark as "[No code provided]"
+- **Keyword count ties**: Apply priority order: security > functionality > quality > style
+- **Invalid line ranges**: Use original text as-is
+- **Malformed instructions**: Extract available text, mark incomplete sections
+</error_handling>
+
 <language_rules>
 - **問題タイトル**: 日本語（技術用語は英語併記）
 - **分析内容**: 日本語で詳細説明（専門用語は英語併記）
@@ -152,6 +170,38 @@ Analyze the CodeRabbit comments provided below within the `<review_comments>` bl
 - **Estimated Effort**: 1-2 hours (including testing)
 - **Risk Assessment**: Medium (build system configuration changes)
 </summary_metrics>
+
+<expected_output_examples>
+**Example 1: Actionable Comment Processing**
+```
+## [mk/install.mk:1390–1403] bun install コマンド構文問題
+
+**Root Cause**: キーワード辞書マッチング結果 - functionality_keywords: ["install", "command", "PATH", "export"] 4件検出
+**Impact**: High - Module [※キーワード数4件 > 閾値3件によりHigh自動判定]
+**Type**: Actionable [※CodeRabbitコメント分類より機械抽出]
+**Affected**: [mk/install.mk, bun global package installation system]
+```
+
+**Example 2: Nitpick Comment Processing**
+```
+## [mk/variables.mk:19-20] PHONY登録漏れ
+
+**Root Cause**: キーワード辞書マッチング結果 - style_keywords: ["PHONY", "alias"] 2件検出
+**Impact**: Medium - Function [※キーワード数2件 = 閾値2件によりMedium自動判定]
+**Type**: Nitpick [※CodeRabbitコメント分類より機械抽出]
+**Affected**: [mk/variables.mk, install-packages-gemini-cli target]
+```
+
+**Example 3: Error Handling**
+```
+## [unknown_file:unknown_range] 解析エラー
+
+**Root Cause**: [解析失敗 - XML属性不正]
+**Impact**: Low - Line [※デフォルト値適用]
+**Type**: [不明] [※type属性欠損]
+**Affected**: [解析不可能]
+```
+</expected_output_examples>
 
 <example_analysis>
 **Example for Actionable Comment:**

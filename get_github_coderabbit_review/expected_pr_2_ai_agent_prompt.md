@@ -92,6 +92,24 @@ Quality, Security, Standards, Specificity, Impact-awareness
 
 Analyze the CodeRabbit comments provided below within the `<review_comments>` block. For each `<review_comment>`, understand the issue, the proposed diff, and the instructions from CodeRabbit. Then, generate a structured response following the format specified in the `<output_requirements>` section.
 
+<thinking_process>
+For each comment, follow this step-by-step analysis:
+1. **Extract metadata**: file_path, line_range, comment_type from XML attributes
+2. **Keyword matching**: Apply static dictionaries to issue description
+3. **Count keywords**: Calculate totals per category (security/functionality/quality/style)
+4. **Determine priority**: Select highest count category, apply tie-breaking rules
+5. **Template application**: Insert extracted data into predefined format
+6. **Validation**: Verify all required fields are populated with deterministic values
+</thinking_process>
+
+<error_handling>
+- **Missing XML attributes**: Use "unknown" as default value
+- **Empty code sections**: Mark as "[No code provided]"
+- **Keyword count ties**: Apply priority order: security > functionality > quality > style
+- **Invalid line ranges**: Use original text as-is
+- **Malformed instructions**: Extract available text, mark incomplete sections
+</error_handling>
+
 <language_rules>
 - **問題タイトル**: 日本語（技術用語は英語併記）
 - **分析内容**: 日本語で詳細説明（専門用語は英語併記）
@@ -147,6 +165,38 @@ Analyze the CodeRabbit comments provided below within the `<review_comments>` bl
 - **Estimated Effort**: 3-4 hours (including testing and verification)
 - **Risk Assessment**: High (project architecture and packaging changes)
 </summary_metrics>
+
+<expected_output_examples>
+**Example 1: Actionable Comment Processing**
+```
+## [setup.py:61-64] package_data パッケージ外参照問題
+
+**Root Cause**: キーワード辞書マッチング結果 - functionality_keywords: ["package", "wheel", "install"] 3件検出
+**Impact**: High - System [※キーワード数3件 = 闾値3件によりHigh自動判定]
+**Type**: Actionable [※CodeRabbitコメント分類より機械抽出]
+**Affected**: [setup.py, wheelビルドシステム, パッケージインストールシステム]
+```
+
+**Example 2: Nitpick Comment Processing**
+```
+## [lazygit-llm/lazygit_llm/__init__.py:1-3] パッケージメタデータ不足
+
+**Root Cause**: キーワード辞書マッチング結果 - style_keywords: ["metadata", "version"] 2件検出
+**Impact**: Medium - Function [※キーワード数2件 = 闾値2件によりMedium自動判定]
+**Type**: Nitpick [※CodeRabbitコメント分類より機械抽出]
+**Affected**: [lazygit-llm/lazygit_llm/__init__.py, パッケージ初期化システム]
+```
+
+**Example 3: Outside Diff Range Comment**
+```
+## [lazygit-llm/src/main.py:1-209] 重複ファイル解消
+
+**Root Cause**: キーワード辞書マッチング結果 - quality_keywords: ["duplicate", "refactor"] 2件検出
+**Impact**: Medium - Module [※キーワード数2件 = 闾値2件によりMedium自動判定]
+**Type**: Outside Diff Range [※CodeRabbitコメント分類より機械抽出]
+**Affected**: [lazygit-llm/src/main.py, ランタイムエントリポイントシステム]
+```
+</expected_output_examples>
 
 # CodeRabbit Comments for Analysis
 
