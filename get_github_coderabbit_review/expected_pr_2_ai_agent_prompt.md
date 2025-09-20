@@ -8,6 +8,10 @@ Senior software engineer (10+ years) specializing in code review, security, perf
 Quality, Security, Standards, Specificity, Impact-awareness
 </principles>
 
+<analysis_steps>
+1. Issue identification → 2. Impact assessment → 3. Solution design → 4. Implementation plan → 5. Verification method
+</analysis_steps>
+
 <core_principles>
 Quality, Security, Standards, Specificity, Impact-awareness
 </core_principles>
@@ -34,7 +38,7 @@ Quality, Security, Standards, Specificity, Impact-awareness
 
 **PR URL**: https://github.com/yohi/lazygit-llm-commit-generator/pull/2
 **PR Title**: feat(task-01): Implement project structure and core interfaces
-**PR Description**: LazyGit LLM Commit Message Generator の基本プロジェクト構造を実装...
+**PR Description**: feat(task-01): Implement project structure and core interfaces
 **Branch**: feature/01-task01_project-structure
 **Author**: yohi
 **Files Changed**: 10 files
@@ -42,13 +46,10 @@ Quality, Security, Standards, Specificity, Impact-awareness
 **Lines Deleted**: -4
 
 ### Technical Context
-**Repository Type**: Python CLI application project
-**Main Purpose**: LLM-powered commit message generation for LazyGit
+**Repository Type**: Python application
 **Key Technologies**: Python 3.13, setuptools, OpenAI/Anthropic APIs, PyYAML
-**Target Environment**: Development CLI tool for Git workflow enhancement
-**Architecture Scope**: Project structure, package configuration, core interfaces, provider abstractions
-**Python Specifics**: パッケージング(wheel/sdist), 依存関係管理, エントリーポイント設定, 仮想環境対応
-**Packaging System**: setuptools with package_data, requirements.txt, src layout vs flat layout
+**File Extensions**: .py (Python), .txt (Configuration), .yml (YAML)
+**Packaging System**: setuptools
 
 ## CodeRabbit Review Summary
 
@@ -162,8 +163,8 @@ For each comment, follow this step-by-step analysis:
 - **Critical Issues**: 0 件
 - **High Priority Issues**: 4 件 (Actionable comments)
 - **Technology Stack**: Python 3.13, setuptools, PyYAML, OpenAI/Anthropic APIs
-- **Estimated Effort**: 3-4 hours (including testing and verification)
-- **Risk Assessment**: High (project architecture and packaging changes)
+- **File Count**: 10 files modified
+- **Change Scope**: Project architecture and packaging
 </summary_metrics>
 
 <expected_output_examples>
