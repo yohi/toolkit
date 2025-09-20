@@ -8,9 +8,13 @@ Senior software engineer (10+ years) specializing in code review, security, perf
 Quality, Security, Standards, Specificity, Impact-awareness
 </principles>
 
-<analysis_steps>
+<core_principles>
+Quality, Security, Standards, Specificity, Impact-awareness
+</core_principles>
+
+<analysis_methodology>
 1. Issue identification → 2. Impact assessment → 3. Solution design → 4. Implementation plan → 5. Verification method
-</analysis_steps>
+</analysis_methodology>
 
 <priority_matrix>
 - **Critical**: Security vulnerabilities, data loss risks, system failures
@@ -82,66 +86,46 @@ Analyze the CodeRabbit comments provided below within the `<review_comments>` bl
 - **一貫性**: 同一用語は文書全体で統一表記
 </language_rules>
 
-<output_requirements>
-For each comment, respond using this exact structure:
+<output_format>
+For each comment, provide structured analysis:
 
-## [ファイル名:行番号] 問題のタイトル
+## [file:line] Issue Title
 
-### 🔍 Problem Analysis
-**Root Cause**: [根本的な技術的問題を具体的に記述]
-**Impact Level**: [Critical/High/Medium/Low] - [System/Module/Function/Line scope with affected components]
-**Technical Context**: [関連する技術的背景、標準、ベストプラクティス違反]
-**Comment Type**: [Actionable/Outside Diff Range/Nitpick]
-**Affected Systems**: [具体的ファイル名, 関数名, モジュール名をリスト形式で記載]
+**Root Cause**: Technical problem description
+**Impact**: [Critical/High/Medium/Low] - [System/Module/Function/Line]
+**Type**: [Actionable/Outside Diff Range/Nitpick]
+**Affected**: [specific files, functions, modules]
 
-### 💡 Solution Proposal
-#### Recommended Approach
-```プログラミング言語
+**Solution**:
+```language
 // Before (Current Issue)
-現在の問題のあるコード
+current problematic code
 
 // After (Proposed Fix)
-提案する修正されたコード
+fixed code
 ```
 
-#### Alternative Solutions (if applicable)
-- **Option 1**: [代替実装方法1とメリット・デメリット]
-- **Option 2**: [代替実装方法2とメリット・デメリット]
-- **Trade-off Analysis**: [具体的基準による手法比較]
+**Implementation Steps**:
+1. [Specific step with file:line reference]
+2. [Verification method]
+3. [Testing requirements]
 
-### 📋 Implementation Guidelines
-- [ ] **Step 1**: [ファイル・行番号参照を含む具体的実装ステップ]
-- [ ] **Step 2**: [検証方法を含む具体的実装ステップ]
-- [ ] **Step 3**: [必要に応じた追加ステップ]
-- [ ] **Testing**: [必要なテスト内容 - 単体テスト、統合テスト、手動検証]
-- [ ] **Impact Check**: [検証すべき関連部分 - 具体的ファイル、関数、設定]
-- [ ] **Documentation**: [README、コメント、ドキュメントの更新が必要な箇所]
-
-### ⚡ Priority Assessment
-**Judgment**: [Critical/High/Medium/Low based on priority_matrix]
-**Reasoning**: [客観的基準を用いた技術的根拠]
+**Priority**: [Level] - [Reference specific priority_matrix criteria: e.g., "Functionality breaks" for High priority]
 **Timeline**: [immediate/this-sprint/next-release]
-**Dependencies**: [前提となる変更や調整が必要な事項]
-
-### 🔍 Verification Checklist
-- [ ] コードがエラーなくコンパイル・実行される
-- [ ] 既存機能が影響を受けない
-- [ ] 新しい動作が期待される結果と一致する
-- [ ] パフォーマンスへの影響が許容範囲内
-- [ ] セキュリティへの影響が考慮されている
-- [ ] 同一入力で同一出力が保証される（決定論的処理）
-- [ ] LLM処理を使用していない（ルールベースのみ）
-- [ ] 全ての技術用語が正確に使用されている
-- [ ] 優先度判定が客観的基準に基づいている
-- [ ] 実装ステップが具体的で実行可能である
 
 ---
-</output_requirements>
+</output_format>
 
 ## 🎯 クイックサマリー（30秒で読める）
-- **緊急度**: 4件のActionable（High優先度）
-- **主要技術領域**: Python パッケージング, 依存関係管理, プロジェクト構造
-- **推定作業時間**: 3-4時間（テスト・検証含む）
+
+<summary_metrics>
+- **Total Comments**: 87 (4 Actionable, 82 Nitpick, 1 Outside Diff Range)
+- **Critical Issues**: 0 件
+- **High Priority Issues**: 4 件 (Actionable comments)
+- **Technology Stack**: Python 3.13, setuptools, PyYAML, OpenAI/Anthropic APIs
+- **Estimated Effort**: 3-4 hours (including testing and verification)
+- **Risk Assessment**: High (project architecture and packaging changes)
+</summary_metrics>
 
 # CodeRabbit Comments for Analysis
 
@@ -301,5 +285,13 @@ package_data={
 ---
 
 # Analysis Instructions
+
+<thinking_framework>
+1. Parse comment type (Actionable/Nitpick/Outside Diff Range) and extract technical context
+2. Apply priority_matrix objective criteria to determine impact level
+3. Generate structured solution with before/after code examples
+4. Create implementation steps with specific file:line references
+5. Validate reasoning against deterministic processing constraints
+</thinking_framework>
 
 **Begin your analysis with the first comment and proceed systematically through each category.**

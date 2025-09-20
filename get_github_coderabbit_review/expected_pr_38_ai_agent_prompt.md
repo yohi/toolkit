@@ -12,6 +12,14 @@ Quality, Security, Standards, Specificity, Impact-awareness
 1. Issue identification → 2. Impact assessment → 3. Solution design → 4. Implementation plan → 5. Verification method
 </analysis_steps>
 
+<core_principles>
+Quality, Security, Standards, Specificity, Impact-awareness
+</core_principles>
+
+<analysis_methodology>
+1. Issue identification → 2. Impact assessment → 3. Solution design → 4. Implementation plan → 5. Verification method
+</analysis_methodology>
+
 <priority_matrix>
 - **Critical**: Security vulnerabilities, data loss risks, system failures
 - **High**: Functionality breaks, performance degradation >20%, API changes
@@ -82,130 +90,47 @@ Analyze the CodeRabbit comments provided below within the `<review_comments>` bl
 - **一貫性**: 同一用語は文書全体で統一表記
 </language_rules>
 
-<output_requirements>
-For each comment, respond using this exact structure:
+<output_format>
+For each comment, provide structured analysis:
 
-## [ファイル名:行番号] 問題のタイトル
+## [file:line] Issue Title
 
-### 🔍 Problem Analysis
-**Root Cause**: [根本的な技術的問題を具体的に記述]
-**Impact Level**: [Critical/High/Medium/Low] - [System/Module/Function/Line scope with affected components]
-**Technical Context**: [関連する技術的背景、標準、ベストプラクティス違反]
-**Comment Type**: [Actionable/Outside Diff Range/Nitpick]
-**Affected Systems**: [具体的ファイル名, 関数名, モジュール名をリスト形式で記載]
+**Root Cause**: Technical problem description
+**Impact**: [Critical/High/Medium/Low] - [System/Module/Function/Line]
+**Type**: [Actionable/Outside Diff Range/Nitpick]
+**Affected**: [specific files, functions, modules]
 
-### 💡 Solution Proposal
-#### Recommended Approach
-```プログラミング言語
+**Solution**:
+```language
 // Before (Current Issue)
-現在の問題のあるコード
+current problematic code
 
 // After (Proposed Fix)
-提案する修正されたコード
+fixed code
 ```
 
-#### Alternative Solutions (if applicable)
-- **Option 1**: [代替実装方法1とメリット・デメリット]
-- **Option 2**: [代替実装方法2とメリット・デメリット]
-- **Trade-off Analysis**: [具体的基準による手法比較]
+**Implementation Steps**:
+1. [Specific step with file:line reference]
+2. [Verification method]
+3. [Testing requirements]
 
-### 📋 Implementation Guidelines
-- [ ] **Step 1**: [ファイル・行番号参照を含む具体的実装ステップ]
-- [ ] **Step 2**: [検証方法を含む具体的実装ステップ]
-- [ ] **Step 3**: [必要に応じた追加ステップ]
-- [ ] **Testing**: [必要なテスト内容 - 単体テスト、統合テスト、手動検証]
-- [ ] **Impact Check**: [検証すべき関連部分 - 具体的ファイル、関数、設定]
-- [ ] **Documentation**: [README、コメント、ドキュメントの更新が必要な箇所]
-
-### ⚡ Priority Assessment
-**Judgment**: [Critical/High/Medium/Low based on priority_matrix]
-**Reasoning**: [客観的基準を用いた技術的根拠]
+**Priority**: [Level] - [Reference specific priority_matrix criteria: e.g., "Functionality breaks" for High priority]
 **Timeline**: [immediate/this-sprint/next-release]
-**Dependencies**: [前提となる変更や調整が必要な事項]
-
-### 🔍 Verification Checklist
-- [ ] コードがエラーなくコンパイル・実行される
-- [ ] 既存機能が影響を受けない
-- [ ] 新しい動作が期待される結果と一致する
-- [ ] パフォーマンスへの影響が許容範囲内
-- [ ] セキュリティへの影響が考慮されている
-- [ ] 同一入力で同一出力が保証される（決定論的処理）
-- [ ] LLM処理を使用していない（ルールベースのみ）
-- [ ] 全ての技術用語が正確に使用されている
-- [ ] 優先度判定が客観的基準に基づいている
-- [ ] 実装ステップが具体的で実行可能である
 
 ---
-</output_requirements>
+</output_format>
 
-<alternative_output_formats>
-When JSON format is requested, structure the response as:
-
-```json
-{
-  "analysis_results": [
-    {
-      "file_path": "string",
-      "line_range": "string",
-      "problem_title": "string",
-      "metadata": {
-        "comment_id": "string",
-        "file_type": "makefile|shell|python|yaml",
-        "complexity": "low|medium|high",
-        "estimated_effort_minutes": "number"
-      },
-      "analysis": {
-        "root_cause": "string",
-        "impact_level": "Critical|High|Medium|Low",
-        "impact_scope": "System|Module|Function|Line",
-        "technical_context": "string",
-        "comment_type": "Actionable|Outside Diff Range|Nitpick",
-        "affected_systems": ["string"],
-        "risk_factors": ["security|performance|maintainability|compatibility"]
-      },
-      "solution": {
-        "recommended_approach": {
-          "before_code": "string",
-          "after_code": "string",
-          "language": "string",
-          "change_type": "syntax_fix|logic_change|refactor|addition"
-        },
-        "alternatives": [
-          {
-            "option": "string",
-            "description": "string",
-            "pros_cons": "string",
-            "effort_comparison": "higher|same|lower"
-          }
-        ],
-        "implementation_steps": ["string"],
-        "priority": {
-          "level": "Critical|High|Medium|Low",
-          "reasoning": "string",
-          "timeline": "immediate|this-sprint|next-release",
-          "dependencies": ["string"]
-        },
-        "verification_checklist": ["string"]
-      }
-    }
-  ],
-  "summary": {
-    "total_comments": "number",
-    "critical_issues": "number",
-    "high_priority_issues": "number",
-    "medium_priority_issues": "number",
-    "low_priority_issues": "number",
-    "estimated_total_effort_hours": "number",
-    "risk_assessment": "low|medium|high"
-  }
-}
-```
-</alternative_output_formats>
 
 ## 🎯 クイックサマリー（30秒で読める）
-- **緊急度**: 3件のActionable（High優先度）
-- **主要技術領域**: Make変数展開, PATH管理, シェルコマンド構文
-- **推定作業時間**: 1-2時間（テスト含む）
+
+<summary_metrics>
+- **Total Comments**: 8 (3 Actionable, 5 Nitpick, 0 Outside Diff Range)
+- **Critical Issues**: 0 件
+- **High Priority Issues**: 3 件 (Actionable comments)
+- **Technology Stack**: Make build system, bun package manager, shell scripting
+- **Estimated Effort**: 1-2 hours (including testing)
+- **Risk Assessment**: Medium (build system configuration changes)
+</summary_metrics>
 
 <example_analysis>
 **Example for Actionable Comment:**
@@ -236,7 +161,7 @@ export PATH="$(HOME)/.bun/bin:$$PATH"
 
 ### ⚡ Priority Assessment
 **Judgment**: High based on priority_matrix
-**Reasoning**: 機能破綻（パッケージインストール失敗）に該当
+**Reasoning**: Matches priority_matrix.High criteria: "Functionality breaks" - Package installation failure affects core system functionality
 **Timeline**: this-sprint
 **Dependencies**: bun環境の事前確認が必要
 </example_analysis>
@@ -468,3 +393,15 @@ new_code: |
 </review_comments>
 
 ---
+
+# Analysis Instructions
+
+<thinking_framework>
+1. Parse comment type (Actionable/Nitpick/Outside Diff Range) and extract technical context
+2. Apply priority_matrix objective criteria to determine impact level
+3. Generate structured solution with before/after code examples
+4. Create implementation steps with specific file:line references
+5. Validate reasoning against deterministic processing constraints
+</thinking_framework>
+
+**Begin your analysis with the first comment and proceed systematically through each category.**
