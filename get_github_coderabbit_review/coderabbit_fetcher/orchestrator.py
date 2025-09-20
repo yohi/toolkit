@@ -21,6 +21,17 @@ from .formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter, LL
 from .resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
 from .comment_poster import ResolutionRequestManager, ResolutionRequestConfig
 from .models import AnalyzedComments, CommentMetadata
+from .config import (
+    DEFAULT_RESOLVED_MARKER,
+    DEFAULT_PROGRESS_STEPS,
+    SUPPORTED_OUTPUT_FORMATS,
+    DEFAULT_TOTAL_OPERATIONS,
+    DEFAULT_TIMEOUT_SECONDS,
+    DEFAULT_RETRY_ATTEMPTS,
+    DEFAULT_RETRY_DELAY,
+    MIN_TIMEOUT_WARNING_THRESHOLD,
+    ZERO_OR_NEGATIVE_ERROR_MSG
+)
 
 
 # Configure logging
@@ -34,14 +45,14 @@ class ExecutionConfig:
     persona_file: Optional[str] = None
     output_format: str = 'markdown'
     output_file: Optional[str] = None
-    resolved_marker: str = '🔒 CODERABBIT_RESOLVED 🔒'
+    resolved_marker: str = DEFAULT_RESOLVED_MARKER
     post_resolution_request: bool = False
     show_stats: bool = False
     debug: bool = False
     quiet: bool = False
-    timeout_seconds: int = 300
-    retry_attempts: int = 3
-    retry_delay: float = 1.0
+    timeout_seconds: int = DEFAULT_TIMEOUT_SECONDS
+    retry_attempts: int = DEFAULT_RETRY_ATTEMPTS
+    retry_delay: float = DEFAULT_RETRY_DELAY
 
 
 @dataclass
@@ -70,7 +81,7 @@ class ExecutionMetrics:
     @property
     def success_rate(self) -> float:
         """Calculate overall success rate."""
-        total_operations = 5  # Setup, fetch, analyze, format, output
+        total_operations = DEFAULT_TOTAL_OPERATIONS  # Setup, fetch, analyze, format, output
         failed_operations = len(self.errors_encountered)
         return max(0.0, (total_operations - failed_operations) / total_operations)
 
@@ -90,16 +101,7 @@ class ProgressTracker:
         self.current_step = 0
         self.progress_callback = progress_callback
         self.quiet_mode = quiet_mode
-        self.step_descriptions = [
-            "Initializing components",
-            "Validating GitHub CLI authentication",
-            "Parsing and validating PR URL",
-            "Loading persona configuration",
-            "Fetching PR data from GitHub",
-            "Analyzing CodeRabbit comments",
-            "Formatting output",
-            "Writing results"
-        ]
+        self.step_descriptions = DEFAULT_PROGRESS_STEPS
 
     def advance(self, description: Optional[str] = None) -> None:
         """Advance progress to next step."""
@@ -642,7 +644,7 @@ class CodeRabbitOrchestrator:
             validation_result["issues"].append("PR URL must be a valid HTTP/HTTPS URL")
 
         # Validate output format
-        if self.config.output_format not in ['markdown', 'json', 'plain', 'llm-instruction']:
+        if self.config.output_format not in SUPPORTED_OUTPUT_FORMATS:
             validation_result["valid"] = False
             validation_result["issues"].append(f"Invalid output format: {self.config.output_format}")
 
@@ -671,8 +673,8 @@ class CodeRabbitOrchestrator:
         # Validate timeout
         if self.config.timeout_seconds <= 0:
             validation_result["valid"] = False
-            validation_result["issues"].append("Timeout must be positive")
-        elif self.config.timeout_seconds < 30:
+            validation_result["issues"].append(ZERO_OR_NEGATIVE_ERROR_MSG)
+        elif self.config.timeout_seconds < MIN_TIMEOUT_WARNING_THRESHOLD:
             validation_result["warnings"].append("Timeout is very short, may cause failures")
 
         # Validate retry settings

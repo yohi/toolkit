@@ -18,6 +18,7 @@ from ..resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
 from ..comment_poster import ResolutionRequestManager, ResolutionRequestConfig
 from ..models import CommentMetadata
 from ..orchestrator import CodeRabbitOrchestrator, ExecutionConfig
+from ..config import DEFAULT_RESOLVED_MARKER, QUIET_MODE_LOG_MODULES
 
 
 # Configure logging - will be reconfigured based on command line args
@@ -95,7 +96,7 @@ Examples:
     parser.add_argument(
         '--resolved-marker', '-m',
         type=str,
-        default='🔒 CODERABBIT_RESOLVED 🔒',
+        default=DEFAULT_RESOLVED_MARKER,
         help='Resolved marker string (default: 🔒 CODERABBIT_RESOLVED 🔒)'
     )
 
@@ -158,10 +159,7 @@ def run_fetch_command(args) -> int:
             # In quiet mode, show only warnings and errors
             logging.getLogger().setLevel(logging.WARNING)
             # Also suppress logging from other modules
-            for log_name in ['coderabbit_fetcher.orchestrator',
-                           'coderabbit_fetcher.github_client',
-                           'coderabbit_fetcher.comment_analyzer',
-                           'coderabbit_fetcher.formatters.markdown_formatter']:
+            for log_name in QUIET_MODE_LOG_MODULES:
                 logging.getLogger(log_name).setLevel(logging.WARNING)
 
         # Create execution configuration
