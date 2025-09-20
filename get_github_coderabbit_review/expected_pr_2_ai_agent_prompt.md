@@ -106,8 +106,8 @@ Analyze the CodeRabbit comments provided below within the `<review_comments>` bl
 
 ## [file_path:line_range] Issue Title
 
-**Root Cause**: [機械的に検出された問題パターン - 主観的解釈禁止]
-**Impact**: [Critical/High/Medium/Low] - [System/Module/Function/Line] [※priority_matrix基準による自動判定]
+**Root Cause**: [キーワード辞書マッチング結果 - 検出キーワードと件数を明記]
+**Impact**: [Critical/High/Medium/Low] - [System/Module/Function/Line] [※キーワード数による自動判定: 5件以上→Critical, 3-4件→High, 1-2件→Medium, 0件→Low]
 **Type**: [Actionable/Outside Diff Range/Nitpick] [※CodeRabbitコメント分類より機械抽出]
 **Affected**: [ファイルパス・関数名・モジュール名を文字列として列挙]
 
@@ -265,42 +265,32 @@ JSON形式要求時は構造化レスポンスを提供（詳細は必要時の�
 <example_analysis>
 **Example for Actionable Comment:**
 
-## [setup.py:61-64] package_dataパッケージ外参照問題
+## [setup.py:61-64] package_data パッケージ外参照問題
 
-### 🔍 Problem Analysis
-**Root Cause**: `package_data`がパッケージ外ファイルを指し、wheelに含まれない
-**Impact Level**: High - System scope (packaging system affected)
-**Technical Context**: Pythonパッケージングのpackage_data仕様違反
-**Comment Type**: Actionable
-**Affected Systems**: [setup.py, wheelビルドシステム, パッケージインストールシステム, pip installプロセス]
+**Root Cause**: キーワード辞書マッチング結果 - functionality_keywords: ["package", "wheel", "install"] 3件検出
+**Impact**: High - System [※キーワード数3件 = 閾値3件によりHigh自動判定]
+**Type**: Actionable [※CodeRabbitコメント分類より機械抽出]
+**Affected**: [setup.py, wheelビルドシステム, パッケージインストールシステム]
 
-### 💡 Solution Proposal
-#### Recommended Approach
+**Solution**:
 ```python
-# Before (Current Issue)
+// Before (Current Issue)
 package_data={
     'lazygit_llm': ['config/*.yml*', 'docs/*.md']
 }
 
-# After (Proposed Fix)
+// After (Proposed Fix)
 # Option A: Move files to package directory
 # Option B: Use MANIFEST.in + include_package_data=True
 ```
 
-#### Alternative Solutions
-- **Option 1**: ファイルをlazygit_llm/パッケージ内に移動 - シンプルだがディレクトリ構造変更
-- **Option 2**: MANIFEST.in使用 - 構造保持だが設定追加
+**Implementation Steps**:
+1. [setup.py:61-64] package_dataパス修正またはMANIFEST.in追加 [コメント指示から機械的抽出]
+2. [python setup.py bdist_wheel] wheelビルド実行 [定量的成功基準: ファイル含有確認]
+3. [pip install dist/*.whl] インストールテスト [定量的成功基準: import成功]
 
-### 📋 Implementation Guidelines
-- [ ] **Step 1**: config/とdocs/をlazygit_llm/パッケージ内に移動
-- [ ] **Step 2**: setup.pyのpackage_dataパスを更新
-- [ ] **Step 3**: wheelビルドでファイル含有確認
-
-### ⚡ Priority Assessment
-**Judgment**: High [機械的マッチング結果]
-**Matching Rule**: priority_matrix.High criteria: "Functionality breaks" キーワード検出 + パッケージングシステム影響パターンマッチ
-**Timeline**: this-sprint [優先度Highから自動決定]
-**Dependencies**: [ファイルパス解析結果: setup.py, package_data関連ファイル検出]
+**Priority**: High - [キーワード辞書マッチング結果: functionality_keywords 3件 > quality_keywords 0件]
+**Timeline**: this-sprint [※優先度Highから自動決定: Critical→immediate, High→this-sprint, Medium/Low→next-release]
 </example_analysis>
 
 ---
@@ -309,10 +299,15 @@ package_data={
 
 <deterministic_processing_framework>
 1. **コメントタイプ抽出**: type属性から機械的分類 (Actionable/Nitpick/Outside Diff Range)
-2. **キーワードマッチング**: priority_matrix定義キーワードとコメント内容の照合
-3. **テンプレート適用**: 事前定義フォーマットにコメントデータを機械的挿入
-4. **ファイル:line情報抽出**: コメント属性から文字列として抽出
-5. **ルール適合性チェック**: 全処理が機械的・決定論的であることを確認
+2. **キーワードマッチング**: 以下の静的辞書による文字列照合
+   - security_keywords: ["vulnerability", "security", "authentication", "authorization", "injection", "XSS", "CSRF", "token", "credential", "encrypt"]
+   - functionality_keywords: ["breaks", "fails", "error", "exception", "crash", "timeout", "import", "package", "dependency", "wheel", "install"]
+   - quality_keywords: ["refactor", "maintainability", "readability", "complexity", "duplicate", "cleanup", "optimize", "structure"]
+   - style_keywords: ["formatting", "naming", "documentation", "comment", "metadata", "version", "init"]
+3. **優先度決定アルゴリズム**: マッチしたキーワード数をカウント、最多カテゴリを選択、同数時は security > functionality > quality > style
+4. **テンプレート適用**: 事前定義フォーマットにコメントデータを機械的挿入
+5. **ファイル:line情報抽出**: コメント属性から文字列として抽出
+6. **ルール適合性チェック**: 全処理が機械的・決定論的であることを確認
 </deterministic_processing_framework>
 
 **Begin your analysis with the first comment and proceed systematically through each category.**

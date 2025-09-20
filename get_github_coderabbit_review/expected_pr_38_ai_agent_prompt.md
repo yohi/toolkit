@@ -110,8 +110,8 @@ Analyze the CodeRabbit comments provided below within the `<review_comments>` bl
 
 ## [file_path:line_range] Issue Title
 
-**Root Cause**: [機械的に検出された問題パターン - 主観的解釈禁止]
-**Impact**: [Critical/High/Medium/Low] - [System/Module/Function/Line] [※priority_matrix基準による自動判定]
+**Root Cause**: [キーワード辞書マッチング結果 - 検出キーワードと件数を明記]
+**Impact**: [Critical/High/Medium/Low] - [System/Module/Function/Line] [※キーワード数による自動判定: 5件以上→Critical, 3-4件→High, 1-2件→Medium, 0件→Low]
 **Type**: [Actionable/Outside Diff Range/Nitpick] [※CodeRabbitコメント分類より機械抽出]
 **Affected**: [ファイルパス・関数名・モジュール名を文字列として列挙]
 
@@ -156,35 +156,31 @@ Analyze the CodeRabbit comments provided below within the `<review_comments>` bl
 <example_analysis>
 **Example for Actionable Comment:**
 
-## [mk/install.mk:1390-1403] Makefile PATH変数エスケープ問題
+## [mk/install.mk:1390–1403] bun install コマンド構文問題
 
-### 🔍 Problem Analysis
-**Root Cause**: Makefileで`$PATH`が二重展開され、シェル実行時に空文字になる
-**Impact Level**: High - Module scope (install system affected)
-**Technical Context**: Makefileの変数展開ルールとシェル変数の競合
-**Comment Type**: Actionable
-**Affected Systems**: [mk/install.mk, bun global package installation]
+**Root Cause**: キーワード辞書マッチング結果 - functionality_keywords: ["install", "command", "PATH", "export"] 4件検出
+**Impact**: High - Module [※キーワード数4件 > 閾値3件によりHigh自動判定]
+**Type**: Actionable [※CodeRabbitコメント分類より機械抽出]
+**Affected**: [mk/install.mk, bun global package installation system]
 
-### 💡 Solution Proposal
-#### Recommended Approach
+**Solution**:
 ```makefile
-# Before (Current Issue)
+// Before (Current Issue)
 export PATH="$$HOME/.bun/bin:$PATH"
+bun install -g ccusage
 
-# After (Proposed Fix)
+// After (Proposed Fix)  
 export PATH="$(HOME)/.bun/bin:$$PATH"
+bun add -g ccusage
 ```
 
-### 📋 Implementation Guidelines
-- [ ] **Step 1**: mk/install.mk 1390-1403行の`$PATH`を`$$PATH`に変更
-- [ ] **Step 2**: `bun install -g`を`bun add -g`に変更
-- [ ] **Step 3**: 変更後にmakeコマンドでテスト実行
+**Implementation Steps**:
+1. [mk/install.mk:1392] `$PATH`を`$$PATH`に変更 [コメント指示から機械的抽出]
+2. [mk/install.mk:1395] `bun install -g`を`bun add -g`に変更 [コメント指示から機械的抽出]
+3. [make install-packages-ccusage] コマンド実行テスト [定量的成功基準: exit code 0]
 
-### ⚡ Priority Assessment
-**Judgment**: High [機械的マッチング結果]
-**Matching Rule**: priority_matrix.High criteria: "Functionality breaks" キーワード検出 + システム機能影響パターンマッチ
-**Timeline**: this-sprint [優先度Highから自動決定]
-**Dependencies**: [ファイルパス解析結果: bun関連ファイル検出]
+**Priority**: High - [キーワード辞書マッチング結果: functionality_keywords 4件 > security_keywords 0件]
+**Timeline**: this-sprint [※優先度Highから自動決定: Critical→immediate, High→this-sprint, Medium/Low→next-release]
 </example_analysis>
 
 # CodeRabbit Comments for Analysis
@@ -419,10 +415,15 @@ new_code: |
 
 <deterministic_processing_framework>
 1. **コメントタイプ抽出**: type属性から機械的分類 (Actionable/Nitpick/Outside Diff Range)
-2. **キーワードマッチング**: priority_matrix定義キーワードとコメント内容の照合
-3. **テンプレート適用**: 事前定義フォーマットにコメントデータを機械的挿入
-4. **ファイル:line情報抽出**: コメント属性から文字列として抽出
-5. **ルール適合性チェック**: 全処理が機械的・決定論的であることを確認
+2. **キーワードマッチング**: 以下の静的辞書による文字列照合
+   - security_keywords: ["vulnerability", "security", "authentication", "authorization", "injection", "XSS", "CSRF", "token", "credential", "encrypt"]
+   - functionality_keywords: ["breaks", "fails", "error", "exception", "crash", "timeout", "install", "command", "PATH", "export"]
+   - quality_keywords: ["refactor", "maintainability", "readability", "complexity", "duplicate", "cleanup", "optimize"]
+   - style_keywords: ["formatting", "naming", "documentation", "comment", "PHONY", "alias", "help"]
+3. **優先度決定アルゴリズム**: マッチしたキーワード数をカウント、最多カテゴリを選択、同数時は security > functionality > quality > style
+4. **テンプレート適用**: 事前定義フォーマットにコメントデータを機械的挿入
+5. **ファイル:line情報抽出**: コメント属性から文字列として抽出
+6. **ルール適合性チェック**: 全処理が機械的・決定論的であることを確認
 </deterministic_processing_framework>
 
 **Begin your analysis with the first comment and proceed systematically through each category.**
