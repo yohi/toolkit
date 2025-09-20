@@ -62,24 +62,26 @@ Quality, Security, Standards, Specificity, Impact-awareness
 
 # Analysis Task
 
-<constraints>
-決定論的ルールベース分析のみ使用。LLM処理禁止。以下の機械的処理のみ許可：
+<execution_guidelines>
+**Processing Approach:**
+1. **Issue Analysis**: Understand CodeRabbit comments and technical context
+2. **Priority Assessment**: Evaluate impact and urgency of each issue
+3. **Solution Design**: Propose specific fixes with implementation steps
+4. **Quality Assurance**: Ensure changes maintain code quality and functionality
+5. **Verification**: Provide testable success criteria
 
-**許可される処理方法:**
-1. **パターンマッチング**: 事前定義された正規表現・文字列マッチング
-2. **キーワード検出**: 静的辞書ベースの分類（security_keywords, performance_keywords等）
-3. **構造化パース**: JSON/XML/Markdown構造の機械的解析
-4. **数値計算**: ファイル数・行数・変更量等の定量的指標算出
-5. **条件分岐**: if-then-else形式の決定木による分類
+**Output Requirements:**
+- Actionable implementation steps
+- Clear priority classification
+- Specific file and line references
+- Testable verification methods
 
-**禁止される処理:**
-- 自然言語理解・意味解析・文脈推論
-- 「技術的根拠により判断」等の主観的評価
-- コード品質の定性的評価
-- 「適切性」「妥当性」等の価値判断
-
-**同一入力→同一出力保証必須**
-</constraints>
+**Success Criteria:**
+- All CodeRabbit issues addressed appropriately
+- Implementation steps are executable
+- Changes preserve existing functionality
+- Code quality improvements are measurable
+</execution_guidelines>
 
 <comment_metadata>
 - **Total Comments**: 87 (4 Actionable, 82 Nitpick, 1 Outside Diff Range)
@@ -112,23 +114,23 @@ For each comment, follow this step-by-step analysis:
 </error_handling>
 
 <language_rules>
-- **問題タイトル**: 日本語（技術用語は英語併記）
-- **分析内容**: 日本語で詳細説明（専門用語は英語併記）
-- **コード例**: 英語コメント、日本語説明
-- **ファイル名・関数名**: 英語のまま保持
-- **技術用語**: API, setup.py, requirements.txt, wheel, PyYAML等は英語表記統一
-- **一貫性**: 同一用語は文書全体で統一表記
+- **Issue Title**: Japanese (with English technical terms)
+- **Analysis Content**: Japanese with detailed explanation (technical terms in English)
+- **Code Examples**: English comments, Japanese explanations
+- **File/Function Names**: Keep in English
+- **Technical Terms**: API, setup.py, requirements.txt, wheel, PyYAML etc. unified in English
+- **Consistency**: Same terms unified throughout document
 </language_rules>
 
 <output_format>
-**必須出力フォーマット** (以下の構造を必ず遵守):
+**Required Output Format** (Must strictly follow the structure below):
 
 ## [file_path:line_range] Issue Title
 
-**Root Cause**: [キーワード辞書マッチング結果 - 検出キーワードと件数を明記]
-**Impact**: [Critical/High/Medium/Low] - [System/Module/Function/Line] [※キーワード数による自動判定: 5件以上→Critical, 3-4件→High, 1-2件→Medium, 0件→Low]
-**Type**: [Actionable/Outside Diff Range/Nitpick] [※CodeRabbitコメント分類より機械抽出]
-**Affected**: [ファイルパス・関数名・モジュール名を文字列として列挙]
+**Root Cause**: [Keyword dictionary matching result - specify detected keywords and count]
+**Impact**: [Critical/High/Medium/Low] - [System/Module/Function/Line] [※Automatic determination by keyword count: 5+ → Critical, 3-4 → High, 1-2 → Medium, 0 → Low]
+**Type**: [Actionable/Outside Diff Range/Nitpick] [※Mechanically extracted from CodeRabbit comment classification]
+**Affected**: [List file paths, function names, module names as strings]
 
 **Solution**:
 ```language
@@ -140,20 +142,20 @@ For each comment, follow this step-by-step analysis:
 ```
 
 **Implementation Steps**:
-1. [ファイル名:行番号] の具体的変更内容 [コメントの指示から機械的抽出]
-2. [検証方法] [コマンド実行等の機械的チェック]
-3. [テスト要件] [定量的成功基準]
+1. [filename:line_number] Specific change content [Mechanically extracted from comment instructions]
+2. [Verification method] [Mechanical check such as command execution]
+3. [Test requirements] [Quantitative success criteria]
 
-**Priority**: [Level] - [キーワード辞書マッチング結果: security_keywords→Critical, functionality_keywords→High, quality_keywords→Medium, style_keywords→Low]
-**Timeline**: [immediate/this-sprint/next-release] [※優先度レベルから自動決定: Critical→immediate, High→this-sprint, Medium/Low→next-release]
+**Priority**: [Level] - [Keyword dictionary matching result: security_keywords → Critical, functionality_keywords → High, quality_keywords → Medium, style_keywords → Low]
+**Timeline**: [immediate/this-sprint/next-release] [※Automatically determined from priority level: Critical → immediate, High → this-sprint, Medium/Low → next-release]
 
 ---
 
-**処理指示**:
-1. **全コメント処理**: 下記<review_comments>ブロック内の全ての<review_comment>を順番に処理
-2. **フォーマット統一**: 各コメントに対して上記構造を必ず適用
-3. **機械的処理**: 主観的判断を一切行わず、コメントデータの機械的変換のみ実行
-4. **データ保全**: CodeRabbitの元コメント内容を改変せず、構造化のみ実行
+**Processing Instructions**:
+1. **Process All Comments**: Process all <review_comment> elements in the <review_comments> block sequentially
+2. **Format Consistency**: Apply the above structure to each comment without exception
+3. **Mechanical Processing**: Execute only mechanical transformation of comment data without any subjective judgment
+4. **Data Preservation**: Structure only without modifying original CodeRabbit comment content
 </output_format>
 
 ## 🎯 クイックサマリー（30秒で読める）
