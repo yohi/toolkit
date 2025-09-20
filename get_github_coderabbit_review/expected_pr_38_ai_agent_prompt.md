@@ -169,7 +169,7 @@ Analyze the CodeRabbit comments provided below within the `<review_comments>` bl
 export PATH="$$HOME/.bun/bin:$PATH"
 bun install -g ccusage
 
-// After (Proposed Fix)  
+// After (Proposed Fix)
 export PATH="$(HOME)/.bun/bin:$$PATH"
 bun add -g ccusage
 ```
