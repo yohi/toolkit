@@ -43,6 +43,8 @@ Quality, Security, Standards, Specificity, Impact-awareness
 **Key Technologies**: Python 3.13, setuptools, OpenAI/Anthropic APIs, PyYAML
 **Target Environment**: Development CLI tool for Git workflow enhancement
 **Architecture Scope**: Project structure, package configuration, core interfaces, provider abstractions
+**Python Specifics**: パッケージング(wheel/sdist), 依存関係管理, エントリーポイント設定, 仮想環境対応
+**Packaging System**: setuptools with package_data, requirements.txt, src layout vs flat layout
 
 ## CodeRabbit Review Summary
 
@@ -55,14 +57,9 @@ Quality, Security, Standards, Specificity, Impact-awareness
 
 # Analysis Task
 
-<task_constraints>
-- **No LLM Dependencies**: All analysis must be based on deterministic rules and objective criteria
-- **Rule-Based Processing**: Use only pattern matching, keyword detection, and structured logic
-- **Objective Classification**: Priority and impact levels determined by predefined matrices
-- **Deterministic Output**: Same input must always produce identical analysis results
-- **Pattern-Based Analysis**: Use regex patterns, keyword matching, and structural parsing only
-- **Reproducible Results**: Identical input must generate identical output across all executions
-</task_constraints>
+<constraints>
+決定論的ルールベース分析のみ使用。LLM処理禁止。パターンマッチング・キーワード検出・構造化パースのみ。同一入力→同一出力保証。
+</constraints>
 
 <comment_metadata>
 - **Total Comments**: 87 (4 Actionable, 82 Nitpick, 1 Outside Diff Range)
@@ -140,6 +137,11 @@ For each comment, respond using this exact structure:
 
 ---
 </output_requirements>
+
+## 🎯 クイックサマリー（30秒で読める）
+- **緊急度**: 4件のActionable（High優先度）
+- **主要技術領域**: Python パッケージング, 依存関係管理, プロジェクト構造
+- **推定作業時間**: 3-4時間（テスト・検証含む）
 
 # CodeRabbit Comments for Analysis
 
@@ -252,67 +254,7 @@ __version__, __author__, __email__ などの標準的なメタデータを追加
 </review_comments>
 
 <alternative_output_formats>
-When JSON format is requested, structure the response as:
-
-```json
-{
-  "analysis_results": [
-    {
-      "file_path": "string",
-      "line_range": "string",
-      "problem_title": "string",
-      "metadata": {
-        "comment_id": "string",
-        "file_type": "python|config|yaml|markdown",
-        "complexity": "low|medium|high",
-        "estimated_effort_minutes": "number"
-      },
-      "analysis": {
-        "root_cause": "string",
-        "impact_level": "Critical|High|Medium|Low",
-        "impact_scope": "System|Module|Function|Line",
-        "technical_context": "string",
-        "comment_type": "Actionable|Outside Diff Range|Nitpick",
-        "affected_systems": ["string"],
-        "risk_factors": ["security|performance|maintainability|compatibility"]
-      },
-      "solution": {
-        "recommended_approach": {
-          "before_code": "string",
-          "after_code": "string",
-          "language": "string",
-          "change_type": "syntax_fix|logic_change|refactor|addition"
-        },
-        "alternatives": [
-          {
-            "option": "string",
-            "description": "string",
-            "pros_cons": "string",
-            "effort_comparison": "higher|same|lower"
-          }
-        ],
-        "implementation_steps": ["string"],
-        "priority": {
-          "level": "Critical|High|Medium|Low",
-          "reasoning": "string",
-          "timeline": "immediate|this-sprint|next-release",
-          "dependencies": ["string"]
-        },
-        "verification_checklist": ["string"]
-      }
-    }
-  ],
-  "summary": {
-    "total_comments": "number",
-    "critical_issues": "number",
-    "high_priority_issues": "number",
-    "medium_priority_issues": "number",
-    "low_priority_issues": "number",
-    "estimated_total_effort_hours": "number",
-    "risk_assessment": "low|medium|high"
-  }
-}
-```
+JSON形式要求時は構造化レスポンスを提供（詳細は必要時のみ参照）
 </alternative_output_formats>
 
 <example_analysis>

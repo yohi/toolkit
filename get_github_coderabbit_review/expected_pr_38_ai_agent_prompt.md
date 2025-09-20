@@ -43,6 +43,8 @@ Quality, Security, Standards, Specificity, Impact-awareness
 **Key Technologies**: Make build system, bun package manager, shell scripting
 **Target Environment**: Linux/Unix development environment
 **Configuration Scope**: Claude settings, statusline scripts, package installation
+**Dotfiles Specifics**: PATH管理, シンボリックリンク作成, バックアップ戦略, クロスプラットフォーム対応
+**Build System**: GNU Make with shell command integration, variable expansion patterns
 
 ## CodeRabbit Review Summary
 
@@ -55,14 +57,9 @@ Quality, Security, Standards, Specificity, Impact-awareness
 
 # Analysis Task
 
-<task_constraints>
-- **No LLM Dependencies**: All analysis must be based on deterministic rules and objective criteria
-- **Rule-Based Processing**: Use only pattern matching, keyword detection, and structured logic
-- **Objective Classification**: Priority and impact levels determined by predefined matrices
-- **Deterministic Output**: Same input must always produce identical analysis results
-- **Pattern-Based Analysis**: Use regex patterns, keyword matching, and structural parsing only
-- **Reproducible Results**: Identical input must generate identical output across all executions
-</task_constraints>
+<constraints>
+決定論的ルールベース分析のみ使用。LLM処理禁止。パターンマッチング・キーワード検出・構造化パースのみ。同一入力→同一出力保証。
+</constraints>
 
 <comment_metadata>
 - **Total Comments**: 8 (3 Actionable, 5 Nitpick, 0 Outside Diff Range)
@@ -204,6 +201,11 @@ When JSON format is requested, structure the response as:
 }
 ```
 </alternative_output_formats>
+
+## 🎯 クイックサマリー（30秒で読める）
+- **緊急度**: 3件のActionable（High優先度）
+- **主要技術領域**: Make変数展開, PATH管理, シェルコマンド構文
+- **推定作業時間**: 1-2時間（テスト含む）
 
 <example_analysis>
 **Example for Actionable Comment:**
