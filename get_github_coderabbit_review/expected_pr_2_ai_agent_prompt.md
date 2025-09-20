@@ -91,6 +91,11 @@ Quality, Security, Standards, Specificity, Impact-awareness
 - **Complexity Level**: High (project architecture and packaging)
 - **Change Impact Scope**: Project structure, dependency resolution, module imports
 - **Testing Requirements**: Unit tests, integration tests, packaging verification
+- **File Distribution**: Python files: 8, Config files: 2, Documentation: 1
+- **Priority Distribution**: Critical: 0, High: 4, Medium: 82, Low: 1
+- **Risk Assessment**: High (architectural changes, dependency conflicts)
+- **Estimated Resolution Time**: 1-2 days (packaging expertise required)
+- **Dependencies Impact**: High (setup.py, requirements.txt changes affect entire project)
 </comment_metadata>
 
 Analyze the CodeRabbit comments provided below within the `<review_comments>` block. For each `<review_comment>`, understand the issue, the proposed diff, and the instructions from CodeRabbit. Then, generate a structured response following the format specified in the `<output_requirements>` section.
@@ -364,3 +369,31 @@ package_data={
 </deterministic_processing_framework>
 
 **Begin your analysis with the first comment and proceed systematically through each category.**
+
+<verification_templates>
+**Actionable Comment Verification**:
+1. **Code Change**: Apply the suggested modification to the specified file and line range
+2. **Syntax Check**: Execute `python -m py_compile <file>` to verify Python syntax correctness
+3. **Import Test**: Run `python -c "import <module>"` to confirm import resolution
+4. **Package Test**: Execute `python setup.py check` to validate package configuration
+5. **Success Criteria**: No syntax errors, successful imports, valid package metadata
+
+**Nitpick Comment Verification**:
+1. **Style Improvement**: Apply the suggested code quality or style enhancement
+2. **Lint Check**: Run `flake8` or `pylint` on modified files to verify style compliance
+3. **Type Check**: Execute `mypy <file>` if type hints are involved
+4. **Success Criteria**: Improved code quality metrics, no new lint warnings
+
+**Package Structure Verification**:
+1. **Build Test**: Execute `python setup.py bdist_wheel` to create distribution package
+2. **Install Test**: Run `pip install dist/*.whl` in clean environment
+3. **Import Test**: Verify `import lazygit_llm` works in installed environment
+4. **Dependency Check**: Confirm all dependencies are properly declared and installable
+5. **Success Criteria**: Successful package build, clean installation, working imports
+
+**Configuration File Verification**:
+1. **Syntax Check**: Validate YAML/JSON syntax using appropriate parser
+2. **Schema Validation**: Verify configuration structure matches expected schema
+3. **Environment Test**: Test configuration loading in different environments
+4. **Success Criteria**: Valid syntax, correct structure, successful loading
+</verification_templates>

@@ -91,6 +91,10 @@ Quality, Security, Standards, Specificity, Impact-awareness
 - **Complexity Level**: Medium (build system configuration)
 - **Change Impact Scope**: Build automation, package installation, configuration management
 - **Testing Requirements**: Manual execution verification, cross-platform compatibility
+- **File Distribution**: mk files: 4, sh files: 1, other: 1
+- **Priority Distribution**: Critical: 0, High: 3, Medium: 5, Low: 0
+- **Risk Assessment**: Medium (configuration changes, backward compatibility)
+- **Estimated Resolution Time**: 2-4 hours (build system expertise required)
 </comment_metadata>
 
 Analyze the CodeRabbit comments provided below within the `<review_comments>` block. For each `<review_comment>`, understand the issue, the proposed diff, and the instructions from CodeRabbit. Then, generate a structured response following the format specified in the `<output_requirements>` section.
@@ -476,3 +480,23 @@ new_code: |
 </deterministic_processing_framework>
 
 **Begin your analysis with the first comment and proceed systematically through each category.**
+
+<verification_templates>
+**Actionable Comment Verification**:
+1. **Code Change**: Apply the suggested modification to the specified file and line range
+2. **Syntax Check**: Execute `make --dry-run <target>` to verify Makefile syntax correctness
+3. **Functional Test**: Run the affected make target to confirm it executes without errors
+4. **Success Criteria**: Exit code 0, expected output generated, no error messages
+
+**Nitpick Comment Verification**:
+1. **Style Improvement**: Apply the suggested style or quality enhancement
+2. **Consistency Check**: Verify the change maintains consistency with existing codebase patterns
+3. **Documentation Update**: Update relevant documentation if the change affects user-facing behavior
+4. **Success Criteria**: Improved readability, maintained functionality, no regressions
+
+**Build System Specific Verification**:
+1. **Dependency Check**: Verify all required tools (bun, gh, etc.) are available
+2. **Path Validation**: Confirm PATH modifications work across different shell environments
+3. **Cross-Platform Test**: Test on multiple platforms if applicable (Linux, macOS)
+4. **Success Criteria**: Consistent behavior across target environments
+</verification_templates>
