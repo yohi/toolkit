@@ -37,6 +37,13 @@ Quality, Security, Standards, Specificity, Impact-awareness
 **Lines Added**: +836
 **Lines Deleted**: -4
 
+### Technical Context
+**Repository Type**: Python CLI application project
+**Main Purpose**: LLM-powered commit message generation for LazyGit
+**Key Technologies**: Python 3.13, setuptools, OpenAI/Anthropic APIs, PyYAML
+**Target Environment**: Development CLI tool for Git workflow enhancement
+**Architecture Scope**: Project structure, package configuration, core interfaces, provider abstractions
+
 ## CodeRabbit Review Summary
 
 **Total Comments**: 87
@@ -53,22 +60,29 @@ Quality, Security, Standards, Specificity, Impact-awareness
 - **Rule-Based Processing**: Use only pattern matching, keyword detection, and structured logic
 - **Objective Classification**: Priority and impact levels determined by predefined matrices
 - **Deterministic Output**: Same input must always produce identical analysis results
+- **Pattern-Based Analysis**: Use regex patterns, keyword matching, and structural parsing only
+- **Reproducible Results**: Identical input must generate identical output across all executions
 </task_constraints>
 
 <comment_metadata>
 - **Total Comments**: 87 (4 Actionable, 82 Nitpick, 1 Outside Diff Range)
 - **File Types**: Python (.py), Configuration (setup.py, requirements.txt, .yml)
+- **Technology Stack**: Python 3.13, setuptools, PyYAML, OpenAI/Anthropic APIs
 - **Primary Issues**: Package structure, dependency management, code duplication
 - **Complexity Level**: High (project architecture and packaging)
+- **Change Impact Scope**: Project structure, dependency resolution, module imports
+- **Testing Requirements**: Unit tests, integration tests, packaging verification
 </comment_metadata>
 
 Analyze the CodeRabbit comments provided below within the `<review_comments>` block. For each `<review_comment>`, understand the issue, the proposed diff, and the instructions from CodeRabbit. Then, generate a structured response following the format specified in the `<output_requirements>` section.
 
 <language_rules>
-- Use Japanese for analysis content and explanations
-- Keep technical terms in English (e.g., "API", "PATH", "setup.py")
-- Use English for code examples and file paths
-- Maintain consistent terminology throughout
+- **問題タイトル**: 日本語（技術用語は英語併記）
+- **分析内容**: 日本語で詳細説明（専門用語は英語併記）
+- **コード例**: 英語コメント、日本語説明
+- **ファイル名・関数名**: 英語のまま保持
+- **技術用語**: API, setup.py, requirements.txt, wheel, PyYAML等は英語表記統一
+- **一貫性**: 同一用語は文書全体で統一表記
 </language_rules>
 
 <output_requirements>
@@ -81,6 +95,7 @@ For each comment, respond using this exact structure:
 **Impact Level**: [Critical/High/Medium/Low] - [System/Module/Function/Line scope with affected components]
 **Technical Context**: [関連する技術的背景、標準、ベストプラクティス違反]
 **Comment Type**: [Actionable/Outside Diff Range/Nitpick]
+**Affected Systems**: [具体的ファイル名, 関数名, モジュール名をリスト形式で記載]
 
 ### 💡 Solution Proposal
 #### Recommended Approach
@@ -117,6 +132,11 @@ For each comment, respond using this exact structure:
 - [ ] 新しい動作が期待される結果と一致する
 - [ ] パフォーマンスへの影響が許容範囲内
 - [ ] セキュリティへの影響が考慮されている
+- [ ] 同一入力で同一出力が保証される（決定論的処理）
+- [ ] LLM処理を使用していない（ルールベースのみ）
+- [ ] 全ての技術用語が正確に使用されている
+- [ ] 優先度判定が客観的基準に基づいている
+- [ ] 実装ステップが具体的で実行可能である
 
 ---
 </output_requirements>
@@ -305,7 +325,7 @@ When JSON format is requested, structure the response as:
 **Impact Level**: High - System scope (packaging system affected)
 **Technical Context**: Pythonパッケージングのpackage_data仕様違反
 **Comment Type**: Actionable
-**Affected Systems**: [setup.py, wheelビルド, パッケージインストール]
+**Affected Systems**: [setup.py, wheelビルドシステム, パッケージインストールシステム, pip installプロセス]
 
 ### 💡 Solution Proposal
 #### Recommended Approach

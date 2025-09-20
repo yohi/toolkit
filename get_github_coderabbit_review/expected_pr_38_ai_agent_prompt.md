@@ -37,6 +37,13 @@ Quality, Security, Standards, Specificity, Impact-awareness
 **Lines Added**: +70
 **Lines Deleted**: -72
 
+### Technical Context
+**Repository Type**: Personal dotfiles configuration
+**Main Purpose**: Claude AI assistant configuration updates
+**Key Technologies**: Make build system, bun package manager, shell scripting
+**Target Environment**: Linux/Unix development environment
+**Configuration Scope**: Claude settings, statusline scripts, package installation
+
 ## CodeRabbit Review Summary
 
 **Total Comments**: 8
@@ -53,22 +60,29 @@ Quality, Security, Standards, Specificity, Impact-awareness
 - **Rule-Based Processing**: Use only pattern matching, keyword detection, and structured logic
 - **Objective Classification**: Priority and impact levels determined by predefined matrices
 - **Deterministic Output**: Same input must always produce identical analysis results
+- **Pattern-Based Analysis**: Use regex patterns, keyword matching, and structural parsing only
+- **Reproducible Results**: Identical input must generate identical output across all executions
 </task_constraints>
 
 <comment_metadata>
 - **Total Comments**: 8 (3 Actionable, 5 Nitpick, 0 Outside Diff Range)
 - **File Types**: Makefile (.mk), Shell script (.sh)
+- **Technology Stack**: Make build system, bun package manager, shell scripting
 - **Primary Issues**: PATH handling, command syntax, file existence checks
 - **Complexity Level**: Medium (build system configuration)
+- **Change Impact Scope**: Build automation, package installation, configuration management
+- **Testing Requirements**: Manual execution verification, cross-platform compatibility
 </comment_metadata>
 
 Analyze the CodeRabbit comments provided below within the `<review_comments>` block. For each `<review_comment>`, understand the issue, the proposed diff, and the instructions from CodeRabbit. Then, generate a structured response following the format specified in the `<output_requirements>` section.
 
 <language_rules>
-- Use Japanese for analysis content and explanations
-- Keep technical terms in English (e.g., "API", "PATH", "Makefile")
-- Use English for code examples and file paths
-- Maintain consistent terminology throughout
+- **問題タイトル**: 日本語（技術用語は英語併記）
+- **分析内容**: 日本語で詳細説明（専門用語は英語併記）
+- **コード例**: 英語コメント、日本語説明
+- **ファイル名・関数名**: 英語のまま保持
+- **技術用語**: PATH, Makefile, bun, shell等は英語表記統一
+- **一貫性**: 同一用語は文書全体で統一表記
 </language_rules>
 
 <output_requirements>
@@ -81,7 +95,7 @@ For each comment, respond using this exact structure:
 **Impact Level**: [Critical/High/Medium/Low] - [System/Module/Function/Line scope with affected components]
 **Technical Context**: [関連する技術的背景、標準、ベストプラクティス違反]
 **Comment Type**: [Actionable/Outside Diff Range/Nitpick]
-**Affected Systems**: [影響を受ける関連ファイル、関数、モジュールのリスト]
+**Affected Systems**: [具体的ファイル名, 関数名, モジュール名をリスト形式で記載]
 
 ### 💡 Solution Proposal
 #### Recommended Approach
@@ -118,6 +132,11 @@ For each comment, respond using this exact structure:
 - [ ] 新しい動作が期待される結果と一致する
 - [ ] パフォーマンスへの影響が許容範囲内
 - [ ] セキュリティへの影響が考慮されている
+- [ ] 同一入力で同一出力が保証される（決定論的処理）
+- [ ] LLM処理を使用していない（ルールベースのみ）
+- [ ] 全ての技術用語が正確に使用されている
+- [ ] 優先度判定が客観的基準に基づいている
+- [ ] 実装ステップが具体的で実行可能である
 
 ---
 </output_requirements>
