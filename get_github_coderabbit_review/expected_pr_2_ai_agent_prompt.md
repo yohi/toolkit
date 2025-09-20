@@ -62,7 +62,22 @@ Quality, Security, Standards, Specificity, Impact-awareness
 # Analysis Task
 
 <constraints>
-決定論的ルールベース分析のみ使用。LLM処理禁止。パターンマッチング・キーワード検出・構造化パースのみ。同一入力→同一出力保証。
+決定論的ルールベース分析のみ使用。LLM処理禁止。以下の機械的処理のみ許可：
+
+**許可される処理方法:**
+1. **パターンマッチング**: 事前定義された正規表現・文字列マッチング
+2. **キーワード検出**: 静的辞書ベースの分類（security_keywords, performance_keywords等）
+3. **構造化パース**: JSON/XML/Markdown構造の機械的解析
+4. **数値計算**: ファイル数・行数・変更量等の定量的指標算出
+5. **条件分岐**: if-then-else形式の決定木による分類
+
+**禁止される処理:**
+- 自然言語理解・意味解析・文脈推論
+- 「技術的根拠により判断」等の主観的評価
+- コード品質の定性的評価
+- 「適切性」「妥当性」等の価値判断
+
+**同一入力→同一出力保証必須**
 </constraints>
 
 <comment_metadata>
@@ -87,33 +102,39 @@ Analyze the CodeRabbit comments provided below within the `<review_comments>` bl
 </language_rules>
 
 <output_format>
-For each comment, provide structured analysis:
+**必須出力フォーマット** (以下の構造を必ず遵守):
 
 ## [file:line] Issue Title
 
-**Root Cause**: Technical problem description
-**Impact**: [Critical/High/Medium/Low] - [System/Module/Function/Line]
-**Type**: [Actionable/Outside Diff Range/Nitpick]
-**Affected**: [specific files, functions, modules]
+**Root Cause**: [機械的に検出された問題パターン - 主観的解釈禁止]
+**Impact**: [Critical/High/Medium/Low] - [System/Module/Function/Line] [※priority_matrix基準による自動判定]
+**Type**: [Actionable/Outside Diff Range/Nitpick] [※CodeRabbitコメント分類より機械抽出]
+**Affected**: [ファイルパス・関数名・モジュール名を文字列として列挙]
 
 **Solution**:
 ```language
 // Before (Current Issue)
-current problematic code
+[CodeRabbitコメントのold_codeセクションをそのまま転記]
 
 // After (Proposed Fix)
-fixed code
+[CodeRabbitコメントのnew_codeセクションをそのまま転記]
 ```
 
 **Implementation Steps**:
-1. [Specific step with file:line reference]
-2. [Verification method]
-3. [Testing requirements]
+1. [ファイル名:行番号] の具体的変更内容 [コメントの指示から機械的抽出]
+2. [検証方法] [コマンド実行等の機械的チェック]
+3. [テスト要件] [定量的成功基準]
 
-**Priority**: [Level] - [Reference specific priority_matrix criteria: e.g., "Functionality breaks" for High priority]
-**Timeline**: [immediate/this-sprint/next-release]
+**Priority**: [Level] - [priority_matrixの該当項目を機械的にマッチング。例: "Security vulnerabilities"→Critical, "Functionality breaks"→High]
+**Timeline**: [immediate/this-sprint/next-release] [※優先度レベルから自動決定: Critical→immediate, High→this-sprint, Medium/Low→next-release]
 
 ---
+
+**処理指示**:
+1. **全コメント処理**: 下記<review_comments>ブロック内の全ての<review_comment>を順番に処理
+2. **フォーマット統一**: 各コメントに対して上記構造を必ず適用
+3. **機械的処理**: 主観的判断を一切行わず、コメントデータの機械的変換のみ実行
+4. **データ保全**: CodeRabbitの元コメント内容を改変せず、構造化のみ実行
 </output_format>
 
 ## 🎯 クイックサマリー（30秒で読める）
@@ -276,22 +297,22 @@ package_data={
 - [ ] **Step 3**: wheelビルドでファイル含有確認
 
 ### ⚡ Priority Assessment
-**Judgment**: High based on priority_matrix
-**Reasoning**: パッケージングシステムの機能破綻に該当
-**Timeline**: this-sprint
-**Dependencies**: プロジェクト構造の再編成が必要
+**Judgment**: High [機械的マッチング結果]
+**Matching Rule**: priority_matrix.High criteria: "Functionality breaks" キーワード検出 + パッケージングシステム影響パターンマッチ
+**Timeline**: this-sprint [優先度Highから自動決定]
+**Dependencies**: [ファイルパス解析結果: setup.py, package_data関連ファイル検出]
 </example_analysis>
 
 ---
 
 # Analysis Instructions
 
-<thinking_framework>
-1. Parse comment type (Actionable/Nitpick/Outside Diff Range) and extract technical context
-2. Apply priority_matrix objective criteria to determine impact level
-3. Generate structured solution with before/after code examples
-4. Create implementation steps with specific file:line references
-5. Validate reasoning against deterministic processing constraints
-</thinking_framework>
+<deterministic_processing_framework>
+1. **コメントタイプ抽出**: type属性から機械的分類 (Actionable/Nitpick/Outside Diff Range)
+2. **キーワードマッチング**: priority_matrix定義キーワードとコメント内容の照合
+3. **テンプレート適用**: 事前定義フォーマットにコメントデータを機械的挿入
+4. **ファイル:line情報抽出**: コメント属性から文字列として抽出
+5. **ルール適合性チェック**: 全処理が機械的・決定論的であることを確認
+</deterministic_processing_framework>
 
 **Begin your analysis with the first comment and proceed systematically through each category.**
