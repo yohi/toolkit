@@ -1,0 +1,33 @@
+[
+  {
+    "id": 3232599712,
+    "node_id": "PRR_kwDOPxR4rs7ArY6g",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "**Actionable comments posted: 7**\n\n<details>\n<summary>🧹 Nitpick comments (18)</summary><blockquote>\n\n<details>\n<summary>.specs/tasks.md (1)</summary><blockquote>\n\n`3-8`: **Task 1のまとめは明確。Task 4と内容が重複している点だけ整理を。**\n\nTask 4に「BaseProvider作成」が再掲されています。Task 4は「ProviderFactory実装と拡張ポイント整備」（登録/インスタンス化/接続テストIFなど）に絞ると、進捗トラッキングがより正確になります。\n\n</blockquote></details>\n\n<details>\n<summary>📜 Review details</summary>\n\n**Configuration used**: CodeRabbit UI\n\n**Review profile**: CHILL\n\n**Plan**: Pro\n\n**Knowledge base: Disabled due to `Reviews -> Disable Knowledge Base` setting**\n\n</details>\n\n<!-- This is an auto-generated comment by CodeRabbit for review status -->",
+    "state": "CHANGES_REQUESTED",
+    "html_url": "https://github.com/yohi/lazygit-llm-commit-generator/pull/2#pullrequestreview-3232599712",
+    "pull_request_url": "https://api.github.com/repos/yohi/lazygit-llm-commit-generator/pulls/2",
+    "author_association": "NONE",
+    "_links": {
+      "html": {
+        "href": "https://github.com/yohi/lazygit-llm-commit-generator/pull/2#pullrequestreview-3232599712"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/yohi/lazygit-llm-commit-generator/pulls/2"
+      }
+    },
+    "submitted_at": "2025-09-17T04:17:41Z",
+    "commit_id": "d4c4369ba25d6d330c18e567569e18b05664751d"
+  }
+]
