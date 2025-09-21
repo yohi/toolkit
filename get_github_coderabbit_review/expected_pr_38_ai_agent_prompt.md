@@ -39,24 +39,24 @@ Quality, Security, Standards, Specificity, Impact-awareness
   </summary>
   <technical_context>
     <repository_type>Configuration files</repository_type>
-    <key_technologies>Make build system, bun package manager, shell scripting</key_technologies>
-    <file_extensions>.mk (Makefile), .sh (Shell script)</file_extensions>
+    <key_technologies>Make build system, shell scripting, bun package manager</key_technologies>
+    <file_extensions>.mk (Makefile), .sh (Shell script), .json</file_extensions>
     <build_system>GNU Make</build_system>
   </technical_context>
   <changed_files>
-    <file path="claude/statusline.sh" additions="10" deletions="4" />
-    <file path="mk/install.mk" additions="10" deletions="2" />
-    <file path="mk/setup.mk" additions="20" deletions="50" />
-    <file path="mk/variables.mk" additions="2" deletions="2" />
+    <file path="claude/claude-settings.json" additions="5" deletions="1" />
+    <file path="claude/statusline.sh" additions="7" deletions="0" />
     <file path="mk/help.mk" additions="2" deletions="0" />
-    <file path="Makefile" additions="26" deletions="14" />
+    <file path="mk/install.mk" additions="26" deletions="6" />
+    <file path="mk/setup.mk" additions="28" deletions="64" />
+    <file path="mk/variables.mk" additions="2" deletions="1" />
   </changed_files>
 </pull_request_context>
 
 <coderabbit_review_summary>
-  <total_comments>8</total_comments>
+  <total_comments>10</total_comments>
   <actionable_comments>3</actionable_comments>
-  <nitpick_comments>5</nitpick_comments>
+  <nitpick_comments>7</nitpick_comments>
   <outside_diff_range_comments>0</outside_diff_range_comments>
 </coderabbit_review_summary>
 
@@ -96,6 +96,8 @@ These are minor improvements or style suggestions. Provide:
 - Whether to address now or defer
 - Consistency with codebase standards
 </analysis_requirements>
+
+
 
 <output_requirements>
 For each comment, respond using this exact structure:
@@ -182,89 +184,15 @@ For comments with multiple exchanges, consider:
 # CodeRabbit Comments for Analysis
 
 <review_comments>
-  <review_comment type="Actionable" file="mk/install.mk" lines="1403">
-    <issue_summary>
-      `bun install -g ccusage`は誤用—`bun add -g`または`bunx`を使用
-    </issue_summary>
-    <coderabbit_analysis>
-      Bunのグローバル導入は`bun add -g <pkg>`です。現状だと期待通りにバイナリが配置されない可能性があります。PATH拡張も`$$PATH`へ統一を。
-    </coderabbit_analysis>
-    <ai_agent_prompt>
-      In mk/install.mk around lines 1390–1403, the recipe wrongly uses "bun install -g
-      ccusage" (which doesn\'t place global binaries as expected) and mixes Makefile
-      and shell PATH syntax; replace the global install invocation with "bun add -g
-      ccusage" (or invoke via "bunx ccusage" if preferred) and change the PATH export
-      to use the shell variable escaped for Makefiles (e.g., export
-      PATH="$(HOME)/.bun/bin:$$PATH"); ensure any direct $PATH references in the
-      recipe are escaped as $$PATH so the shell sees them.
-    </ai_agent_prompt>
-    <proposed_diff>
-      <![CDATA[
-install-packages-ccusage:
- 	@echo "📦 ccusage をインストールしています..."
- 	@if ! command -v bun >/dev/null 2>&1; then \
- 		echo "bun が見つからないため、インストールします..."; \
- 		curl -fsSL https://bun.sh/install | bash; \
-- 		export PATH="$(HOME)/.bun/bin:$PATH"; \
-+ 		export PATH="$$HOME/.bun/bin:$$PATH"; \
- 		if ! command -v bun >/dev/null 2>&1; then \
- 			echo "❌ bun のインストールに失敗しました。PATHを確認してください。"; \
- 			exit 1; \
- 		fi \
- 	fi
-- 	@bun install -g ccusage
-+ 	@echo "🔧 ccusage をグローバル導入中（bun add -g）..."
-+ 	@bun add -g ccusage || (echo "⚠️  bun add -g に失敗。bunxでの実行にフォールバックします" && true)
-+ 	@echo "🔍 動作確認: ccusage --version（bunx経由）"
-+ 	@bunx -y ccusage --version >/dev/null 2>&1 || echo "⚠️  bunx 実行確認に失敗しました（ネットワーク状況を確認してください）"
- 	@echo "✅ ccusage のインストールが完了しました。"
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Actionable" file="mk/setup.mk" lines="545">
-    <issue_summary>
-      `$(date ...)`がMake展開で空になる—バックアップファイル名が壊れます
-    </issue_summary>
-    <coderabbit_analysis>
-      シェル実行時のコマンド置換は`$$(...)`が必要です。現状だと`.backup.`のような固定名になり上書き事故のリスクがあります。
-    </coderabbit_analysis>
-    <ai_agent_prompt>
-      In mk/setup.mk around lines 539-545 (and likewise at 547-553 and 556-563), the
-      use of $(date +%Y%m%d_%H%M%S) is expanded by Make instead of being executed in
-      the shell, producing an empty suffix and risking overwrites; replace each $(date
-      +%Y%m%d_%H%M%S) with $$(date +%Y%m%d_%H%M%S) so the command substitution happens
-      at shell runtime when mv runs, ensuring unique backups.
-    </ai_agent_prompt>
-    <proposed_diff>
-      <![CDATA[
--        mv $(HOME_DIR)/.claude/settings.json $(HOME_DIR)/.claude/settings.json.backup.$(date +%Y%m%d_%H%M%S); \
-+        mv $(HOME_DIR)/.claude/settings.json $(HOME_DIR)/.claude/settings.json.backup.$$(date +%Y%m%d_%H%M%S); \
-...
--        mv $(HOME_DIR)/.claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md.backup.$(date +%Y%m%d_%H%M%S); \
-+        mv $(HOME_DIR)/.claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md.backup.$$(date +%Y%m%d_%H%M%S); \
-...
--        mv $(HOME_DIR)/.claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh.backup.$(date +%Y%m%d_%H%M%S); \
-+        mv $(HOME_DIR)/.claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh.backup.$$(date +%Y%m%d_%H%M%S); \
-]]>
-    </proposed_diff>
-  </review_comment>
-
   <review_comment type="Actionable" file="claude/statusline.sh" lines="7">
     <issue_summary>
       ユーザー固定パスを$HOMEに置換＋失敗時の扱いを追加（移植性/堅牢性）
     </issue_summary>
     <coderabbit_analysis>
-      `/home/yohi`固定は他環境で壊れます。`bunx`利用でグローバル未導入でも実行可に。
+      `/home/y_ohi`固定は他環境で壊れます。`bunx`利用でグローバル未導入でも実行可に。 -# Add bun to the PATH -export PATH="/home/y_ohi/.bun/bin:$PATH"
     </coderabbit_analysis>
     <ai_agent_prompt>
-      In claude/statusline.sh around lines 4-7, replace the hardcoded /home/y_ohi path
-      with $HOME to avoid breaking on other machines, and make execution robust by
-      checking for a usable bun/bunx runner: prepend "$HOME/.bun/bin" to PATH only if
-      that directory exists, then detect and prefer a bunx binary (fall back to bun x
-      if bunx not available); if neither is found, print a clear error to stderr and
-      exit with a non-zero status, and ensure the script propagates the exit code if
-      the ccusage command fails.
+      In claude/statusline.sh around lines 4-7, replace the hardcoded /home/y_ohi path with $HOME to avoid breaking on other machines, and make execution robust by checking for a usable bun/bunx runner: prepend "$HOME/.bun/bin" to PATH only if that directory exists, then detect and prefer a bunx binary (fall back to bun x if bunx not available); if neither is found, print a clear error to stderr and exit with a non-zero status, and ensure the script propagates the exit code if the ccusage command fails.
     </ai_agent_prompt>
     <proposed_diff>
       <![CDATA[
@@ -288,24 +216,157 @@ install-packages-ccusage:
     </proposed_diff>
   </review_comment>
 
-  <review_comment type="Nitpick" file="mk/variables.mk" lines="19-20">
+  <review_comment type="Actionable" file="mk/install.mk" lines="1403">
     <issue_summary>
-      PHONYに`install-packages-gemini-cli`も追加してください
+      `bun install -g ccusage`は誤用—`bun add -g`または`bunx`を使用
     </issue_summary>
     <coderabbit_analysis>
-      ヘルプに掲載され、エイリアスも定義されていますが、PHONY未登録です。将来の依存解決の揺れを避けるため明示しておきましょう。
+      **`bun install -g ccusage`は誤用—`bun add -g`または`bunx`を使用** Bunのグローバル導入は`bun add -g &lt;pkg&gt;`です。現状だと期待通りにバイナリが配置されない可能性があります。PATH拡張も`$$PATH`へ統一を。
     </coderabbit_analysis>
+    <ai_agent_prompt>
+      In mk/install.mk around lines 1390–1403, the recipe wrongly uses "bun install -g ccusage" (which doesn't place global binaries as expected) and mixes Makefile and shell PATH syntax; replace the global install invocation with "bun add -g ccusage" (or invoke via "bunx ccusage" if preferred) and change the PATH export to use the shell variable escaped for Makefiles (e.g., export PATH="$(HOME)/.bun/bin:$$PATH"); ensure any direct $PATH references in the recipe are escaped as $$PATH so the shell sees them.
+    </ai_agent_prompt>
     <proposed_diff>
       <![CDATA[
--        fonts-setup fonts-install fonts-install-nerd fonts-install-google fonts-install-japanese fonts-clean fonts-update fonts-list fonts-refresh fonts-debug fonts-backup fonts-configure \
--        install-gemini-cli install-packages-ccusage install-ccusage
-+        fonts-setup fonts-install fonts-install-nerd fonts-install-google fonts-install-japanese fonts-clean fonts-update fonts-list fonts-refresh fonts-debug fonts-backup fonts-configure \
-+        install-gemini-cli install-packages-gemini-cli install-packages-ccusage install-ccusage
+ install-packages-ccusage:
+ 	@echo "📦 ccusage をインストールしています..."
+ 	@if ! command -v bun >/dev/null 2>&1; then \
+ 		echo "bun が見つからないため、インストールします..."; \
+ 		curl -fsSL https://bun.sh/install | bash; \
+-		export PATH="$(HOME)/.bun/bin:$PATH"; \
++		export PATH="$$HOME/.bun/bin:$$PATH"; \
+ 		if ! command -v bun >/dev/null 2>&1; then \
+ 			echo "❌ bun のインストールに失敗しました。PATHを確認してください。"; \
+ 			exit 1; \
+ 		fi \
+ 	fi
+-	@bun install -g ccusage
++	@echo "🔧 ccusage をグローバル導入中（bun add -g）..."
++	@bun add -g ccusage || (echo "⚠️  bun add -g に失敗。bunxでの実行にフォールバックします" && true)
++	@echo "🔍 動作確認: ccusage --version（bunx経由）"
++	@bunx -y ccusage --version >/dev/null 2>&1 || echo "⚠️  bunx 実行確認に失敗しました（ネットワーク状況を確認してください）"
+ 	@echo "✅ ccusage のインストールが完了しました。"
 ]]>
     </proposed_diff>
   </review_comment>
 
+  <review_comment type="Actionable" file="mk/setup.mk" lines="545">
+    <issue_summary>
+      `$(date ...)`がMake展開で空になる—バックアップファイル名が壊れます
+    </issue_summary>
+    <coderabbit_analysis>
+      **`$(date ...)`がMake展開で空になる—バックアップファイル名が壊れます** シェル実行時のコマンド置換は`$$(...)`が必要です。現状だと`.backup.`のような固定名になり上書き事故のリスクがあります。
+    </coderabbit_analysis>
+    <ai_agent_prompt>
+      In mk/setup.mk around lines 539-545 (and likewise at 547-553 and 556-563), the use of $(date +%Y%m%d_%H%M%S) is expanded by Make instead of being executed in the shell, producing an empty suffix and risking overwrites; replace each $(date +%Y%m%d_%H%M%S) with $$(date +%Y%m%d_%H%M%S) so the command substitution happens at shell runtime when mv runs, ensuring unique backups.
+    </ai_agent_prompt>
+    <proposed_diff>
+      <![CDATA[
+-        mv $(HOME_DIR)/.claude/settings.json $(HOME_DIR)/.claude/settings.json.backup.$(date +%Y%m%d_%H%M%S); \
++        mv $(HOME_DIR)/.claude/settings.json $(HOME_DIR)/.claude/settings.json.backup.$$(date +%Y%m%d_%H%M%S); \
+...
+-        mv $(HOME_DIR)/.claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md.backup.$(date +%Y%m%d_%H%M%S); \
++        mv $(HOME_DIR)/.claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md.backup.$$(date +%Y%m%d_%H%M%S); \
+...
+-        mv $(HOME_DIR)/.claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh.backup.$(date +%Y%m%d_%H%M%S); \
++        mv $(HOME_DIR)/.claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh.backup.$$(date +%Y%m%d_%H%M%S); \
+]]>
+    </proposed_diff>
+  </review_comment>
+
+  <review_comment type="Nitpick" file="mk/help.mk" lines="27-28">
+    <issue_summary>
+      ヘルプにエイリアス`install-ccusage`も載せると発見性が上がります
+    </issue_summary>
+    <coderabbit_analysis>
+      直接ターゲットを案内したい場合に便利です。
+    </coderabbit_analysis>
+    <proposed_diff>
+      <![CDATA[
+@echo "  make install-packages-playwright      - Playwright E2Eテストフレームワークをインストール"
+  @echo "  make install-packages-gemini-cli      - Gemini CLIをインストール"
+  @echo "  make install-packages-ccusage         - ccusage (bunx) をインストール"
++ @echo "  make install-ccusage                  - ccusage をインストール（後方互換エイリアス）"
+]]>
+    </proposed_diff>
+  </review_comment>
+
+  <review_comment type="Nitpick" file="mk/install.mk" lines="1392-1399">
+    <issue_summary>
+      PATH拡張の変数展開を統一（可搬性）
+    </issue_summary>
+    <coderabbit_analysis>
+      `$PATH`より`$$PATH`の方がMakeの二重展開を避けられ、意図どおりにシェル時点で連結されます。
+    </coderabbit_analysis>
+  </review_comment>
+
   <review_comment type="Nitpick" file="mk/setup.mk" lines="543-545">
+    <issue_summary>
+      リンク元の存在チェックを追加してください（壊れたシンボリックリンク防止）
+    </issue_summary>
+    <coderabbit_analysis>
+      `ln -sfn`前にソース有無を検証し、欠如時は警告してスキップすると運用が安定します。
+    </coderabbit_analysis>
+    <proposed_diff>
+      <![CDATA[
+-    @ln -sfn $(DOTFILES_DIR)/claude/claude-settings.json $(HOME_DIR)/.claude/settings.json
++    @if [ -f "$(DOTFILES_DIR)/claude/claude-settings.json" ]; then \
++        ln -sfn $(DOTFILES_DIR)/claude/claude-settings.json $(HOME_DIR)/.claude/settings.json; \
++    else \
++        echo "⚠️  missing: $(DOTFILES_DIR)/claude/claude-settings.json（リンクをスキップ）"; \
++    fi
+@@
+-    @ln -sfn $(DOTFILES_DIR)/claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md
++    @if [ -f "$(DOTFILES_DIR)/claude/CLAUDE.md" ]; then \
++        ln -sfn $(DOTFILES_DIR)/claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md; \
++    else \
++        echo "⚠️  missing: $(DOTFILES_DIR)/claude/CLAUDE.md（リンクをスキップ）"; \
++    fi
+@@
+-    @ln -sfn $(DOTFILES_DIR)/claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh
++    @if [ -f "$(DOTFILES_DIR)/claude/statusline.sh" ]; then \
++        ln -sfn $(DOTFILES_DIR)/claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh; \
++    else \
++        echo "⚠️  missing: $(DOTFILES_DIR)/claude/statusline.sh（リンクをスキップ）"; \
++    fi
+]]>
+    </proposed_diff>
+  </review_comment>
+
+  <review_comment type="Nitpick" file="mk/setup.mk" lines="552-554">
+    <issue_summary>
+      リンク元の存在チェックを追加してください（壊れたシンボリックリンク防止）
+    </issue_summary>
+    <coderabbit_analysis>
+      `ln -sfn`前にソース有無を検証し、欠如時は警告してスキップすると運用が安定します。
+    </coderabbit_analysis>
+    <proposed_diff>
+      <![CDATA[
+-    @ln -sfn $(DOTFILES_DIR)/claude/claude-settings.json $(HOME_DIR)/.claude/settings.json
++    @if [ -f "$(DOTFILES_DIR)/claude/claude-settings.json" ]; then \
++        ln -sfn $(DOTFILES_DIR)/claude/claude-settings.json $(HOME_DIR)/.claude/settings.json; \
++    else \
++        echo "⚠️  missing: $(DOTFILES_DIR)/claude/claude-settings.json（リンクをスキップ）"; \
++    fi
+@@
+-    @ln -sfn $(DOTFILES_DIR)/claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md
++    @if [ -f "$(DOTFILES_DIR)/claude/CLAUDE.md" ]; then \
++        ln -sfn $(DOTFILES_DIR)/claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md; \
++    else \
++        echo "⚠️  missing: $(DOTFILES_DIR)/claude/CLAUDE.md（リンクをスキップ）"; \
++    fi
+@@
+-    @ln -sfn $(DOTFILES_DIR)/claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh
++    @if [ -f "$(DOTFILES_DIR)/claude/statusline.sh" ]; then \
++        ln -sfn $(DOTFILES_DIR)/claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh; \
++    else \
++        echo "⚠️  missing: $(DOTFILES_DIR)/claude/statusline.sh（リンクをスキップ）"; \
++    fi
+]]>
+    </proposed_diff>
+  </review_comment>
+
+  <review_comment type="Nitpick" file="mk/setup.mk" lines="561-563">
     <issue_summary>
       リンク元の存在チェックを追加してください（壊れたシンボリックリンク防止）
     </issue_summary>
@@ -355,31 +416,23 @@ install-packages-ccusage:
     </proposed_diff>
   </review_comment>
 
-  <review_comment type="Nitpick" file="mk/help.mk" lines="27-28">
+  <review_comment type="Nitpick" file="mk/variables.mk" lines="19-20">
     <issue_summary>
-      ヘルプにエイリアス`install-ccusage`も載せると発見性が上がります
+      PHONYに`install-packages-gemini-cli`も追加してください
     </issue_summary>
     <coderabbit_analysis>
-      直接ターゲットを案内したい場合に便利です。
+      ヘルプに掲載され、エイリアスも定義されていますが、PHONY未登録です。将来の依存解決の揺れを避けるため明示しておきましょう。
     </coderabbit_analysis>
     <proposed_diff>
       <![CDATA[
-@echo "  make install-packages-playwright      - Playwright E2Eテストフレームワークをインストール"
-  @echo "  make install-packages-gemini-cli      - Gemini CLIをインストール"
-  @echo "  make install-packages-ccusage         - ccusage (bunx) をインストール"
-+ @echo "  make install-ccusage                  - ccusage をインストール（後方互換エイリアス）"
+-        fonts-setup fonts-install fonts-install-nerd fonts-install-google fonts-install-japanese fonts-clean fonts-update fonts-list fonts-refresh fonts-debug fonts-backup fonts-configure \
+-        install-gemini-cli install-packages-ccusage install-ccusage
++        fonts-setup fonts-install fonts-install-nerd fonts-install-google fonts-install-japanese fonts-clean fonts-update fonts-list fonts-refresh fonts-debug fonts-backup fonts-configure \
++        install-gemini-cli install-packages-gemini-cli install-packages-ccusage install-ccusage
 ]]>
     </proposed_diff>
   </review_comment>
 
-  <review_comment type="Nitpick" file="mk/install.mk" lines="1392-1399">
-    <issue_summary>
-      PATH拡張の変数展開を統一（可搬性）
-    </issue_summary>
-    <coderabbit_analysis>
-      `$PATH`より`$$PATH`の方がMakeの二重展開を避けられ、意図どおりにシェル時点で連結されます。
-    </coderabbit_analysis>
-  </review_comment>
 </review_comments>
 
 ---

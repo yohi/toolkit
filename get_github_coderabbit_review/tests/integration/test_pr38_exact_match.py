@@ -219,3 +219,4 @@ class TestPR38ExactMatch:
         assert '# CodeRabbit Review Analysis - AI Agent Prompt' in uvx_output
         assert '**' in uvx_output  # Bold formatting
         assert '```' in uvx_output or '<' in uvx_output  # Code blocks or XML tags
+

@@ -405,3 +405,4 @@ class MetadataEnhancer:
             return "1-2 hours (moderate complexity)"
         else:
             return "30-60 minutes (straightforward fixes)"
+

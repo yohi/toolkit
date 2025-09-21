@@ -82,7 +82,7 @@ Examples:
 
     parser.add_argument(
         '--output-format', '-f',
-        choices=['markdown', 'json', 'plain', 'llm-instruction'],
+        choices=['markdown', 'json', 'plain', 'llm-instruction', 'ai-agent-prompt'],
         default='markdown',
         help='Output format (default: markdown)'
     )
@@ -163,10 +163,15 @@ def run_fetch_command(args) -> int:
                 logging.getLogger(log_name).setLevel(logging.WARNING)
 
         # Create execution configuration
+        # In quiet mode, use ai-agent-prompt format if no format is explicitly specified
+        output_format = args.output_format
+        if args.quiet and args.output_format == 'markdown':
+            output_format = 'ai-agent-prompt'
+
         config = ExecutionConfig(
             pr_url=args.pr_url,
             persona_file=args.persona_file,
-            output_format=args.output_format,
+            output_format=output_format,
             output_file=args.output_file,
             resolved_marker=args.resolved_marker,
             post_resolution_request=args.post_resolution_request,

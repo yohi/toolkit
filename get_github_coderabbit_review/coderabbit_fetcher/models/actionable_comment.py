@@ -12,15 +12,18 @@ from .thread_context import ThreadContext
 
 class CommentType(str, Enum):
     """Types of actionable comments."""
+    ACTIONABLE = "actionable"
     NITPICK = "nitpick"
     POTENTIAL_ISSUE = "potential_issue"
     REFACTOR_SUGGESTION = "refactor_suggestion"
+    OUTSIDE_DIFF_RANGE = "outside_diff_range"
     OUTSIDE_DIFF = "outside_diff"
     GENERAL = "general"
 
 
 class Priority(str, Enum):
     """Priority levels for actionable comments."""
+    CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"

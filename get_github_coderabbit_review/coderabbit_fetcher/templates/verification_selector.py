@@ -206,3 +206,4 @@ class VerificationTemplateSelector:
             "4. **Success Criteria**: Successful build, passing tests, working integration",
             "</verification_templates>"
         ]
+

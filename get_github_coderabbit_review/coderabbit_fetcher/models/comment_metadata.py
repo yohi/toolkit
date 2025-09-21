@@ -3,7 +3,7 @@ Metadata for comment analysis results.
 """
 
 from datetime import datetime
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 from .base import BaseCodeRabbitModel
 
@@ -25,6 +25,7 @@ class CommentMetadata(BaseCodeRabbitModel):
     resolved_comments: int
     actionable_comments: int
     processing_time_seconds: float
+    adjusted_counts: Optional[Dict[str, int]] = None
 
     def __init__(self, **data) -> None:
         """Initialize metadata with current timestamp if not provided."""

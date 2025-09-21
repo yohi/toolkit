@@ -1,12 +1,15 @@
 """GitHub CLI wrapper for authenticated API access."""
 
 import json
+import logging
 import subprocess
 import re
 from typing import Dict, List, Optional, Any, Tuple
 from urllib.parse import urlparse
 
 from .exceptions import GitHubAuthenticationError, InvalidPRUrlError, CodeRabbitFetcherError
+
+logger = logging.getLogger(__name__)
 
 
 class GitHubAPIError(CodeRabbitFetcherError):
@@ -312,6 +315,19 @@ class GitHubClient:
 
             pr_info = json.loads(result.stdout)
 
+            # Fetch files information separately
+            try:
+                files_result = subprocess.run([
+                    "gh", "api", f"repos/{owner}/{repo}/pulls/{pr_number}/files"
+                ], capture_output=True, text=True, timeout=30)
+
+                if files_result.returncode == 0:
+                    files_data = json.loads(files_result.stdout)
+                    pr_info["files"] = files_data
+            except Exception as e:
+                logger.debug(f"Failed to fetch files info: {e}")
+                pr_info["files"] = []
+
             # Add parsed URL components
             pr_info.update({
                 "owner": owner,
@@ -435,7 +451,7 @@ class GitHubClient:
                 raise GitHubAPIError(f"Failed to fetch inline comments: {result.stderr.strip()}")
 
             inline_comments = json.loads(result.stdout)
-            
+
             # Format inline comments to match expected structure
             formatted_comments = []
             for comment in inline_comments:

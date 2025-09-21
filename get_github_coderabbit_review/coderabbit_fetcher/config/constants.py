@@ -35,7 +35,7 @@ DEFAULT_PROGRESS_STEPS = [
 ]
 
 # Output format configuration
-SUPPORTED_OUTPUT_FORMATS = ['markdown', 'json', 'plain', 'llm-instruction']
+SUPPORTED_OUTPUT_FORMATS = ['markdown', 'json', 'plain', 'llm-instruction', 'ai-agent-prompt']
 
 # Logging configuration for quiet mode
 QUIET_MODE_LOG_MODULES = [
