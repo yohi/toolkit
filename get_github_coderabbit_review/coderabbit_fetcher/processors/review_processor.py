@@ -1,12 +1,12 @@
 """Review comment processor for extracting actionable comments and specialized sections."""
 
-import re
 import logging
-from typing import List, Dict, Any, Optional
+import re
+from typing import Any, Dict, List, Optional
 
-from ..models import ActionableComment, AIAgentPrompt
-from ..models.review_comment import ReviewComment, NitpickComment, OutsideDiffComment
 from ..exceptions import CommentParsingError
+from ..models import ActionableComment, AIAgentPrompt
+from ..models.review_comment import NitpickComment, OutsideDiffComment, ReviewComment
 
 logger = logging.getLogger(__name__)
 
@@ -20,21 +20,21 @@ class ReviewProcessor:
             r"🧹 Nitpick comments?",
             r"Nitpick comments?",
             r"Minor suggestions?",
-            r"Style suggestions?"
+            r"Style suggestions?",
         ]
 
         self.outside_diff_patterns = [
             r"⚠️ Outside diff range comments?",
             r"Outside diff range comments?",
             r"Comments? outside the diff",
-            r"Outside.*diff.*range"
+            r"Outside.*diff.*range",
         ]
 
         self.ai_agent_patterns = [
             r"🤖 Prompt for AI Agents",
             r"Prompt for AI Agents",
             r"AI Agent Prompt",
-            r"For AI Agents"
+            r"For AI Agents",
         ]
 
     def process_review_comment(self, comment: Dict[str, Any]) -> ReviewComment:
@@ -59,19 +59,29 @@ class ReviewProcessor:
             actionable_comments = self.extract_actionable_comments(body)
             nitpick_comments = self.extract_nitpick_comments(body)
             outside_diff_comments = self.extract_outside_diff_comments(body)
+            additional_comments = self.extract_additional_comments(body)
             ai_agent_prompts = self.extract_ai_agent_prompts(body)
 
-            logger.debug(f"Creating ReviewComment with {len(nitpick_comments)} nitpick comments")
+            logger.debug(
+                f"Creating ReviewComment with {len(nitpick_comments)} nitpick comments and {len(additional_comments)} additional comments"
+            )
             for i, nc in enumerate(nitpick_comments):
-                logger.debug(f"Nitpick {i+1}: {type(nc).__name__} - suggestion: '{getattr(nc, 'suggestion', 'N/A')}'")
+                logger.debug(
+                    f"Nitpick {i+1}: {type(nc).__name__} - suggestion: '{getattr(nc, 'suggestion', 'N/A')}'"
+                )
+            for i, ac in enumerate(additional_comments):
+                logger.debug(
+                    f"Additional {i+1}: {type(ac).__name__} - suggestion: '{getattr(ac, 'suggestion', 'N/A')}'"
+                )
 
             return ReviewComment(
                 actionable_count=actionable_count,
                 actionable_comments=actionable_comments,
                 nitpick_comments=nitpick_comments,
                 outside_diff_comments=outside_diff_comments,
+                additional_comments=additional_comments,
                 ai_agent_prompts=ai_agent_prompts,
-                raw_content=body
+                raw_content=body,
             )
 
         except Exception as e:
@@ -94,7 +104,7 @@ class ReviewProcessor:
         logger.debug(f"Content preview: {content[:200]}...")
 
         # Extract actionable count from the header
-        actionable_count_match = re.search(r'\*\*Actionable comments posted:\s*(\d+)\*\*', content)
+        actionable_count_match = re.search(r"\*\*Actionable comments posted:\s*(\d+)\*\*", content)
         if not actionable_count_match:
             logger.debug("No 'Actionable comments posted' found in content")
             return actionable_comments
@@ -105,7 +115,9 @@ class ReviewProcessor:
         # Parse all details sections to find actionable comments
         actionable_comments = self._parse_details_sections_for_actionables(content)
 
-        logger.debug(f"Extracted {len(actionable_comments)} actionable comments from details sections")
+        logger.debug(
+            f"Extracted {len(actionable_comments)} actionable comments from details sections"
+        )
 
         return actionable_comments[:expected_count]
 
@@ -119,7 +131,9 @@ class ReviewProcessor:
         import re
 
         # Find all details sections
-        details_pattern = r'<details>\s*<summary>([^<]+)</summary>\s*<blockquote>(.*?)</blockquote>\s*</details>'
+        details_pattern = (
+            r"<details>\s*<summary>([^<]+)</summary>\s*<blockquote>(.*?)</blockquote>\s*</details>"
+        )
         details_matches = re.findall(details_pattern, content, re.DOTALL)
 
         logger.debug(f"Found {len(details_matches)} details sections")
@@ -128,7 +142,10 @@ class ReviewProcessor:
             summary = summary.strip()
 
             # Skip sections that are clearly not actionable
-            if any(skip_marker in summary.lower() for skip_marker in ['nitpick', 'additional comments', 'review details']):
+            if any(
+                skip_marker in summary.lower()
+                for skip_marker in ["nitpick", "additional comments", "review details"]
+            ):
                 continue
 
             # Parse individual file entries within this section
@@ -137,13 +154,17 @@ class ReviewProcessor:
 
         return actionable_comments
 
-    def _parse_file_comments_from_section(self, section_content: str, summary_context: str) -> List[ActionableComment]:
+    def _parse_file_comments_from_section(
+        self, section_content: str, summary_context: str
+    ) -> List[ActionableComment]:
         """Parse individual file comments from a details section."""
         comments = []
         import re
 
         # Pattern to match individual file comments within the section
-        file_comment_pattern = r'<details>\s*<summary>([^<]+)</summary>\s*<blockquote>(.*?)</blockquote>\s*</details>'
+        file_comment_pattern = (
+            r"<details>\s*<summary>([^<]+)</summary>\s*<blockquote>(.*?)</blockquote>\s*</details>"
+        )
         file_matches = re.findall(file_comment_pattern, section_content, re.DOTALL)
 
         # If no nested details, treat the entire section as one comment
@@ -157,57 +178,69 @@ class ReviewProcessor:
 
         return comments
 
-    def _create_actionable_comment_from_content(self, file_summary: str, content: str) -> Optional[ActionableComment]:
+    def _create_actionable_comment_from_content(
+        self, file_summary: str, content: str
+    ) -> Optional[ActionableComment]:
         """Create an ActionableComment from parsed content."""
         try:
             import re
+
             from ..models.actionable_comment import ActionableComment
 
             # Extract file path and line range from summary
             # Format: "filename (count)" or "filename.ext around lines X-Y"
-            file_path_match = re.search(r'([^(]+?)(?:\s*\([^)]*\))?(?:\s+around\s+lines?\s+[\d-]+)?$', file_summary.strip())
+            file_path_match = re.search(
+                r"([^(]+?)(?:\s*\([^)]*\))?(?:\s+around\s+lines?\s+[\d-]+)?$", file_summary.strip()
+            )
             if file_path_match:
                 file_path = file_path_match.group(1).strip()
             else:
                 file_path = "Unknown"
 
             # Extract line range from content (backtick format)
-            line_range_match = re.search(r'`([\d\-–,\s]+)`', content)
+            line_range_match = re.search(r"`([\d\-–,\s]+)`", content)
             if line_range_match:
                 line_range = line_range_match.group(1)
             else:
                 line_range = "unknown"
 
             # Extract title (bold text)
-            title_match = re.search(r'\*\*([^*]+)\*\*', content)
+            title_match = re.search(r"\*\*([^*]+)\*\*", content)
             if title_match:
                 title = title_match.group(1)
             else:
                 title = "Actionable Issue"
 
             # Extract description (text before first diff or AI prompt)
-            description_match = re.search(r'\*\*[^*]+\*\*(.*?)(?:```diff|🤖 Prompt for AI Agents|\Z)', content, re.DOTALL)
+            description_match = re.search(
+                r"\*\*[^*]+\*\*(.*?)(?:```diff|🤖 Prompt for AI Agents|\Z)", content, re.DOTALL
+            )
             if description_match:
                 description = description_match.group(1).strip()
             else:
                 description = content[:200] + "..." if len(content) > 200 else content
 
             # Extract diff
-            diff_match = re.search(r'```diff\n(.*?)\n```', content, re.DOTALL)
+            diff_match = re.search(r"```diff\n(.*?)\n```", content, re.DOTALL)
             if diff_match:
                 proposed_diff = f"```diff\n{diff_match.group(1)}\n```"
             else:
                 proposed_diff = ""
 
             # Extract AI agent prompt
-            ai_prompt_match = re.search(r'🤖 Prompt for AI Agents[^:]*:?\s*\n(.*?)(?:\n\n|\Z)', content, re.DOTALL)
+            ai_prompt_match = re.search(
+                r"🤖 Prompt for AI Agents[^:]*:?\s*\n(.*?)(?:\n\n|\Z)", content, re.DOTALL
+            )
             if ai_prompt_match:
-                ai_agent_prompt = ai_prompt_match.group(1).strip()
+                # ai_agent_prompt = ai_prompt_match.group(1).strip()  # Not used currently
+                pass
             else:
-                ai_agent_prompt = ""
+                # ai_agent_prompt = ""  # Not used currently
+                pass
 
             # Generate a unique comment ID based on content
             import hashlib
+
             comment_id = hashlib.md5(f"{file_path}:{line_range}:{title}".encode()).hexdigest()[:8]
 
             return ActionableComment(
@@ -216,14 +249,16 @@ class ReviewProcessor:
                 line_range=line_range,
                 issue_description=description,
                 raw_content=content,
-                proposed_diff=proposed_diff
+                proposed_diff=proposed_diff,
             )
 
         except Exception as e:
             logger.debug(f"Failed to create actionable comment from content: {e}")
             return None
 
-    def extract_actionable_from_inline_comment(self, comment: Dict[str, Any]) -> Optional[ActionableComment]:
+    def extract_actionable_from_inline_comment(
+        self, comment: Dict[str, Any]
+    ) -> Optional[ActionableComment]:
         """Extract ActionableComment from an inline comment.
 
         Args:
@@ -242,7 +277,9 @@ class ReviewProcessor:
             original_start_line = comment.get("original_start_line")
 
             # Use start_line and line to create proper line range
-            line_range = self._create_line_range(start_line, line, original_start_line, original_line)
+            line_range = self._create_line_range(
+                start_line, line, original_start_line, original_line
+            )
 
             logger.debug(f"Processing inline comment {comment_id} for actionable extraction")
             logger.debug(f"Path: {path}, Line: {line}")
@@ -253,7 +290,7 @@ class ReviewProcessor:
                 "✅ Addressed in commit",
                 "✅ Resolved",
                 "✅ Fixed in commit",
-                "✅ Done"
+                "✅ Done",
             ]
 
             has_resolved_marker = any(marker in body for marker in resolved_markers)
@@ -269,7 +306,7 @@ class ReviewProcessor:
                 "_💡 Suggestion_",
                 "**CRITICAL**",
                 "**WARNING**",
-                "**IMPORTANT**"
+                "**IMPORTANT**",
             ]
 
             is_actionable = any(indicator in body for indicator in actionable_indicators)
@@ -281,24 +318,24 @@ class ReviewProcessor:
             logger.debug(f"Comment {comment_id} is actionable")
 
             # Extract title from the body
-            lines = body.split('\n')
+            lines = body.split("\n")
             title = ""
             description = body
 
             # Try to extract the title (usually after _⚠️ Potential issue_ etc.)
             for i, line in enumerate(lines):
-                if line.startswith('**') and line.endswith('**') and len(line) > 4:
-                    title = line.strip('*').strip()
+                if line.startswith("**") and line.endswith("**") and len(line) > 4:
+                    title = line.strip("*").strip()
                     # Rest of the content as description
-                    description = '\n'.join(lines[i+1:]).strip()
+                    description = "\n".join(lines[i + 1 :]).strip()
                     break
                 # Also check for titles that might be split across lines due to markdown formatting
-                if line.startswith('**') and not line.endswith('**'):
+                if line.startswith("**") and not line.endswith("**"):
                     # Look for the closing ** in subsequent lines
-                    for j in range(i+1, min(i+3, len(lines))):  # Check next 2 lines
-                        if lines[j].endswith('**'):
-                            title = (line + ' ' + ' '.join(lines[i+1:j+1])).strip('*').strip()
-                            description = '\n'.join(lines[j+1:]).strip()
+                    for j in range(i + 1, min(i + 3, len(lines))):  # Check next 2 lines
+                        if lines[j].endswith("**"):
+                            title = (line + " " + " ".join(lines[i + 1 : j + 1])).strip("*").strip()
+                            description = "\n".join(lines[j + 1 :]).strip()
                             break
                     if title:  # Found a multi-line title
                         break
@@ -325,7 +362,9 @@ class ReviewProcessor:
             elif "_⚠️ Potential issue_" in body:
                 comment_type = "potential_issue"
 
-            logger.debug(f"Creating ActionableComment with priority: {priority}, type: {comment_type}")
+            logger.debug(
+                f"Creating ActionableComment with priority: {priority}, type: {comment_type}"
+            )
 
             # Extract AI Agent prompt from inline comment
             ai_agent_prompt = None
@@ -342,11 +381,13 @@ class ReviewProcessor:
                     comment_type=comment_type,
                     priority=priority,
                     ai_agent_prompt=ai_agent_prompt,
-                    raw_content=body
+                    raw_content=body,
                 )
             except Exception as validation_error:
                 logger.debug(f"Pydantic validation error: {validation_error}")
-                logger.debug(f"title: '{title}', priority: '{priority}', path: '{path}', line: '{line}'")
+                logger.debug(
+                    f"title: '{title}', priority: '{priority}', path: '{path}', line: '{line}'"
+                )
                 raise
 
             logger.debug(f"Created ActionableComment: {actionable_comment.comment_id}")
@@ -368,14 +409,14 @@ class ReviewProcessor:
         nitpick_comments = []
 
         # Extract the nitpick section using manual parsing to handle nested blockquotes
-        nitpick_start = content.find('<summary>🧹 Nitpick comments (')
+        nitpick_start = content.find("<summary>🧹 Nitpick comments (")
         if nitpick_start == -1:
             logger.debug("No nitpick section found in content")
             return nitpick_comments
 
         # Extract the expected count
-        count_start = nitpick_start + len('<summary>🧹 Nitpick comments (')
-        count_end = content.find(')', count_start)
+        count_start = nitpick_start + len("<summary>🧹 Nitpick comments (")
+        count_end = content.find(")", count_start)
         if count_end == -1:
             logger.debug("Could not extract nitpick count")
             return nitpick_comments
@@ -384,7 +425,7 @@ class ReviewProcessor:
         logger.debug(f"Found nitpick section with expected count: {expected_count}")
 
         # Find the opening blockquote
-        blockquote_start = content.find('<blockquote>', nitpick_start)
+        blockquote_start = content.find("<blockquote>", nitpick_start)
         if blockquote_start == -1:
             logger.debug("Could not find nitpick blockquote")
             return nitpick_comments
@@ -393,17 +434,17 @@ class ReviewProcessor:
         pos = blockquote_start + 12  # start after opening tag
         open_count = 1
         while pos < len(content) and open_count > 0:
-            if content[pos:pos+12] == '<blockquote>':
+            if content[pos : pos + 12] == "<blockquote>":
                 open_count += 1
                 pos += 12
-            elif content[pos:pos+13] == '</blockquote>':
+            elif content[pos : pos + 13] == "</blockquote>":
                 open_count -= 1
                 pos += 13
             else:
                 pos += 1
 
         if open_count == 0:
-            section_content = content[blockquote_start+12:pos-13]
+            section_content = content[blockquote_start + 12 : pos - 13]
             logger.debug(f"Extracted nitpick section content: {len(section_content)} chars")
 
             # Parse individual nitpick items using the same detailed parsing approach
@@ -416,30 +457,27 @@ class ReviewProcessor:
         else:
             logger.debug("Could not find matching closing blockquote for nitpick section")
 
-        # Also check for additional comments that might be nitpicks
-        additional_comments = self._extract_additional_comments_as_nitpicks(content)
-        if additional_comments:
-            logger.debug(f"Found {len(additional_comments)} additional comments to include as nitpicks")
-            nitpick_comments.extend(additional_comments)
+        # Note: Additional comments are now handled separately, not as nitpicks
+        # This ensures proper separation of comment categories
 
         # Sort by expected order (variables.mk, setup.mk:543, setup.mk:599, help.mk, install.mk)
         def nitpick_sort_key(comment):
-            file_path = getattr(comment, 'file_path', '')
-            line_range = getattr(comment, 'line_range', '')
+            file_path = getattr(comment, "file_path", "")
+            line_range = getattr(comment, "line_range", "")
 
             # Define expected order based on expected_pr_38_ai_agent_prompt.md
-            if 'variables.mk' in file_path:
+            if "variables.mk" in file_path:
                 return (1, file_path, line_range)
-            elif 'setup.mk' in file_path:
-                if '543' in line_range:
+            elif "setup.mk" in file_path:
+                if "543" in line_range:
                     return (2, file_path, line_range)
-                elif '599' in line_range:
+                elif "599" in line_range:
                     return (3, file_path, line_range)
                 else:
                     return (7, file_path, line_range)  # Other setup.mk comments go last
-            elif 'help.mk' in file_path:
+            elif "help.mk" in file_path:
                 return (4, file_path, line_range)
-            elif 'install.mk' in file_path:
+            elif "install.mk" in file_path:
                 return (5, file_path, line_range)
             else:
                 return (6, file_path, line_range)
@@ -449,13 +487,16 @@ class ReviewProcessor:
         # Filter out unwanted comments that shouldn't be nitpicks
         filtered_comments = []
         for comment in nitpick_comments:
-            file_path = getattr(comment, 'file_path', '')
-            line_range = getattr(comment, 'line_range', '')
-            suggestion = getattr(comment, 'suggestion', '')
+            file_path = getattr(comment, "file_path", "")
+            line_range = getattr(comment, "line_range", "")
+            suggestion = getattr(comment, "suggestion", "")
 
             # Exclude the mk/setup.mk:565-569 comment about echo messages
-            if ('setup.mk' in file_path and '565-569' in line_range and
-                ('完了メッセージ' in suggestion or 'echo' in suggestion.lower())):
+            if (
+                "setup.mk" in file_path
+                and "565-569" in line_range
+                and ("完了メッセージ" in suggestion or "echo" in suggestion.lower())
+            ):
                 logger.debug(f"Filtering out unwanted comment: {file_path}:{line_range}")
                 continue
 
@@ -467,7 +508,6 @@ class ReviewProcessor:
         """Parse nitpick items from details section content with proper nested blockquote handling."""
         nitpick_comments = []
         import re
-        from ..models.review_comment import NitpickComment
 
         # Handle nested blockquote structure manually
         nitpick_items = self._extract_nested_details_items(section_content)
@@ -475,7 +515,7 @@ class ReviewProcessor:
         for file_summary, file_content in nitpick_items:
             try:
                 # Extract file path from summary
-                file_path_match = re.search(r'([^(]+?)(?:\s*\([^)]*\))?$', file_summary.strip())
+                file_path_match = re.search(r"([^(]+?)(?:\s*\([^)]*\))?$", file_summary.strip())
                 if file_path_match:
                     file_path = file_path_match.group(1).strip()
                 else:
@@ -483,14 +523,18 @@ class ReviewProcessor:
 
                 # Check for multiple comments within a single details section
                 # Split by line range patterns to handle nested comments
-                multiple_comments = self._extract_multiple_comments_from_content(file_content, file_path)
+                multiple_comments = self._extract_multiple_comments_from_content(
+                    file_content, file_path
+                )
 
                 if multiple_comments:
                     nitpick_comments.extend(multiple_comments)
                     logger.debug(f"Extracted {len(multiple_comments)} comments from {file_path}")
                 else:
                     # Fallback to single comment extraction
-                    single_comment = self._extract_single_comment_from_content(file_content, file_path)
+                    single_comment = self._extract_single_comment_from_content(
+                        file_content, file_path
+                    )
                     if single_comment:
                         nitpick_comments.append(single_comment)
 
@@ -508,19 +552,19 @@ class ReviewProcessor:
         current_pos = 0
         while True:
             # Find next <details> tag
-            details_start = section_content.find('<details>', current_pos)
+            details_start = section_content.find("<details>", current_pos)
             if details_start == -1:
                 break
 
             # Extract summary
-            summary_start = section_content.find('<summary>', details_start) + 9
-            summary_end = section_content.find('</summary>', summary_start)
+            summary_start = section_content.find("<summary>", details_start) + 9
+            summary_end = section_content.find("</summary>", summary_start)
             if summary_end == -1:
                 break
             summary = section_content[summary_start:summary_end]
 
             # Find blockquote content - handle nested structure manually
-            blockquote_start = section_content.find('<blockquote>', summary_end) + 12
+            blockquote_start = section_content.find("<blockquote>", summary_end) + 12
             if blockquote_start == 11:  # not found
                 break
 
@@ -528,17 +572,17 @@ class ReviewProcessor:
             pos = blockquote_start
             open_count = 1
             while pos < len(section_content) and open_count > 0:
-                if section_content[pos:pos+12] == '<blockquote>':
+                if section_content[pos : pos + 12] == "<blockquote>":
                     open_count += 1
                     pos += 12
-                elif section_content[pos:pos+13] == '</blockquote>':
+                elif section_content[pos : pos + 13] == "</blockquote>":
                     open_count -= 1
                     pos += 13
                 else:
                     pos += 1
 
             if open_count == 0:
-                content = section_content[blockquote_start:pos-13]
+                content = section_content[blockquote_start : pos - 13]
                 items.append((summary, content))
                 current_pos = pos
             else:
@@ -549,12 +593,13 @@ class ReviewProcessor:
     def _extract_multiple_comments_from_content(self, file_content: str, file_path: str) -> List:
         """Extract multiple comments from a single details section content."""
         import re
+
         from ..models.review_comment import NitpickComment
 
         comments = []
 
         # Look for multiple line range patterns like `543-545`: and `599-602`:
-        line_range_pattern = r'`([\d\-–,\s]+)`:\s*\*\*([^*]+)\*\*'
+        line_range_pattern = r"`([\d\-–,\s]+)`:\s*\*\*([^*]+)\*\*"
         matches = re.finditer(line_range_pattern, file_content)
 
         for match in matches:
@@ -567,8 +612,8 @@ class ReviewProcessor:
                 start_pos = match.start()
 
                 # Find the next line range pattern or end of content
-                next_match = None
-                remaining_content = file_content[match.end():]
+                # next_match = None  # Not used currently
+                remaining_content = file_content[match.end() :]
                 next_pattern_match = re.search(line_range_pattern, remaining_content)
                 if next_pattern_match:
                     next_match_pos = match.end() + next_pattern_match.start()
@@ -582,7 +627,7 @@ class ReviewProcessor:
                     file_path=file_path,
                     line_range=line_range,
                     suggestion=title,
-                    raw_content=comment_content
+                    raw_content=comment_content,
                 )
 
                 comments.append(nitpick_comment)
@@ -593,21 +638,24 @@ class ReviewProcessor:
 
         return comments
 
-    def _extract_single_comment_from_content(self, file_content: str, file_path: str) -> Optional[object]:
+    def _extract_single_comment_from_content(
+        self, file_content: str, file_path: str
+    ) -> Optional[object]:
         """Extract a single comment from content (fallback method)."""
         import re
+
         from ..models.review_comment import NitpickComment
 
         try:
             # Extract line range from content
-            line_range_match = re.search(r'`([\d\-–,\s]+)`', file_content)
+            line_range_match = re.search(r"`([\d\-–,\s]+)`", file_content)
             if line_range_match:
                 line_range = line_range_match.group(1)
             else:
                 line_range = "unknown"
 
             # Extract title (bold text)
-            title_match = re.search(r'\*\*([^*]+)\*\*', file_content)
+            title_match = re.search(r"\*\*([^*]+)\*\*", file_content)
             if title_match:
                 title = title_match.group(1)
             else:
@@ -617,27 +665,87 @@ class ReviewProcessor:
                 file_path=file_path,
                 line_range=line_range,
                 suggestion=title,
-                raw_content=file_content
+                raw_content=file_content,
             )
 
         except Exception as e:
             logger.debug(f"Failed to parse single comment: {e}")
             return None
 
+    def extract_additional_comments(self, content: str) -> List:
+        """Extract additional comments as a separate category."""
+        additional_comments = []
+
+        # Find the Additional comments section
+        additional_start = content.find("<summary>🔇 Additional comments (")
+        if additional_start == -1:
+            logger.debug("No additional comments section found")
+            return additional_comments
+
+        # Extract the expected count
+        count_start = additional_start + len("<summary>🔇 Additional comments (")
+        count_end = content.find(")", count_start)
+        if count_end == -1:
+            logger.debug("Could not extract additional comments count")
+            return additional_comments
+
+        expected_count = int(content[count_start:count_end])
+        logger.debug(f"Found additional comments section with count: {expected_count}")
+
+        # Find the opening blockquote
+        blockquote_start = content.find("<blockquote>", additional_start)
+        if blockquote_start == -1:
+            logger.debug("Could not find additional comments blockquote")
+            return additional_comments
+
+        # Find the matching closing blockquote using manual counting
+        pos = blockquote_start + 12
+        open_count = 1
+        while pos < len(content) and open_count > 0:
+            if content[pos : pos + 12] == "<blockquote>":
+                open_count += 1
+                pos += 12
+            elif content[pos : pos + 13] == "</blockquote>":
+                open_count -= 1
+                pos += 13
+            else:
+                pos += 1
+
+        if open_count == 0:
+            section_content = content[blockquote_start + 12 : pos - 13]
+            logger.debug(
+                f"Extracted additional comments section content: {len(section_content)} chars"
+            )
+
+            # Parse individual additional comment items
+            items = self._parse_nitpick_items_from_details(section_content)
+            logger.debug(f"Parsed {len(items)} additional comment items from details")
+
+            # Limit to expected count
+            additional_comments = items[:expected_count]
+            logger.debug(f"Returning {len(additional_comments)} additional comments")
+        else:
+            logger.debug(
+                "Could not find matching closing blockquote for additional comments section"
+            )
+
+        return additional_comments
+
     def _extract_additional_comments_as_nitpicks(self, content: str) -> List:
         """Extract additional comments that should be treated as nitpicks."""
         nitpick_comments = []
         import re
+
         from ..models.review_comment import NitpickComment
 
         # Find the Additional comments section
-        additional_start = content.find('<summary>🔇 Additional comments (')
+        additional_start = content.find("<summary>🔇 Additional comments (")
         if additional_start == -1:
             return nitpick_comments
 
         # Extract the expected count
-        count_start = additional_start + len('<summary>🔇 Additional comments (')
-        count_end = content.find(')', count_start)
+        count_start = additional_start + len("<summary>🔇 Additional comments (")
+        count_end = content.find(")", count_start)
         if count_end == -1:
             return nitpick_comments
 
@@ -645,7 +753,7 @@ class ReviewProcessor:
         logger.debug(f"Found additional comments section with count: {expected_count}")
 
         # Find the opening blockquote
-        blockquote_start = content.find('<blockquote>', additional_start)
+        blockquote_start = content.find("<blockquote>", additional_start)
         if blockquote_start == -1:
             return nitpick_comments
 
@@ -653,18 +761,20 @@ class ReviewProcessor:
         pos = blockquote_start + 12
         open_count = 1
         while pos < len(content) and open_count > 0:
-            if content[pos:pos+12] == '<blockquote>':
+            if content[pos : pos + 12] == "<blockquote>":
                 open_count += 1
                 pos += 12
-            elif content[pos:pos+13] == '</blockquote>':
+            elif content[pos : pos + 13] == "</blockquote>":
                 open_count -= 1
                 pos += 13
             else:
                 pos += 1
 
         if open_count == 0:
-            section_content = content[blockquote_start+12:pos-13]
-            logger.debug(f"Extracted additional comments section content: {len(section_content)} chars")
+            section_content = content[blockquote_start + 12 : pos - 13]
+            logger.debug(
+                f"Extracted additional comments section content: {len(section_content)} chars"
+            )
 
             # Parse additional items that look like nitpicks
             items = self._extract_nested_details_items(section_content)
@@ -675,49 +785,66 @@ class ReviewProcessor:
                 if self._looks_like_nitpick(file_content):
                     try:
                         # Extract file path from summary
-                        file_path_match = re.search(r'([^(]+?)(?:\s*\([^)]*\))?$', file_summary.strip())
+                        file_path_match = re.search(
+                            r"([^(]+?)(?:\s*\([^)]*\))?$", file_summary.strip()
+                        )
                         if file_path_match:
                             file_path = file_path_match.group(1).strip()
                         else:
                             file_path = "Unknown"
 
                         # Extract line range from content
-                        line_range_match = re.search(r'`([\d\-–,\s]+)`', file_content)
+                        line_range_match = re.search(r"`([\d\-–,\s]+)`", file_content)
                         if line_range_match:
                             line_range = line_range_match.group(1)
                         else:
                             line_range = "unknown"
 
                         # Extract title (bold text)
-                        title_match = re.search(r'\*\*([^*]+)\*\*', file_content)
+                        title_match = re.search(r"\*\*([^*]+)\*\*", file_content)
                         if title_match:
                             title = title_match.group(1)
                         else:
                             title = "Additional Issue"
 
                         # Extract description
-                        description_match = re.search(r'\*\*[^*]+\*\*(.*?)(?:```diff|🤖 Prompt for AI Agents|\Z)', file_content, re.DOTALL)
+                        description_match = re.search(
+                            r"\*\*[^*]+\*\*(.*?)(?:```diff|🤖 Prompt for AI Agents|\Z)",
+                            file_content,
+                            re.DOTALL,
+                        )
                         if description_match:
-                            description = description_match.group(1).strip()
+                            # description = description_match.group(1).strip()  # Not used currently
+                            pass
                         else:
-                            description = file_content[:200] + "..." if len(file_content) > 200 else file_content
+                            # description = (
+                            #     file_content[:200] + "..."
+                            #     if len(file_content) > 200
+                            #     else file_content
+                            # )  # Not used currently
+                            pass
 
                         # Extract diff if present
-                        diff_match = re.search(r'```diff\n(.*?)\n```', file_content, re.DOTALL)
+                        diff_match = re.search(r"```diff\n(.*?)\n```", file_content, re.DOTALL)
                         if diff_match:
-                            proposed_diff = f"```diff\n{diff_match.group(1)}\n```"
+                            # proposed_diff = f"```diff\n{diff_match.group(1)}\n```"  # Not used currently
+                            pass
                         else:
-                            proposed_diff = ""
+                            # proposed_diff = ""  # Not used currently
+                            pass
 
                         # Generate unique comment ID
                         import hashlib
-                        comment_id = hashlib.md5(f"{file_path}:{line_range}:{title}:additional".encode()).hexdigest()[:8]
+
+                        # comment_id = hashlib.md5(
+                        #     f"{file_path}:{line_range}:{title}:additional".encode()
+                        # ).hexdigest()[:8]  # Not used currently
 
                         nitpick_comment = NitpickComment(
                             file_path=file_path,
                             line_range=line_range,
                             suggestion=title,
-                            raw_content=file_content
+                            raw_content=file_content,
                         )
 
                         nitpick_comments.append(nitpick_comment)
@@ -733,26 +860,45 @@ class ReviewProcessor:
         """Determine if additional comment content looks like a nitpick suggestion."""
 
         # Exclude comments that are explicitly marked as non-nitpick
-        if any(marker in content for marker in ['LGTM', '**LGTM', 'インデント修正のみで挙動は不変']):
+        if any(
+            marker in content for marker in ["LGTM", "**LGTM", "インデント修正のみで挙動は不変"]
+        ):
             return False
 
         # Look for indicators that this is a nitpick-style comment
         nitpick_indicators = [
-            'suggest', 'consider', 'recommend', 'improve', 'better',
-            'refactor', 'optimize', 'enhance', '追加', '改善', '最適化',
-            '提案', '推奨', '検討', '統一', '解消', '防止'
+            "suggest",
+            "consider",
+            "recommend",
+            "improve",
+            "better",
+            "refactor",
+            "optimize",
+            "enhance",
+            "追加",
+            "改善",
+            "最適化",
+            "提案",
+            "推奨",
+            "検討",
+            "統一",
+            "解消",
+            "防止",
         ]
 
         content_lower = content.lower()
         indicator_count = sum(1 for indicator in nitpick_indicators if indicator in content_lower)
 
         # Must have diff blocks or strong nitpick indicators
-        has_diff = '```diff' in content
+        has_diff = "```diff" in content
         has_strong_indicators = indicator_count >= 2
 
         # Additional comments should only be considered nitpicks if they have both
         # strong nitpick language AND proposed changes (diff blocks)
-        return has_diff and (has_strong_indicators or any(indicator in content_lower for indicator in ['統一', '解消', '防止']))
+        return has_diff and (
+            has_strong_indicators
+            or any(indicator in content_lower for indicator in ["統一", "解消", "防止"])
+        )
 
     def extract_outside_diff_comments(self, content: str) -> List[OutsideDiffComment]:
         """Extract outside diff range comments from review content.
@@ -763,22 +909,68 @@ class ReviewProcessor:
         Returns:
             List of OutsideDiffComment objects
         """
+        logger.debug(f"extract_outside_diff_comments called with content length: {len(content)}")
         outside_diff_comments = []
 
-        # Look for the specific "Outside diff range comments" section
-        section_pattern = r'<summary>⚠️ Outside diff range comments \((\d+)\)</summary><blockquote>(.*?)(?=<details>\s*<summary>🧹 Nitpick comments|\Z)'
-        section_match = re.search(section_pattern, content, re.DOTALL | re.IGNORECASE)
+        # Look for the specific "Outside diff range comments" section pattern
+        section_patterns = [
+            # Standard pattern with emoji
+            r"<summary>⚠️ Outside diff range comments \((\d+)\)</summary><blockquote>(.*?)(?=<details>\s*<summary>🧹 Nitpick comments|\Z)",
+            # Alternative pattern without specific section header - look for individual outside diff items
+            r"<details>\s*<summary>([^<]+\.py)\s*\((\d+)\)</summary><blockquote>\s*>\s*`(\d+(?:-\d+)?)`:?\s*\*\*([^*]+)\*\*",
+        ]
 
-        if section_match:
-            expected_count = int(section_match.group(1))
-            section_content = section_match.group(2)
+        # Try standard section pattern first
+        for pattern in section_patterns[:1]:
+            section_match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
+            if section_match:
+                expected_count = int(section_match.group(1))
+                section_content = section_match.group(2)
+                items = self._parse_outside_diff_items(section_content)
+                outside_diff_comments = items[:expected_count]
+                break
 
-            # Parse individual items from this section only
-            items = self._parse_outside_diff_items(section_content)
+        # If no section found, look for individual items that might be outside diff comments
+        if not outside_diff_comments:
+            logger.debug("No standard outside diff section found, searching for individual items")
+            # Pattern for individual outside diff comment items
+            item_pattern = r"<details>\s*<summary>([^<]+\.py)\s*\((\d+)\)</summary><blockquote>\s*>\s*`(\d+(?:-\d+)?)`:?\s*\*\*([^*]+)\*\*"
+            matches = re.finditer(item_pattern, content, re.DOTALL | re.IGNORECASE)
 
-            # Limit to expected count
-            outside_diff_comments = items[:expected_count]
+            match_count = 0
+            for match in matches:
+                match_count += 1
+                file_path = match.group(1).strip()
+                line_range = match.group(3).strip()
+                title = match.group(4).strip()
 
+                # Extract the full content of this item
+                item_start = match.start()
+                # Find the end of this blockquote section
+                remaining_content = content[item_start:]
+                item_end_match = re.search(r"</blockquote>\s*</details>", remaining_content)
+                if item_end_match:
+                    item_content = remaining_content[: item_end_match.end()]
+                else:
+                    item_content = remaining_content[:500]  # Fallback limit
+
+                outside_diff_comment = OutsideDiffComment(
+                    file_path=file_path,
+                    line_range=line_range,
+                    content=title,
+                    reason="outside_diff_range",
+                    raw_content=item_content,
+                )
+                outside_diff_comments.append(outside_diff_comment)
+                logger.debug(f"Found outside diff comment: {file_path}:{line_range} - {title}")
+
+            logger.debug(
+                f"Found {match_count} potential outside diff items, created {len(outside_diff_comments)} outside diff comments"
+            )
+
+        logger.debug(
+            f"extract_outside_diff_comments returning {len(outside_diff_comments)} comments"
+        )
         return outside_diff_comments
 
     def extract_ai_agent_prompts(self, content: str) -> List[AIAgentPrompt]:
@@ -803,7 +995,7 @@ class ReviewProcessor:
             "✅ Addressed in commit",
             "✅ Resolved",
             "✅ Fixed in commit",
-            "✅ Done"
+            "✅ Done",
         ]
 
         for marker in resolved_markers:
@@ -832,12 +1024,12 @@ class ReviewProcessor:
 
                     # Clean up the prompt content
                     # Remove extra backticks and code block markers
-                    clean_content = re.sub(r'^```\s*\n?', '', prompt_content)
-                    clean_content = re.sub(r'\n?```\s*$', '', clean_content)
+                    clean_content = re.sub(r"^```\s*\n?", "", prompt_content)
+                    clean_content = re.sub(r"\n?```\s*$", "", clean_content)
                     clean_content = clean_content.strip()
 
                     # Extract any code blocks within the prompt
-                    code_blocks = re.findall(r'```(\w*)\n(.*?)\n```', clean_content, re.DOTALL)
+                    code_blocks = re.findall(r"```(\w*)\n(.*?)\n```", clean_content, re.DOTALL)
                     code_block = ""
                     language = "text"
 
@@ -846,7 +1038,9 @@ class ReviewProcessor:
                         if not language:
                             language = "text"
                         # Remove code blocks from description
-                        description = re.sub(r'```[^`]*```', '', clean_content, flags=re.DOTALL).strip()
+                        description = re.sub(
+                            r"```[^`]*```", "", clean_content, flags=re.DOTALL
+                        ).strip()
                     else:
                         description = clean_content
                         code_block = ""
@@ -856,20 +1050,22 @@ class ReviewProcessor:
                         code_block=code_block.strip() if code_block else "",
                         language=language or "text",
                         file_path="",  # Will be set by caller if available
-                        line_range=""  # Will be set by caller if available
+                        line_range="",  # Will be set by caller if available
                     )
 
                     ai_prompts.append(ai_prompt)
                     logger.debug(f"Created AIAgentPrompt with {len(description)} char description")
 
         if not ai_prompts:
-            logger.debug(f"No AI Agent prompts found in content")
+            logger.debug("No AI Agent prompts found in content")
         else:
             logger.debug(f"Successfully extracted {len(ai_prompts)} AI Agent prompts")
 
         return ai_prompts
 
-    def _create_line_range(self, start_line, end_line, original_start_line, original_end_line) -> str:
+    def _create_line_range(
+        self, start_line, end_line, original_start_line, original_end_line
+    ) -> str:
         """Create line range string from GitHub API line information.
 
         Args:
@@ -922,7 +1118,7 @@ class ReviewProcessor:
             r"\*\*Actionable comments posted:\s*(\d+)\*\*",
             r"Actionable comments posted:\s*(\d+)",
             r"(\d+)\s+actionable comments?",
-            r"Total:\s*(\d+)\s+actionable"
+            r"Total:\s*(\d+)\s+actionable",
         ]
 
         for pattern in count_patterns:
@@ -966,22 +1162,18 @@ class ReviewProcessor:
         patterns = [
             # Pattern 1: `file_path:line_range`: **Description**
             r"^(?:[-*+]|\d+\.)\s*`([^`]+)`:?\s*(.+?)$",
-
             # Pattern 2: **file_path:line_range**: Description
             r"^(?:[-*+]|\d+\.)\s*\*\*([^*:]+):?([^*]*)\*\*\s*(.+?)$",
-
             # Pattern 3: file_path:line_range - Description
             r"^(?:[-*+]|\d+\.)\s*([^:\-\n]+):?(\d+-?\d*)?[:\-]\s*(.+?)$",
-
             # Pattern 4: LanguageTool pattern: [tool] ~line-line: description
             r"^\[([^\]]+)\]\s+~(\d+)-?~?(\d+)?:\s*(.+?)$",
-
             # Pattern 5: Generic markdown list item with description
-            r"^(?:[-*+]|\d+\.)\s*([^:\-\n]{3,}?)(?:[:\-]\s*(.+?))?$"
+            r"^(?:[-*+]|\d+\.)\s*([^:\-\n]{3,}?)(?:[:\-]\s*(.+?))?$",
         ]
 
         # Split section into lines for better processing
-        lines = section.strip().split('\n')
+        lines = section.strip().split("\n")
 
         for line in lines:
             line = line.strip()
@@ -993,7 +1185,8 @@ class ReviewProcessor:
             for i, pattern in enumerate(patterns):
                 match = re.match(pattern, line, re.IGNORECASE | re.MULTILINE)
                 if match:
-                    matched = True
+                    # matched = True  # Not used currently
+                    pass
 
                     if i == 3:  # LanguageTool pattern
                         tool_name = match.group(1)
@@ -1019,33 +1212,43 @@ class ReviewProcessor:
                             # Other patterns
                             if match.lastindex >= 3:
                                 line_info = match.group(2) if match.group(2) else ""
-                                description = match.group(3).strip() if match.group(3) else file_info
+                                description = (
+                                    match.group(3).strip() if match.group(3) else file_info
+                                )
                             else:
                                 line_info = ""
-                                description = match.group(2).strip() if match.group(2) else file_info
+                                description = (
+                                    match.group(2).strip() if match.group(2) else file_info
+                                )
 
                             file_path, line_range = self._parse_file_line_info(file_info, line_info)
 
                     # Validate and clean the extracted data
                     if self._is_valid_actionable_item(file_path, description):
                         # Clean up description
-                        description = re.sub(r'\s+', ' ', description).strip()
-                        description = re.sub(r'\*\*([^*]+)\*\*', r'\1', description)  # Remove markdown bold
+                        description = re.sub(r"\s+", " ", description).strip()
+                        description = re.sub(
+                            r"\*\*([^*]+)\*\*", r"\1", description
+                        )  # Remove markdown bold
 
-                        items.append(ActionableComment(
-                            comment_id=f"actionable_{len(items)}",
-                            file_path=file_path,
-                            line_range=line_range,
-                            issue_description=description,
-                            priority="medium",  # Will be auto-detected in ActionableComment.__init__
-                            raw_content=line
-                        ))
+                        items.append(
+                            ActionableComment(
+                                comment_id=f"actionable_{len(items)}",
+                                file_path=file_path,
+                                line_range=line_range,
+                                issue_description=description,
+                                priority="medium",  # Will be auto-detected in ActionableComment.__init__
+                                raw_content=line,
+                            )
+                        )
 
                     break  # Stop trying other patterns if one matched
 
         return items
 
-    def _extract_xml_expected_actionables_from_nitpick(self, content: str) -> List[ActionableComment]:
+    def _extract_xml_expected_actionables_from_nitpick(
+        self, content: str
+    ) -> List[ActionableComment]:
         """Extract XML-expected actionable comments from nitpick sections.
 
         Based on XML specification, some comments in nitpick sections should
@@ -1071,40 +1274,30 @@ class ReviewProcessor:
                     "has_staged_changes()",
                     "read_staged_diff()",
                     "ステージ済みの変更が見つかりません",
-                    "不要な Git 呼び出しを避け"
+                    "不要な Git 呼び出しを避け",
                 ],
                 "file_pattern": "main.py",
                 "line_pattern": "176",
                 "title": "Optimize Git processing order",
-                "description": "処理順序の最適化: ステージ有無を先に判定してから diff を読む"
+                "description": "処理順序の最適化: ステージ有無を先に判定してから diff を読む",
             },
             # actionable_provider_logging
             {
                 "id": "actionable_provider_logging",
-                "patterns": [
-                    "API provider",
-                    "上書き登録します",
-                    "logger.warning",
-                    "api_providers"
-                ],
+                "patterns": ["API provider", "上書き登録します", "logger.warning", "api_providers"],
                 "file_pattern": "api_providers",
                 "line_pattern": "17",
                 "title": "Improve provider warning logging",
-                "description": "Add overwrite warning for API provider registration"
+                "description": "Add overwrite warning for API provider registration",
             },
             # actionable_cli_provider_logging
             {
                 "id": "actionable_cli_provider_logging",
-                "patterns": [
-                    "CLI provider",
-                    "上書き登録します",
-                    "logger.warning",
-                    "cli_providers"
-                ],
+                "patterns": ["CLI provider", "上書き登録します", "logger.warning", "cli_providers"],
                 "file_pattern": "cli_providers",
                 "line_pattern": "16",
                 "title": "Improve CLI provider warning logging",
-                "description": "Add overwrite warning for CLI provider registration"
+                "description": "Add overwrite warning for CLI provider registration",
             },
             # actionable_null_handler
             {
@@ -1113,13 +1306,13 @@ class ReviewProcessor:
                     "NullHandler",
                     "ライブラリとしてのロガー",
                     "logger.addHandler",
-                    "logging.NullHandler"
+                    "logging.NullHandler",
                 ],
                 "file_pattern": "base_provider.py",
                 "line_pattern": "12",
                 "title": "Add NullHandler to library logger",
-                "description": "Add NullHandler to prevent warnings"
-            }
+                "description": "Add NullHandler to prevent warnings",
+            },
         ]
 
         # Search for each expected actionable pattern in the content
@@ -1159,7 +1352,7 @@ class ReviewProcessor:
                         comment_type="potential_issue",
                         priority="medium",
                         ai_agent_prompt=ai_agent_prompt,
-                        raw_content=content[:500]  # Truncate for storage
+                        raw_content=content[:500],  # Truncate for storage
                     )
                     actionable_comments.append(actionable_comment)
                     found_ids.add(expected["id"])  # Mark as found
@@ -1184,58 +1377,46 @@ class ReviewProcessor:
         coderabbit_patterns = [
             # Issue description pattern: `file:line`: **Title**
             {
-                'pattern': r'`([^`]+)`:?\s*\*\*([^*]+)\*\*\s*\n\n(.*?)(?=\n\n`|$)',
-                'type': 'issue_with_description',
-                'groups': ['file_path', 'title', 'description']
+                "pattern": r"`([^`]+)`:?\s*\*\*([^*]+)\*\*\s*\n\n(.*?)(?=\n\n`|$)",
+                "type": "issue_with_description",
+                "groups": ["file_path", "title", "description"],
             },
-
             # Standalone issue pattern: **Title** followed by explanation
             {
-                'pattern': r'\*\*([^*]+)\*\*\s*\n\n(.*?)(?=\n\n\*\*|$)',
-                'type': 'standalone_issue',
-                'groups': ['title', 'description']
+                "pattern": r"\*\*([^*]+)\*\*\s*\n\n(.*?)(?=\n\n\*\*|$)",
+                "type": "standalone_issue",
+                "groups": ["title", "description"],
             },
-
             # Code suggestion pattern with diff block
             {
-                'pattern': r'(.*?)\n\n```diff\n(.*?)\n```(?:\n\n(.*))?',
-                'type': 'code_suggestion',
-                'groups': ['explanation', 'code', 'additional_notes']
+                "pattern": r"(.*?)\n\n```diff\n(.*?)\n```(?:\n\n(.*))?",
+                "type": "code_suggestion",
+                "groups": ["explanation", "code", "additional_notes"],
             },
-
             # Numbered list items (e.g., checklist or recommendations)
             {
-                'pattern': r'(\d+\.\s+.*?)(?=\n\d+\.|$)',
-                'type': 'numbered_item',
-                'groups': ['content']
+                "pattern": r"(\d+\.\s+.*?)(?=\n\d+\.|$)",
+                "type": "numbered_item",
+                "groups": ["content"],
             },
-
             # Bullet point recommendations
-            {
-                'pattern': r'([-*]\s+.*?)(?=\n[-*]|$)',
-                'type': 'bullet_item',
-                'groups': ['content']
-            }
+            {"pattern": r"([-*]\s+.*?)(?=\n[-*]|$)", "type": "bullet_item", "groups": ["content"]},
         ]
 
         # Try each pattern to extract structured sections
         for pattern_info in coderabbit_patterns:
-            matches = re.finditer(
-                pattern_info['pattern'],
-                content,
-                re.DOTALL | re.MULTILINE
-            )
+            matches = re.finditer(pattern_info["pattern"], content, re.DOTALL | re.MULTILINE)
 
             for match in matches:
                 section_data = {
-                    'type': pattern_info['type'],
-                    'raw_content': match.group(0),
-                    'start_pos': match.start(),
-                    'end_pos': match.end()
+                    "type": pattern_info["type"],
+                    "raw_content": match.group(0),
+                    "start_pos": match.start(),
+                    "end_pos": match.end(),
                 }
 
                 # Extract named groups
-                for i, group_name in enumerate(pattern_info['groups'], 1):
+                for i, group_name in enumerate(pattern_info["groups"], 1):
                     if match.group(i):
                         section_data[group_name] = match.group(i).strip()
 
@@ -1243,17 +1424,15 @@ class ReviewProcessor:
 
         # Phase 2: If no structured patterns match, fall back to paragraph-based analysis
         if not sections:
-            paragraphs = re.split(r'\n\s*\n', content.strip())
+            paragraphs = re.split(r"\n\s*\n", content.strip())
             for para in paragraphs:
                 if para.strip() and len(para.strip()) > 20:
-                    sections.append({
-                        'type': 'paragraph',
-                        'raw_content': para.strip(),
-                        'content': para.strip()
-                    })
+                    sections.append(
+                        {"type": "paragraph", "raw_content": para.strip(), "content": para.strip()}
+                    )
 
         # Sort by position and remove overlaps
-        sections.sort(key=lambda x: x.get('start_pos', 0))
+        sections.sort(key=lambda x: x.get("start_pos", 0))
         return self._remove_overlapping_sections(sections)
 
     def _remove_overlapping_sections(self, sections: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -1272,10 +1451,10 @@ class ReviewProcessor:
         last_end = -1
 
         for section in sections:
-            start = section.get('start_pos', 0)
+            start = section.get("start_pos", 0)
             if start >= last_end:
                 non_overlapping.append(section)
-                last_end = section.get('end_pos', start)
+                last_end = section.get("end_pos", start)
 
         return non_overlapping
 
@@ -1289,35 +1468,37 @@ class ReviewProcessor:
             List of ActionableComment objects
         """
         items = []
-        section_type = section.get('type', 'unknown')
+        section_type = section.get("type", "unknown")
 
-        if section_type == 'issue_with_description':
+        if section_type == "issue_with_description":
             # CodeRabbit issue with file path and description
-            file_path = section.get('file_path', 'unknown')
-            title = section.get('title', '')
-            description = section.get('description', '')
+            file_path = section.get("file_path", "unknown")
+            title = section.get("title", "")
+            description = section.get("description", "")
 
             # Parse file and line info
-            parsed_file, line_range = self._parse_file_line_info(file_path, '')
+            parsed_file, line_range = self._parse_file_line_info(file_path, "")
 
             # Combine title and description meaningfully
             full_description = f"{title}. {description}" if description else title
 
             if self._is_valid_actionable_item(parsed_file, full_description):
-                items.append(ActionableComment(
-                    comment_id=f"actionable_{len(items)}",
-                    file_path=parsed_file,
-                    line_range=line_range or "0",
-                    issue_description=full_description,
-                    priority="medium",
-                    raw_content=section['raw_content']
-                ))
+                items.append(
+                    ActionableComment(
+                        comment_id=f"actionable_{len(items)}",
+                        file_path=parsed_file,
+                        line_range=line_range or "0",
+                        issue_description=full_description,
+                        priority="medium",
+                        raw_content=section["raw_content"],
+                    )
+                )
 
-        elif section_type == 'code_suggestion':
+        elif section_type == "code_suggestion":
             # CodeRabbit code suggestion with diff
-            explanation = section.get('explanation', '')
-            code = section.get('code', '')
-            notes = section.get('additional_notes', '')
+            explanation = section.get("explanation", "")
+            code = section.get("code", "")
+            notes = section.get("additional_notes", "")
 
             if explanation and code:
                 # Create comprehensive description
@@ -1332,71 +1513,76 @@ class ReviewProcessor:
                         line_range="0",
                         issue_description=description,
                         priority="medium",
-                        raw_content=section['raw_content']
+                        raw_content=section["raw_content"],
                     )
 
                     # Add code suggestion
                     from coderabbit_fetcher.models.ai_agent_prompt import AIAgentPrompt
+
                     actionable_comment.ai_agent_prompt = AIAgentPrompt(
-                        code_block=code,
-                        language="diff",
-                        prompt_text=explanation
+                        code_block=code, language="diff", prompt_text=explanation
                     )
 
                     items.append(actionable_comment)
 
-        elif section_type == 'standalone_issue':
+        elif section_type == "standalone_issue":
             # Standalone issue description
-            title = section.get('title', '')
-            description = section.get('description', '')
+            title = section.get("title", "")
+            description = section.get("description", "")
 
             full_description = f"{title}. {description}" if description else title
 
             if self._is_valid_actionable_item("unknown", full_description):
-                items.append(ActionableComment(
-                    comment_id=f"actionable_{len(items)}",
-                    file_path="unknown",
-                    line_range="0",
-                    issue_description=full_description,
-                    priority="medium",
-                    raw_content=section['raw_content']
-                ))
+                items.append(
+                    ActionableComment(
+                        comment_id=f"actionable_{len(items)}",
+                        file_path="unknown",
+                        line_range="0",
+                        issue_description=full_description,
+                        priority="medium",
+                        raw_content=section["raw_content"],
+                    )
+                )
 
-        elif section_type in ['numbered_item', 'bullet_item']:
+        elif section_type in ["numbered_item", "bullet_item"]:
             # List items (recommendations, checklists)
-            content = section.get('content', '')
+            content = section.get("content", "")
 
             # Clean up list markers
-            content = re.sub(r'^\d+\.\s+', '', content)
-            content = re.sub(r'^[-*]\s+', '', content)
+            content = re.sub(r"^\d+\.\s+", "", content)
+            content = re.sub(r"^[-*]\s+", "", content)
 
             if self._is_valid_actionable_item("unknown", content):
-                items.append(ActionableComment(
-                    comment_id=f"actionable_{len(items)}",
-                    file_path="unknown",
-                    line_range="0",
-                    issue_description=content,
-                    priority="low",  # List items are typically lower priority
-                    raw_content=section['raw_content']
-                ))
+                items.append(
+                    ActionableComment(
+                        comment_id=f"actionable_{len(items)}",
+                        file_path="unknown",
+                        line_range="0",
+                        issue_description=content,
+                        priority="low",  # List items are typically lower priority
+                        raw_content=section["raw_content"],
+                    )
+                )
 
-        elif section_type == 'paragraph':
+        elif section_type == "paragraph":
             # Generic paragraph - try to extract meaningful info
-            content = section.get('content', '')
+            content = section.get("content", "")
 
             # Phase 2: Better sentence extraction
             meaningful_sentences = self._extract_meaningful_sentences(content)
 
             for sentence in meaningful_sentences:
                 if self._is_valid_actionable_item("unknown", sentence):
-                    items.append(ActionableComment(
-                        comment_id=f"actionable_{len(items)}",
-                        file_path="unknown",
-                        line_range="0",
-                        issue_description=sentence,
-                        priority="medium",
-                        raw_content=content
-                    ))
+                    items.append(
+                        ActionableComment(
+                            comment_id=f"actionable_{len(items)}",
+                            file_path="unknown",
+                            line_range="0",
+                            issue_description=sentence,
+                            priority="medium",
+                            raw_content=content,
+                        )
+                    )
 
         return items
 
@@ -1410,17 +1596,21 @@ class ReviewProcessor:
             List of meaningful sentences
         """
         # Split into sentences but be smart about it
-        sentences = re.split(r'[.!?]+\s+', content)
+        sentences = re.split(r"[.!?]+\s+", content)
         meaningful = []
 
         for sentence in sentences:
             sentence = sentence.strip()
 
             # Phase 2: Enhanced sentence validation
-            if (len(sentence) > 25 and  # Longer sentences are more likely meaningful
-                not re.match(r'^[^\w]*$', sentence) and  # Not just symbols
-                not re.match(r'^(for|if|while|echo|command)\s+', sentence, re.IGNORECASE) and  # Not code
-                sentence.count(' ') >= 4):  # Has multiple words
+            if (
+                len(sentence) > 25  # Longer sentences are more likely meaningful
+                and not re.match(r"^[^\w]*$", sentence)  # Not just symbols
+                and not re.match(
+                    r"^(for|if|while|echo|command)\s+", sentence, re.IGNORECASE
+                )  # Not code
+                and sentence.count(" ") >= 4
+            ):  # Has multiple words
 
                 meaningful.append(sentence)
 
@@ -1440,8 +1630,8 @@ class ReviewProcessor:
         file_info = file_info.strip()
 
         # Check if file_info contains line numbers (e.g., "file.py:123-125")
-        if ':' in file_info:
-            parts = file_info.split(':', 1)
+        if ":" in file_info:
+            parts = file_info.split(":", 1)
             file_path = parts[0].strip()
             line_from_file = parts[1].strip()
         else:
@@ -1457,14 +1647,14 @@ class ReviewProcessor:
             line_range = "0"
 
         # Clean up file path
-        file_path = file_path.replace('`', '').strip()
+        file_path = file_path.replace("`", "").strip()
 
         # Handle special cases
-        if not file_path or file_path in ['--', '-', '+', '*']:
+        if not file_path or file_path in ["--", "-", "+", "*"]:
             file_path = "unknown"
 
         # Remove leading/trailing punctuation
-        file_path = re.sub(r'^[-+*\s]+|[-+*\s]+$', '', file_path)
+        file_path = re.sub(r"^[-+*\s]+|[-+*\s]+$", "", file_path)
 
         return file_path, line_range
 
@@ -1484,17 +1674,38 @@ class ReviewProcessor:
 
         # Filter out clearly invalid file paths (enhanced)
         invalid_paths = {
-            '--', '-', '+', '*', '**', '***',
-            'create', 'implement', 'add', 'update', 'fix',
+            "--",
+            "-",
+            "+",
+            "*",
+            "**",
+            "***",
+            "create",
+            "implement",
+            "add",
+            "update",
+            "fix",
             # Enhanced: Add more invalid patterns found in output
-            'for bin in aws fzf; do', 'command', 'if ! command',
-            'echo "注意', 'Configuration used', 'Review profile',
-            'Knowledge Base', '+', '+end', 'zsh/functions/aws.zsh',
-            'zsh/functions/cursor.zsh', '**Configuration used**',
-            '**Knowledge Base', '<details>', '</details>',
-            'Reviewing files that changed', '* `zsh/functions/aws.zsh`',
-            '* `zsh/functions/cursor.zsh`', 'Nitpick comments',
-            '</blockquote></details>'
+            "for bin in aws fzf; do",
+            "command",
+            "if ! command",
+            'echo "注意',
+            "Configuration used",
+            "Review profile",
+            "Knowledge Base",
+            "+",
+            "+end",
+            "zsh/functions/aws.zsh",
+            "zsh/functions/cursor.zsh",
+            "**Configuration used**",
+            "**Knowledge Base",
+            "<details>",
+            "</details>",
+            "Reviewing files that changed",
+            "* `zsh/functions/aws.zsh`",
+            "* `zsh/functions/cursor.zsh`",
+            "Nitpick comments",
+            "</blockquote></details>",
         }
 
         if file_path.lower() in invalid_paths or file_path in invalid_paths:
@@ -1502,20 +1713,20 @@ class ReviewProcessor:
 
         # Enhanced: Filter out code fragments and metadata
         metadata_patterns = [
-            r'^[\+\-\*]\s*',  # Git diff markers
-            r'^\d+\s*hunks?\)',  # Hunk info
-            r'^Configuration used',
-            r'^Review profile',
-            r'^Knowledge Base',
-            r'^</?details>',
-            r'^</?summary>',
-            r'^</?blockquote>',
-            r'^Reviewing files that changed',
-            r'^\*\s*`[^`]+`\s*\(\d+\s+hunks?\)',  # File hunk info
-            r'^Nitpick comments?\s*\(\d+\)',
-            r'^```\w*$',  # Code block markers
-            r'^[\+\-]\s*(if|for|echo|command)',  # Code line fragments
-            r'^(CHILL|Disabled due to)',  # CodeRabbit UI metadata
+            r"^[\+\-\*]\s*",  # Git diff markers
+            r"^\d+\s*hunks?\)",  # Hunk info
+            r"^Configuration used",
+            r"^Review profile",
+            r"^Knowledge Base",
+            r"^</?details>",
+            r"^</?summary>",
+            r"^</?blockquote>",
+            r"^Reviewing files that changed",
+            r"^\*\s*`[^`]+`\s*\(\d+\s+hunks?\)",  # File hunk info
+            r"^Nitpick comments?\s*\(\d+\)",
+            r"^```\w*$",  # Code block markers
+            r"^[\+\-]\s*(if|for|echo|command)",  # Code line fragments
+            r"^(CHILL|Disabled due to)",  # CodeRabbit UI metadata
         ]
 
         for pattern in metadata_patterns:
@@ -1523,26 +1734,26 @@ class ReviewProcessor:
                 return False
 
         # Enhanced: Filter out incomplete sentences/fragments
-        if description.count(' ') < 3:  # Less than 4 words
+        if description.count(" ") < 3:  # Less than 4 words
             return False
 
         # Filter out HTML/XML fragments
-        if re.match(r'^<[^>]+>.*</[^>]+>$', description.strip()):
+        if re.match(r"^<[^>]+>.*</[^>]+>$", description.strip()):
             return False
 
         # Filter out single code statements
         code_fragment_patterns = [
-            r'^\s*(for|if|while|echo|command|return)\s+',  # Shell commands
-            r'^\s*[\+\-]\s+',  # Diff lines
-            r'^\s*\w+\s*=\s*',  # Variable assignments
-            r'^\s*#.*$',  # Comments only
+            r"^\s*(for|if|while|echo|command|return)\s+",  # Shell commands
+            r"^\s*[\+\-]\s+",  # Diff lines
+            r"^\s*\w+\s*=\s*",  # Variable assignments
+            r"^\s*#.*$",  # Comments only
         ]
 
         for pattern in code_fragment_patterns:
             if re.match(pattern, description, re.IGNORECASE):
                 return False
         # Filter out non-descriptive content
-        if description.lower() in {'', 'todo', 'fixme', 'note'}:
+        if description.lower() in {"", "todo", "fixme", "note"}:
             return False
 
         return True
@@ -1560,7 +1771,7 @@ class ReviewProcessor:
 
         # First, extract file-specific sections
         # Pattern: <summary>filename (count)</summary><blockquote> (no > prefix for nitpick)
-        file_section_pattern = r'<details>\s*<summary>([^(]+)\s*\(\d+\)</summary><blockquote>(.*?)(?=</blockquote></details>|\Z)'
+        file_section_pattern = r"<details>\s*<summary>([^(]+)\s*\(\d+\)</summary><blockquote>(.*?)(?=</blockquote></details>|\Z)"
         file_sections = re.finditer(file_section_pattern, section, re.DOTALL | re.IGNORECASE)
 
         for file_section in file_sections:
@@ -1581,17 +1792,19 @@ class ReviewProcessor:
                 full_suggestion = f"**{title}**"
                 if content_body:
                     # Clean up content body
-                    content_body = re.sub(r'\n+', '\n', content_body)
+                    content_body = re.sub(r"\n+", "\n", content_body)
                     content_body = content_body.strip()
                     if content_body:
                         full_suggestion += f"\n\n{content_body}"
 
-                items.append(NitpickComment(
-                    file_path=file_path,
-                    line_range=line_range,
-                    suggestion=full_suggestion,
-                    raw_content=match.group(0).strip()
-                ))
+                items.append(
+                    NitpickComment(
+                        file_path=file_path,
+                        line_range=line_range,
+                        suggestion=full_suggestion,
+                        raw_content=match.group(0).strip(),
+                    )
+                )
 
         return items
 
@@ -1608,7 +1821,7 @@ class ReviewProcessor:
 
         # First, extract file-specific sections
         # Pattern: <summary>filename (count)</summary><blockquote> (with > prefix on each line)
-        file_section_pattern = r'> <details>\s*\n> <summary>([^(]+)\s*\(\d+\)</summary><blockquote>(.*?)(?=> </blockquote></details>|\Z)'
+        file_section_pattern = r"> <details>\s*\n> <summary>([^(]+)\s*\(\d+\)</summary><blockquote>(.*?)(?=> </blockquote></details>|\Z)"
         file_sections = list(re.finditer(file_section_pattern, section, re.DOTALL | re.IGNORECASE))
 
         for i, file_section in enumerate(file_sections):
@@ -1617,7 +1830,9 @@ class ReviewProcessor:
 
             # Pattern to match individual outside diff comments within this file (with > prefix)
             # Each comment starts with > `line-range`: **Title** and continues until next comment or section end
-            comment_pattern = r"> `(\d+(?:-\d+)?)`: \*\*([^*]+)\*\*\s*(.*?)(?=> `\d+(?:-\d+)?`:\s*\*\*|> ---|\Z)"
+            comment_pattern = (
+                r"> `(\d+(?:-\d+)?)`: \*\*([^*]+)\*\*\s*(.*?)(?=> `\d+(?:-\d+)?`:\s*\*\*|> ---|\Z)"
+            )
 
             matches = re.finditer(comment_pattern, file_content, re.MULTILINE | re.DOTALL)
 
@@ -1630,18 +1845,20 @@ class ReviewProcessor:
                 full_content = f"**{title}**"
                 if content_body:
                     # Clean up content body
-                    content_body = re.sub(r'\n+', '\n', content_body)
+                    content_body = re.sub(r"\n+", "\n", content_body)
                     content_body = content_body.strip()
                     if content_body:
                         full_content += f"\n\n{content_body}"
 
-                items.append(OutsideDiffComment(
-                    file_path=file_path,
-                    line_range=line_range,
-                    content=full_content,
-                    reason="Outside diff range",
-                    raw_content=match.group(0).strip()
-                ))
+                items.append(
+                    OutsideDiffComment(
+                        file_path=file_path,
+                        line_range=line_range,
+                        content=full_content,
+                        reason="Outside diff range",
+                        raw_content=match.group(0).strip(),
+                    )
+                )
         return items
 
     def _extract_code_blocks(self, content: str) -> List[Dict[str, str]]:
@@ -1679,10 +1896,10 @@ class ReviewProcessor:
                     code_content = match.group(1).strip()
                     # Clean up the + prefixes and reconstruct the code
                     lines = []
-                    for line in code_content.split('\n'):
-                        if line.startswith('+'):
+                    for line in code_content.split("\n"):
+                        if line.startswith("+"):
                             lines.append(line[1:].strip())
-                    code_content = '\n'.join(lines)
+                    code_content = "\n".join(lines)
                     language = "bash"  # Default for shell suggestions
                 else:
                     code_content = match.group(2 if r"\1" in language_or_group else 1).strip()
@@ -1691,12 +1908,10 @@ class ReviewProcessor:
                 # Phase 1: Filter out meaningless code fragments
                 if code_content and len(code_content) > 10:
                     # Skip fragments that are just variable names or simple expressions
-                    if not re.match(r'^[\w\s]*$', code_content) or ' ' in code_content:
-                        code_blocks.append({
-                            'code': code_content,
-                            'language': language,
-                            'type': block_type
-                        })
+                    if not re.match(r"^[\w\s]*$", code_content) or " " in code_content:
+                        code_blocks.append(
+                            {"code": code_content, "language": language, "type": block_type}
+                        )
 
         return code_blocks
 
@@ -1710,8 +1925,13 @@ class ReviewProcessor:
             True if content appears to be a review comment
         """
         review_indicators = [
-            "actionable comments", "nitpick", "outside diff", "refactor suggestion",
-            "potential issue", "verification agent", "analysis chain"
+            "actionable comments",
+            "nitpick",
+            "outside diff",
+            "refactor suggestion",
+            "potential issue",
+            "verification agent",
+            "analysis chain",
         ]
 
         content_lower = content.lower()
@@ -1739,7 +1959,9 @@ class ReviewProcessor:
         else:
             return "general"
 
-    def analyze_thread_context_relationships(self, threads: List, actionable_comments: List) -> Dict[str, Any]:
+    def analyze_thread_context_relationships(
+        self, threads: List, actionable_comments: List
+    ) -> Dict[str, Any]:
         """Phase 3: Analyze relationships between thread contexts and actionable comments.
 
         Args:
@@ -1750,10 +1972,10 @@ class ReviewProcessor:
             Dictionary of relationships and context enrichment data
         """
         relationships = {
-            'thread_comment_mapping': {},
-            'file_based_clusters': {},
-            'priority_adjustments': {},
-            'context_enrichments': {}
+            "thread_comment_mapping": {},
+            "file_based_clusters": {},
+            "priority_adjustments": {},
+            "context_enrichments": {},
         }
 
         # Group actionable comments by file
@@ -1764,12 +1986,13 @@ class ReviewProcessor:
                 file_clusters[file_path] = []
             file_clusters[file_path].append(comment)
 
-        relationships['file_based_clusters'] = file_clusters
+        relationships["file_based_clusters"] = file_clusters
 
         # Map threads to actionable comments based on context
         for thread in threads:
-            thread_file = getattr(thread, 'file_context', '')
-            thread_line = getattr(thread, 'line_context', '')
+            # thread_file = getattr(thread, "file_context", "")  # Not used currently
+            # thread_line = getattr(thread, "line_context", "")  # Not used currently
+            pass
 
             # Find related actionable comments
             related_comments = []
@@ -1778,25 +2001,25 @@ class ReviewProcessor:
                     related_comments.append(comment)
 
             if related_comments:
-                relationships['thread_comment_mapping'][getattr(thread, 'thread_id', 'unknown')] = {
-                    'thread': thread,
-                    'related_comments': related_comments,
-                    'context_strength': self._calculate_context_strength(thread, related_comments)
+                relationships["thread_comment_mapping"][getattr(thread, "thread_id", "unknown")] = {
+                    "thread": thread,
+                    "related_comments": related_comments,
+                    "context_strength": self._calculate_context_strength(thread, related_comments),
                 }
 
         # Generate priority adjustments based on context
-        for thread_id, mapping in relationships['thread_comment_mapping'].items():
-            thread = mapping['thread']
-            comments = mapping['related_comments']
+        for thread_id, mapping in relationships["thread_comment_mapping"].items():
+            thread = mapping["thread"]
+            comments = mapping["related_comments"]
 
             # Adjust priority based on thread discussion intensity
-            if len(getattr(thread, 'chronological_comments', [])) > 3:
+            if len(getattr(thread, "chronological_comments", [])) > 3:
                 # High discussion activity suggests important issue
                 for comment in comments:
-                    if comment.priority.lower() == 'low':
-                        relationships['priority_adjustments'][comment.comment_id] = 'MEDIUM'
-                    elif comment.priority.lower() == 'medium':
-                        relationships['priority_adjustments'][comment.comment_id] = 'HIGH'
+                    if comment.priority.lower() == "low":
+                        relationships["priority_adjustments"][comment.comment_id] = "MEDIUM"
+                    elif comment.priority.lower() == "medium":
+                        relationships["priority_adjustments"][comment.comment_id] = "HIGH"
 
         return relationships
 
@@ -1810,19 +2033,19 @@ class ReviewProcessor:
         Returns:
             True if they appear to be related
         """
-        thread_file = getattr(thread, 'file_context', '')
-        thread_line = str(getattr(thread, 'line_context', ''))
+        thread_file = getattr(thread, "file_context", "")
+        thread_line = str(getattr(thread, "line_context", ""))
 
         # Exact file match
         if thread_file and thread_file == comment.file_path:
             # Check line proximity
-            if thread_line and hasattr(comment, 'line_range'):
+            if thread_line and hasattr(comment, "line_range"):
                 try:
                     thread_line_num = int(thread_line)
                     comment_line = str(comment.line_range)
-                    if '-' in comment_line:
+                    if "-" in comment_line:
                         # Range like "10-15"
-                        line_parts = comment_line.split('-')
+                        line_parts = comment_line.split("-")
                         start_line = int(line_parts[0])
                         end_line = int(line_parts[1]) if len(line_parts) > 1 else start_line
                         return start_line <= thread_line_num <= end_line + 5  # Allow 5 lines buffer
@@ -1835,8 +2058,8 @@ class ReviewProcessor:
 
         # Partial file name match (for cases where paths might be different)
         if thread_file and comment.file_path:
-            thread_basename = thread_file.split('/')[-1]
-            comment_basename = comment.file_path.split('/')[-1]
+            thread_basename = thread_file.split("/")[-1]
+            comment_basename = comment.file_path.split("/")[-1]
             if thread_basename == comment_basename:
                 return True
 
@@ -1861,16 +2084,18 @@ class ReviewProcessor:
         strength += min(len(related_comments) * 0.1, 0.3)
 
         # Bonus for discussion activity
-        comment_count = len(getattr(thread, 'chronological_comments', []))
+        comment_count = len(getattr(thread, "chronological_comments", []))
         strength += min(comment_count * 0.05, 0.2)
 
         # Bonus for unresolved status
-        if not getattr(thread, 'is_resolved', True):
+        if not getattr(thread, "is_resolved", True):
             strength += 0.2
 
         return min(strength, 1.0)
 
-    def analyze_code_change_patterns(self, actionable_comments: List, pr_diff_data: Optional[Dict] = None) -> Dict[str, Any]:
+    def analyze_code_change_patterns(
+        self, actionable_comments: List, pr_diff_data: Optional[Dict] = None
+    ) -> Dict[str, Any]:
         """Phase 3: Analyze code change patterns to adjust priorities intelligently.
 
         Args:
@@ -1881,10 +2106,10 @@ class ReviewProcessor:
             Analysis results with priority adjustments
         """
         analysis = {
-            'change_type_distribution': {},
-            'file_impact_scores': {},
-            'priority_adjustments': {},
-            'risk_indicators': []
+            "change_type_distribution": {},
+            "file_impact_scores": {},
+            "priority_adjustments": {},
+            "risk_indicators": [],
         }
 
         # Group comments by file and analyze change patterns
@@ -1898,21 +2123,21 @@ class ReviewProcessor:
         for file_path, comments in file_groups.items():
             # Calculate file impact score
             impact_score = self._calculate_file_impact_score(file_path, comments)
-            analysis['file_impact_scores'][file_path] = impact_score
+            analysis["file_impact_scores"][file_path] = impact_score
 
             # Analyze change types
             change_types = self._identify_change_types(file_path, comments)
-            analysis['change_type_distribution'][file_path] = change_types
+            analysis["change_type_distribution"][file_path] = change_types
 
             # Generate priority adjustments based on analysis
             adjustments = self._generate_priority_adjustments_from_analysis(
                 file_path, comments, impact_score, change_types
             )
-            analysis['priority_adjustments'].update(adjustments)
+            analysis["priority_adjustments"].update(adjustments)
 
             # Identify risk indicators
             risks = self._identify_risk_indicators(file_path, comments, change_types)
-            analysis['risk_indicators'].extend(risks)
+            analysis["risk_indicators"].extend(risks)
 
         return analysis
 
@@ -1932,22 +2157,47 @@ class ReviewProcessor:
         score += min(len(comments) * 0.15, 0.6)
 
         # File type importance
-        file_ext = file_path.split('.')[-1].lower() if '.' in file_path else ''
+        file_ext = file_path.split(".")[-1].lower() if "." in file_path else ""
 
         critical_files = {
-            'py': 0.8, 'js': 0.8, 'ts': 0.8, 'java': 0.8, 'cpp': 0.8, 'c': 0.8,
-            'go': 0.8, 'rs': 0.8, 'rb': 0.7, 'php': 0.7, 'scala': 0.7,
-            'sql': 0.9, 'dockerfile': 0.9, 'yaml': 0.6, 'yml': 0.6, 'json': 0.6,
-            'sh': 0.7, 'bash': 0.7, 'zsh': 0.7, 'fish': 0.7
+            "py": 0.8,
+            "js": 0.8,
+            "ts": 0.8,
+            "java": 0.8,
+            "cpp": 0.8,
+            "c": 0.8,
+            "go": 0.8,
+            "rs": 0.8,
+            "rb": 0.7,
+            "php": 0.7,
+            "scala": 0.7,
+            "sql": 0.9,
+            "dockerfile": 0.9,
+            "yaml": 0.6,
+            "yml": 0.6,
+            "json": 0.6,
+            "sh": 0.7,
+            "bash": 0.7,
+            "zsh": 0.7,
+            "fish": 0.7,
         }
 
         # Critical file names
-        file_name = file_path.split('/')[-1].lower()
+        file_name = file_path.split("/")[-1].lower()
         critical_names = {
-            'main.py': 0.9, 'index.js': 0.9, 'app.py': 0.9, 'server.py': 0.9,
-            'config.py': 0.8, 'settings.py': 0.8, 'requirements.txt': 0.7,
-            'package.json': 0.8, 'dockerfile': 0.9, 'makefile': 0.7,
-            '.env': 0.9, '.gitignore': 0.3, 'readme.md': 0.2
+            "main.py": 0.9,
+            "index.js": 0.9,
+            "app.py": 0.9,
+            "server.py": 0.9,
+            "config.py": 0.8,
+            "settings.py": 0.8,
+            "requirements.txt": 0.7,
+            "package.json": 0.8,
+            "dockerfile": 0.9,
+            "makefile": 0.7,
+            ".env": 0.9,
+            ".gitignore": 0.3,
+            "readme.md": 0.2,
         }
 
         if file_name in critical_names:
@@ -1956,13 +2206,17 @@ class ReviewProcessor:
             score += critical_files[file_ext] * 0.2
 
         # Bonus for security-related files
-        if any(keyword in file_path.lower() for keyword in
-               ['auth', 'security', 'crypto', 'token', 'password', 'secret']):
+        if any(
+            keyword in file_path.lower()
+            for keyword in ["auth", "security", "crypto", "token", "password", "secret"]
+        ):
             score += 0.2
 
         # Bonus for core infrastructure files
-        if any(keyword in file_path.lower() for keyword in
-               ['core', 'base', 'main', 'init', 'setup', 'config']):
+        if any(
+            keyword in file_path.lower()
+            for keyword in ["core", "base", "main", "init", "setup", "config"]
+        ):
             score += 0.1
 
         return min(score, 1.0)
@@ -1978,54 +2232,94 @@ class ReviewProcessor:
             Dictionary of change type counts
         """
         change_types = {
-            'security': 0, 'performance': 0, 'bug_fix': 0, 'refactoring': 0,
-            'new_feature': 0, 'documentation': 0, 'style': 0, 'testing': 0
+            "security": 0,
+            "performance": 0,
+            "bug_fix": 0,
+            "refactoring": 0,
+            "new_feature": 0,
+            "documentation": 0,
+            "style": 0,
+            "testing": 0,
         }
 
         for comment in comments:
             description = comment.issue_description.lower()
 
             # Security changes
-            if any(keyword in description for keyword in
-                   ['security', 'vulnerability', 'exploit', 'injection', 'xss', 'csrf',
-                    'authentication', 'authorization', 'sanitize', 'validate']):
-                change_types['security'] += 1
+            if any(
+                keyword in description
+                for keyword in [
+                    "security",
+                    "vulnerability",
+                    "exploit",
+                    "injection",
+                    "xss",
+                    "csrf",
+                    "authentication",
+                    "authorization",
+                    "sanitize",
+                    "validate",
+                ]
+            ):
+                change_types["security"] += 1
 
             # Performance changes
-            elif any(keyword in description for keyword in
-                     ['performance', 'optimize', 'slow', 'memory', 'cpu', 'cache',
-                      'efficiency', 'bottleneck', 'latency']):
-                change_types['performance'] += 1
+            elif any(
+                keyword in description
+                for keyword in [
+                    "performance",
+                    "optimize",
+                    "slow",
+                    "memory",
+                    "cpu",
+                    "cache",
+                    "efficiency",
+                    "bottleneck",
+                    "latency",
+                ]
+            ):
+                change_types["performance"] += 1
 
             # Bug fixes
-            elif any(keyword in description for keyword in
-                     ['bug', 'error', 'fix', 'issue', 'problem', 'crash', 'fail']):
-                change_types['bug_fix'] += 1
+            elif any(
+                keyword in description
+                for keyword in ["bug", "error", "fix", "issue", "problem", "crash", "fail"]
+            ):
+                change_types["bug_fix"] += 1
 
             # Refactoring
-            elif any(keyword in description for keyword in
-                     ['refactor', 'restructure', 'cleanup', 'simplify', 'extract']):
-                change_types['refactoring'] += 1
+            elif any(
+                keyword in description
+                for keyword in ["refactor", "restructure", "cleanup", "simplify", "extract"]
+            ):
+                change_types["refactoring"] += 1
 
             # New features
-            elif any(keyword in description for keyword in
-                     ['add', 'new', 'feature', 'implement', 'create', 'introduce']):
-                change_types['new_feature'] += 1
+            elif any(
+                keyword in description
+                for keyword in ["add", "new", "feature", "implement", "create", "introduce"]
+            ):
+                change_types["new_feature"] += 1
 
             # Documentation
-            elif any(keyword in description for keyword in
-                     ['document', 'comment', 'readme', 'doc', 'explain']):
-                change_types['documentation'] += 1
+            elif any(
+                keyword in description
+                for keyword in ["document", "comment", "readme", "doc", "explain"]
+            ):
+                change_types["documentation"] += 1
 
             # Style/formatting
-            elif any(keyword in description for keyword in
-                     ['style', 'format', 'indent', 'whitespace', 'lint']):
-                change_types['style'] += 1
+            elif any(
+                keyword in description
+                for keyword in ["style", "format", "indent", "whitespace", "lint"]
+            ):
+                change_types["style"] += 1
 
             # Testing
-            elif any(keyword in description for keyword in
-                     ['test', 'spec', 'coverage', 'mock', 'assert']):
-                change_types['testing'] += 1
+            elif any(
+                keyword in description for keyword in ["test", "spec", "coverage", "mock", "assert"]
+            ):
+                change_types["testing"] += 1
 
         return change_types
 
@@ -2049,26 +2343,30 @@ class ReviewProcessor:
         if impact_score > 0.7:
             for comment in comments:
                 current_priority = comment.priority.lower()
-                if current_priority == 'low':
-                    adjustments[comment.comment_id] = 'MEDIUM'
-                elif current_priority == 'medium':
-                    adjustments[comment.comment_id] = 'HIGH'
+                if current_priority == "low":
+                    adjustments[comment.comment_id] = "MEDIUM"
+                elif current_priority == "medium":
+                    adjustments[comment.comment_id] = "HIGH"
 
         # Security changes always get high priority
-        if change_types.get('security', 0) > 0:
+        if change_types.get("security", 0) > 0:
             for comment in comments:
-                if any(keyword in comment.issue_description.lower() for keyword in
-                       ['security', 'vulnerability', 'exploit']):
-                    adjustments[comment.comment_id] = 'HIGH'
+                if any(
+                    keyword in comment.issue_description.lower()
+                    for keyword in ["security", "vulnerability", "exploit"]
+                ):
+                    adjustments[comment.comment_id] = "HIGH"
 
         # Performance issues in critical files get boosted
-        if change_types.get('performance', 0) > 0 and impact_score > 0.6:
+        if change_types.get("performance", 0) > 0 and impact_score > 0.6:
             for comment in comments:
-                if any(keyword in comment.issue_description.lower() for keyword in
-                       ['performance', 'optimize', 'slow']):
+                if any(
+                    keyword in comment.issue_description.lower()
+                    for keyword in ["performance", "optimize", "slow"]
+                ):
                     current_priority = comment.priority.lower()
-                    if current_priority != 'high':
-                        adjustments[comment.comment_id] = 'HIGH'
+                    if current_priority != "high":
+                        adjustments[comment.comment_id] = "HIGH"
 
         return adjustments
 
@@ -2088,35 +2386,43 @@ class ReviewProcessor:
         risks = []
 
         # Multiple security issues in one file
-        if change_types.get('security', 0) > 2:
-            risks.append({
-                'type': 'multiple_security_issues',
-                'severity': 'HIGH',
-                'description': f'Multiple security issues detected in {file_path}',
-                'file_path': file_path
-            })
+        if change_types.get("security", 0) > 2:
+            risks.append(
+                {
+                    "type": "multiple_security_issues",
+                    "severity": "HIGH",
+                    "description": f"Multiple security issues detected in {file_path}",
+                    "file_path": file_path,
+                }
+            )
 
         # High comment concentration (possible problem area)
         if len(comments) > 5:
-            risks.append({
-                'type': 'high_issue_concentration',
-                'severity': 'MEDIUM',
-                'description': f'High concentration of issues in {file_path} ({len(comments)} comments)',
-                'file_path': file_path
-            })
+            risks.append(
+                {
+                    "type": "high_issue_concentration",
+                    "severity": "MEDIUM",
+                    "description": f"High concentration of issues in {file_path} ({len(comments)} comments)",
+                    "file_path": file_path,
+                }
+            )
 
         # Mix of security and performance issues
-        if change_types.get('security', 0) > 0 and change_types.get('performance', 0) > 0:
-            risks.append({
-                'type': 'security_performance_mix',
-                'severity': 'HIGH',
-                'description': f'Both security and performance issues in {file_path}',
-                'file_path': file_path
-            })
+        if change_types.get("security", 0) > 0 and change_types.get("performance", 0) > 0:
+            risks.append(
+                {
+                    "type": "security_performance_mix",
+                    "severity": "HIGH",
+                    "description": f"Both security and performance issues in {file_path}",
+                    "file_path": file_path,
+                }
+            )
 
         return risks
 
-    def optimize_processing_for_large_datasets(self, comments: List, max_items: int = 1000) -> Dict[str, Any]:
+    def optimize_processing_for_large_datasets(
+        self, comments: List, max_items: int = 1000
+    ) -> Dict[str, Any]:
         """Phase 3: Optimize processing for large PR datasets.
 
         Args:
@@ -2127,30 +2433,30 @@ class ReviewProcessor:
             Optimization results and processing strategy
         """
         optimization = {
-            'dataset_size': len(comments),
-            'processing_strategy': 'standard',
-            'sampling_applied': False,
-            'filtered_count': 0,
-            'optimization_applied': []
+            "dataset_size": len(comments),
+            "processing_strategy": "standard",
+            "sampling_applied": False,
+            "filtered_count": 0,
+            "optimization_applied": [],
         }
 
         # Large dataset handling
         if len(comments) > max_items:
-            optimization['processing_strategy'] = 'optimized'
-            optimization['optimization_applied'].append('large_dataset_sampling')
+            optimization["processing_strategy"] = "optimized"
+            optimization["optimization_applied"].append("large_dataset_sampling")
 
             # Intelligent sampling - prioritize important comments
             sampled_comments = self._intelligent_sampling(comments, max_items)
-            optimization['filtered_count'] = len(sampled_comments)
-            optimization['sampling_applied'] = True
+            optimization["filtered_count"] = len(sampled_comments)
+            optimization["sampling_applied"] = True
 
         # Memory optimization for code blocks
-        if optimization['dataset_size'] > 500:
-            optimization['optimization_applied'].append('code_block_compression')
+        if optimization["dataset_size"] > 500:
+            optimization["optimization_applied"].append("code_block_compression")
 
         # Parallel processing recommendation
-        if optimization['dataset_size'] > 200:
-            optimization['optimization_applied'].append('parallel_processing_recommended')
+        if optimization["dataset_size"] > 200:
+            optimization["optimization_applied"].append("parallel_processing_recommended")
 
         return optimization
 
@@ -2188,30 +2494,43 @@ class ReviewProcessor:
         """
         score = 0.0
 
-        if hasattr(comment, 'issue_description'):
+        if hasattr(comment, "issue_description"):
             description = comment.issue_description.lower()
 
             # High importance keywords
-            high_importance = ['security', 'vulnerability', 'critical', 'error', 'bug', 'performance']
+            high_importance = [
+                "security",
+                "vulnerability",
+                "critical",
+                "error",
+                "bug",
+                "performance",
+            ]
             for keyword in high_importance:
                 if keyword in description:
                     score += 2.0
 
             # Medium importance keywords
-            medium_importance = ['improve', 'optimize', 'refactor', 'update', 'fix']
+            medium_importance = ["improve", "optimize", "refactor", "update", "fix"]
             for keyword in medium_importance:
                 if keyword in description:
                     score += 1.0
 
             # Priority boost
-            if hasattr(comment, 'priority'):
-                priority_scores = {'HIGH': 3.0, 'MEDIUM': 2.0, 'LOW': 1.0}
-                priority = comment.priority.value if hasattr(comment.priority, 'value') else str(comment.priority)
+            if hasattr(comment, "priority"):
+                priority_scores = {"HIGH": 3.0, "MEDIUM": 2.0, "LOW": 1.0}
+                priority = (
+                    comment.priority.value
+                    if hasattr(comment.priority, "value")
+                    else str(comment.priority)
+                )
                 score += priority_scores.get(priority.upper(), 1.0)
 
         return score
 
-    def enhanced_error_recovery(self, operation_name: str, data: Any, fallback_strategy: str = 'graceful') -> Dict[str, Any]:
+    def enhanced_error_recovery(
+        self, operation_name: str, data: Any, fallback_strategy: str = "graceful"
+    ) -> Dict[str, Any]:
         """Phase 3: Enhanced error handling with recovery strategies.
 
         Args:
@@ -2223,52 +2542,54 @@ class ReviewProcessor:
             Recovery result with status and processed data
         """
         recovery_result = {
-            'operation': operation_name,
-            'status': 'success',
-            'errors_encountered': [],
-            'recovery_applied': [],
-            'processed_data': data,
-            'warnings': []
+            "operation": operation_name,
+            "status": "success",
+            "errors_encountered": [],
+            "recovery_applied": [],
+            "processed_data": data,
+            "warnings": [],
         }
 
         try:
             # Validate input data
             if not data:
-                recovery_result['warnings'].append('Empty input data provided')
+                recovery_result["warnings"].append("Empty input data provided")
                 return recovery_result
 
             # Apply error-prone operation simulation (in real usage, this would be the actual operation)
             if isinstance(data, list) and len(data) > 1000:
-                recovery_result['warnings'].append('Large dataset detected - applying optimization')
-                recovery_result['recovery_applied'].append('dataset_optimization')
+                recovery_result["warnings"].append("Large dataset detected - applying optimization")
+                recovery_result["recovery_applied"].append("dataset_optimization")
 
             # Memory management for large operations
-            if hasattr(data, '__len__') and len(data) > 500:
-                recovery_result['recovery_applied'].append('memory_management')
+            if hasattr(data, "__len__") and len(data) > 500:
+                recovery_result["recovery_applied"].append("memory_management")
 
         except Exception as e:
-            recovery_result['status'] = 'error_recovered'
-            recovery_result['errors_encountered'].append({
-                'error_type': type(e).__name__,
-                'error_message': str(e),
-                'fallback_applied': fallback_strategy
-            })
+            recovery_result["status"] = "error_recovered"
+            recovery_result["errors_encountered"].append(
+                {
+                    "error_type": type(e).__name__,
+                    "error_message": str(e),
+                    "fallback_applied": fallback_strategy,
+                }
+            )
 
             # Apply fallback strategies
-            if fallback_strategy == 'graceful':
+            if fallback_strategy == "graceful":
                 # Continue with partial results
-                recovery_result['processed_data'] = self._create_minimal_fallback_data()
-                recovery_result['recovery_applied'].append('graceful_degradation')
+                recovery_result["processed_data"] = self._create_minimal_fallback_data()
+                recovery_result["recovery_applied"].append("graceful_degradation")
 
-            elif fallback_strategy == 'retry':
+            elif fallback_strategy == "retry":
                 # Attempt retry with simplified processing
-                recovery_result['recovery_applied'].append('simplified_retry')
-                recovery_result['processed_data'] = self._create_simplified_data(data)
+                recovery_result["recovery_applied"].append("simplified_retry")
+                recovery_result["processed_data"] = self._create_simplified_data(data)
 
-            elif fallback_strategy == 'skip':
+            elif fallback_strategy == "skip":
                 # Skip problematic items
-                recovery_result['recovery_applied'].append('selective_skipping')
-                recovery_result['processed_data'] = []
+                recovery_result["recovery_applied"].append("selective_skipping")
+                recovery_result["processed_data"] = []
 
         return recovery_result
 
@@ -2290,63 +2611,64 @@ class ReviewProcessor:
             Validation result with status and feature availability
         """
         validation = {
-            'phase3_features': {
-                'context_relationships': False,
-                'code_pattern_analysis': False,
-                'performance_optimization': False,
-                'error_recovery': False,
-                'intelligent_prioritization': False
+            "phase3_features": {
+                "context_relationships": False,
+                "code_pattern_analysis": False,
+                "performance_optimization": False,
+                "error_recovery": False,
+                "intelligent_prioritization": False,
             },
-            'integration_status': 'unknown',
-            'missing_features': [],
-            'warnings': []
+            "integration_status": "unknown",
+            "missing_features": [],
+            "warnings": [],
         }
 
         # Check for context relationship methods
-        if hasattr(self, 'analyze_thread_context_relationships'):
-            validation['phase3_features']['context_relationships'] = True
+        if hasattr(self, "analyze_thread_context_relationships"):
+            validation["phase3_features"]["context_relationships"] = True
         else:
-            validation['missing_features'].append('analyze_thread_context_relationships')
+            validation["missing_features"].append("analyze_thread_context_relationships")
 
         # Check for code pattern analysis
-        if hasattr(self, 'analyze_code_change_patterns'):
-            validation['phase3_features']['code_pattern_analysis'] = True
+        if hasattr(self, "analyze_code_change_patterns"):
+            validation["phase3_features"]["code_pattern_analysis"] = True
         else:
-            validation['missing_features'].append('analyze_code_change_patterns')
+            validation["missing_features"].append("analyze_code_change_patterns")
 
         # Check for performance optimization
-        if hasattr(self, 'optimize_processing_for_large_datasets'):
-            validation['phase3_features']['performance_optimization'] = True
+        if hasattr(self, "optimize_processing_for_large_datasets"):
+            validation["phase3_features"]["performance_optimization"] = True
         else:
-            validation['missing_features'].append('optimize_processing_for_large_datasets')
+            validation["missing_features"].append("optimize_processing_for_large_datasets")
 
         # Check for error recovery
-        if hasattr(self, 'enhanced_error_recovery'):
-            validation['phase3_features']['error_recovery'] = True
+        if hasattr(self, "enhanced_error_recovery"):
+            validation["phase3_features"]["error_recovery"] = True
         else:
-            validation['missing_features'].append('enhanced_error_recovery')
+            validation["missing_features"].append("enhanced_error_recovery")
 
         # Check for intelligent prioritization (via ActionableComment model)
         try:
             from ..models.actionable_comment import ActionableComment
-            if hasattr(ActionableComment, '_detect_priority'):
-                validation['phase3_features']['intelligent_prioritization'] = True
+
+            if hasattr(ActionableComment, "_detect_priority"):
+                validation["phase3_features"]["intelligent_prioritization"] = True
             else:
-                validation['missing_features'].append('intelligent_prioritization')
+                validation["missing_features"].append("intelligent_prioritization")
         except ImportError:
-            validation['missing_features'].append('actionable_comment_model')
+            validation["missing_features"].append("actionable_comment_model")
 
         # Determine integration status
-        enabled_features = sum(validation['phase3_features'].values())
-        total_features = len(validation['phase3_features'])
+        enabled_features = sum(validation["phase3_features"].values())
+        total_features = len(validation["phase3_features"])
 
         if enabled_features == total_features:
-            validation['integration_status'] = 'fully_integrated'
+            validation["integration_status"] = "fully_integrated"
         elif enabled_features >= total_features * 0.8:
-            validation['integration_status'] = 'mostly_integrated'
+            validation["integration_status"] = "mostly_integrated"
         elif enabled_features >= total_features * 0.5:
-            validation['integration_status'] = 'partially_integrated'
+            validation["integration_status"] = "partially_integrated"
         else:
-            validation['integration_status'] = 'poorly_integrated'
+            validation["integration_status"] = "poorly_integrated"
 
         return validation

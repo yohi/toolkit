@@ -1,7 +1,9 @@
 """Review comment data models."""
 
-from pydantic import BaseModel, Field
 from typing import List, Optional
+
+from pydantic import BaseModel, Field
+
 from .actionable_comment import ActionableComment
 from .ai_agent_prompt import AIAgentPrompt
 
@@ -47,9 +49,8 @@ class NitpickComment(BaseModel):
         # Auto-extract diff if not provided
         if "proposed_diff" not in data or not data.get("proposed_diff"):
             from ..utils.diff_extractor import DiffExtractor
-            data["proposed_diff"] = DiffExtractor.extract_diff_blocks(
-                data.get("raw_content", "")
-            )
+
+            data["proposed_diff"] = DiffExtractor.extract_diff_blocks(data.get("raw_content", ""))
         super().__init__(**data)
 
     @property
@@ -58,8 +59,8 @@ class NitpickComment(BaseModel):
         if not self.line_range:
             return None
 
-        if '-' in self.line_range:
-            return self.line_range.split('-')[0].strip()
+        if "-" in self.line_range:
+            return self.line_range.split("-")[0].strip()
         else:
             return self.line_range.strip()
 
@@ -69,7 +70,7 @@ class NitpickComment(BaseModel):
         if not self.suggestion:
             return "Nitpick Comment"
 
-        first_sentence = self.suggestion.split('.')[0].strip()
+        first_sentence = self.suggestion.split(".")[0].strip()
         if len(first_sentence) > 80:
             return first_sentence[:77] + "..."
         return first_sentence if first_sentence else "Nitpick Comment"
@@ -94,7 +95,6 @@ class NitpickComment(BaseModel):
         return self.suggestion
 
 
-
 class OutsideDiffComment(BaseModel):
     """Represents a comment that refers to code outside the diff range."""
 
@@ -110,9 +110,8 @@ class OutsideDiffComment(BaseModel):
         # Auto-extract diff if not provided
         if "proposed_diff" not in data or not data.get("proposed_diff"):
             from ..utils.diff_extractor import DiffExtractor
-            data["proposed_diff"] = DiffExtractor.extract_diff_blocks(
-                data.get("raw_content", "")
-            )
+
+            data["proposed_diff"] = DiffExtractor.extract_diff_blocks(data.get("raw_content", ""))
         super().__init__(**data)
 
     @property
@@ -121,8 +120,8 @@ class OutsideDiffComment(BaseModel):
         if not self.line_range:
             return None
 
-        if '-' in self.line_range:
-            return self.line_range.split('-')[0].strip()
+        if "-" in self.line_range:
+            return self.line_range.split("-")[0].strip()
         else:
             return self.line_range.strip()
 
@@ -132,7 +131,7 @@ class OutsideDiffComment(BaseModel):
         if not self.content:
             return "Outside Diff Comment"
 
-        first_sentence = self.content.split('.')[0].strip()
+        first_sentence = self.content.split(".")[0].strip()
         if len(first_sentence) > 80:
             return first_sentence[:77] + "..."
         return first_sentence if first_sentence else "Outside Diff Comment"
@@ -157,26 +156,24 @@ class OutsideDiffComment(BaseModel):
         return self.content
 
 
-
 class ReviewComment(BaseModel):
     """Represents a processed CodeRabbit review comment."""
 
     actionable_count: int = Field(..., description="Number of actionable comments")
     actionable_comments: List[ActionableComment] = Field(
-        default_factory=list,
-        description="List of actionable comments"
+        default_factory=list, description="List of actionable comments"
     )
     nitpick_comments: List[NitpickComment] = Field(
-        default_factory=list,
-        description="List of nitpick comments"
+        default_factory=list, description="List of nitpick comments"
     )
     outside_diff_comments: List[OutsideDiffComment] = Field(
-        default_factory=list,
-        description="List of outside diff comments"
+        default_factory=list, description="List of outside diff comments"
+    )
+    additional_comments: List[NitpickComment] = Field(
+        default_factory=list, description="List of additional comments (separate from nitpicks)"
     )
     ai_agent_prompts: List[AIAgentPrompt] = Field(
-        default_factory=list,
-        description="List of AI agent prompts"
+        default_factory=list, description="List of AI agent prompts"
     )
     raw_content: str = Field(..., description="Original comment content")
 

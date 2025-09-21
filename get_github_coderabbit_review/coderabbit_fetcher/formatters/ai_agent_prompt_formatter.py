@@ -4,19 +4,13 @@ This formatter creates detailed AI agent prompts that match the expected output 
 with comprehensive role definitions, analysis requirements, and structured comment data.
 """
 
-import json
 import re
-from datetime import datetime
 from typing import Any, Dict, List, Optional
 from xml.sax.saxutils import escape
 
 from ..models import (
     ActionableComment,
-    AIAgentPrompt,
     AnalyzedComments,
-    ReviewComment,
-    SummaryComment,
-    ThreadContext,
 )
 from .base_formatter import BaseFormatter
 
@@ -29,7 +23,7 @@ class AIAgentPromptFormatter(BaseFormatter):
         persona: str,
         analyzed_comments: AnalyzedComments,
         quiet: bool = False,
-        pr_info: Optional[Dict[str, Any]] = None
+        pr_info: Optional[Dict[str, Any]] = None,
     ) -> str:
         """Format analyzed comments into detailed AI agent prompt.
 
@@ -156,39 +150,37 @@ Quality, Security, Standards, Specificity, Impact-awareness
 </pull_request_context>"""
 
         # Extract PR information with proper field mapping
-        pr_url = pr_info.get('url', 'Unknown')
-        title = pr_info.get('title', 'Unknown')
-        description = pr_info.get('body') or '_No description provided._'
+        pr_url = pr_info.get("url", "Unknown")
+        title = pr_info.get("title", "Unknown")
+        description = pr_info.get("body") or "_No description provided._"
 
         # Handle different possible field names for branch
-        branch = (pr_info.get('headRefName') or
-                 pr_info.get('head', {}).get('ref') or
-                 'Unknown')
+        branch = pr_info.get("headRefName") or pr_info.get("head", {}).get("ref") or "Unknown"
 
         # Handle different possible field names for author
-        author = 'Unknown'
-        if 'author' in pr_info:
-            author_data = pr_info['author']
+        author = "Unknown"
+        if "author" in pr_info:
+            author_data = pr_info["author"]
             if isinstance(author_data, dict):
-                author = author_data.get('login', 'Unknown')
+                author = author_data.get("login", "Unknown")
             elif isinstance(author_data, str):
                 author = author_data
 
         # Get file changes with proper field mapping
-        files_changed = pr_info.get('changedFiles', pr_info.get('changed_files', 0))
-        lines_added = pr_info.get('additions', 0)
-        lines_deleted = pr_info.get('deletions', 0)
+        files_changed = pr_info.get("changedFiles", pr_info.get("changed_files", 0))
+        lines_added = pr_info.get("additions", 0)
+        lines_deleted = pr_info.get("deletions", 0)
 
         # Analyze technical context from files
-        files = pr_info.get('files', [])
+        files = pr_info.get("files", [])
         tech_context = self._analyze_technical_context(files)
 
         # Format changed files - use dynamic data only
         changed_files_section = ""
         for file_info in files[:10]:  # Limit to first 10 files
-            filename = file_info.get('filename', 'Unknown')
-            additions = file_info.get('additions', 0)
-            deletions = file_info.get('deletions', 0)
+            filename = file_info.get("filename", "Unknown")
+            additions = file_info.get("additions", 0)
+            deletions = file_info.get("deletions", 0)
             changed_files_section += f'    <file path="{escape(filename)}" additions="{additions}" deletions="{deletions}" />\n'
 
         return f"""<pull_request_context>
@@ -216,10 +208,10 @@ Quality, Security, Standards, Specificity, Impact-awareness
         """Analyze technical context from changed files."""
         if not files:
             return {
-                'repository_type': 'Unknown',
-                'key_technologies': 'Unknown',
-                'file_extensions': 'Unknown',
-                'build_system': 'Unknown'
+                "repository_type": "Unknown",
+                "key_technologies": "Unknown",
+                "file_extensions": "Unknown",
+                "build_system": "Unknown",
             }
 
         # Analyze file extensions
@@ -228,19 +220,25 @@ Quality, Security, Standards, Specificity, Impact-awareness
         has_bun_content = False
 
         for file_info in files:
-            filename = file_info.get('filename', '')
-            if '.' in filename:
-                ext = filename.split('.')[-1]
-                extensions.add(f'.{ext}')
+            filename = file_info.get("filename", "")
+            if "." in filename:
+                ext = filename.split(".")[-1]
+                extensions.add(f".{ext}")
 
             # Check for build system files
-            basename = filename.split('/')[-1].lower()
-            if basename in ['makefile', 'package.json', 'pyproject.toml', 'cargo.toml', 'build.gradle']:
+            basename = filename.split("/")[-1].lower()
+            if basename in [
+                "makefile",
+                "package.json",
+                "pyproject.toml",
+                "cargo.toml",
+                "build.gradle",
+            ]:
                 build_files.append(basename)
 
             # Check for bun-related content in file patches
-            patch = file_info.get('patch', '')
-            if patch and ('bun ' in patch or 'bunx' in patch or '.bun' in patch):
+            patch = file_info.get("patch", "")
+            if patch and ("bun " in patch or "bunx" in patch or ".bun" in patch):
                 has_bun_content = True
 
         # Determine repository type and technologies
@@ -248,43 +246,45 @@ Quality, Security, Standards, Specificity, Impact-awareness
         technologies = []
         build_system = "Unknown"
 
-        if '.py' in extensions:
-            technologies.append('Python')
+        if ".py" in extensions:
+            technologies.append("Python")
             repo_type = "Python application"
-        if '.js' in extensions or '.ts' in extensions:
-            technologies.append('JavaScript/TypeScript')
+        if ".js" in extensions or ".ts" in extensions:
+            technologies.append("JavaScript/TypeScript")
             repo_type = "Web application"
-        if '.mk' in extensions or 'makefile' in build_files:
-            technologies.append('Make build system')
+        if ".mk" in extensions or "makefile" in build_files:
+            technologies.append("Make build system")
             build_system = "GNU Make"
-        if 'package.json' in build_files:
-            technologies.append('Node.js')
+        if "package.json" in build_files:
+            technologies.append("Node.js")
             build_system = "npm/yarn"
 
         # Special handling for shell scripts
-        if '.sh' in extensions:
-            technologies.append('shell scripting')
+        if ".sh" in extensions:
+            technologies.append("shell scripting")
 
         # Add bun package manager if detected in content
         if has_bun_content:
-            technologies.append('bun package manager')
+            technologies.append("bun package manager")
 
         # Format file extensions to match expected output
         formatted_extensions = []
-        if '.mk' in extensions:
-            formatted_extensions.append('.mk (Makefile)')
-        if '.sh' in extensions:
-            formatted_extensions.append('.sh (Shell script)')
+        if ".mk" in extensions:
+            formatted_extensions.append(".mk (Makefile)")
+        if ".sh" in extensions:
+            formatted_extensions.append(".sh (Shell script)")
         # Add other extensions without descriptions
         for ext in sorted(extensions):
-            if ext not in ['.mk', '.sh']:
+            if ext not in [".mk", ".sh"]:
                 formatted_extensions.append(ext)
 
         return {
-            'repository_type': repo_type,
-            'key_technologies': ', '.join(technologies) if technologies else 'Unknown',
-            'file_extensions': ', '.join(formatted_extensions) if formatted_extensions else 'Unknown',
-            'build_system': build_system
+            "repository_type": repo_type,
+            "key_technologies": ", ".join(technologies) if technologies else "Unknown",
+            "file_extensions": (
+                ", ".join(formatted_extensions) if formatted_extensions else "Unknown"
+            ),
+            "build_system": build_system,
         }
 
     def _format_coderabbit_review_summary(self, analyzed_comments: AnalyzedComments) -> str:
@@ -299,6 +299,7 @@ Quality, Security, Standards, Specificity, Impact-awareness
             actionable_comments += len(review.actionable_comments)
             nitpick_comments += len(review.nitpick_comments)
             outside_diff_comments += len(review.outside_diff_comments)
+            print(f"DEBUG: Review has {len(review.outside_diff_comments)} outside_diff_comments")
 
         # Count from thread contexts (these are typically actionable)
         for thread in analyzed_comments.unresolved_threads:
@@ -306,6 +307,10 @@ Quality, Security, Standards, Specificity, Impact-awareness
 
         # Total comments is the sum of all individual comments
         total_comments = actionable_comments + nitpick_comments + outside_diff_comments
+
+        print(
+            f"DEBUG: Final counts - actionable: {actionable_comments}, nitpick: {nitpick_comments}, outside_diff: {outside_diff_comments}"
+        )
 
         return f"""<coderabbit_review_summary>
   <total_comments>{total_comments}</total_comments>
@@ -325,12 +330,15 @@ Quality, Security, Standards, Specificity, Impact-awareness
                 if comment.file_path:
                     files_affected.add(comment.file_path)
                 # Extract key issues from descriptions
-                if 'PATH' in comment.issue_description:
-                    primary_issues.append('PATH handling')
-                if 'file existence' in comment.issue_description or 'check' in comment.issue_description:
-                    primary_issues.append('file existence checks')
-                if 'command' in comment.issue_description or 'syntax' in comment.issue_description:
-                    primary_issues.append('command syntax')
+                if "PATH" in comment.issue_description:
+                    primary_issues.append("PATH handling")
+                if (
+                    "file existence" in comment.issue_description
+                    or "check" in comment.issue_description
+                ):
+                    primary_issues.append("file existence checks")
+                if "command" in comment.issue_description or "syntax" in comment.issue_description:
+                    primary_issues.append("command syntax")
 
         # Determine complexity and impact
         complexity_level = "Medium (build system configuration)"
@@ -479,26 +487,28 @@ For comments with multiple exchanges, consider:
         sections.append("")
         sections.append("<review_comments>")
 
-        # Process actionable comments first, then nitpick comments
+        # Process actionable comments first, then nitpick comments, then outside diff comments
         # Use consistent ordering based on file type and line number
         all_actionable = []
         all_nitpick = []
+        all_outside_diff = []
 
         for review in analyzed_comments.review_comments:
             all_actionable.extend(review.actionable_comments)
             all_nitpick.extend(review.nitpick_comments)
+            all_outside_diff.extend(review.outside_diff_comments)
 
         # Sort actionable comments by file path and line number
         def sort_key(comment):
-            file_path = getattr(comment, 'file_path', '')
-            line_range = str(getattr(comment, 'line_range', ''))
+            file_path = getattr(comment, "file_path", "")
+            line_range = str(getattr(comment, "line_range", ""))
             # Extract numeric part for sorting
             line_num = 0
             if line_range.isdigit():
                 line_num = int(line_range)
-            elif '-' in line_range:
+            elif "-" in line_range:
                 try:
-                    line_num = int(line_range.split('-')[0])
+                    line_num = int(line_range.split("-")[0])
                 except ValueError:
                     line_num = 0
             return (file_path, line_num)
@@ -511,6 +521,10 @@ For comments with multiple exchanges, consider:
         for comment in sorted(all_nitpick, key=sort_key):
             sections.append(self._format_nitpick_comment(comment))
 
+        # Format outside diff comments
+        for comment in sorted(all_outside_diff, key=sort_key):
+            sections.append(self._format_outside_diff_comment(comment))
+
         sections.append("</review_comments>")
         return "\n".join(sections)
 
@@ -518,8 +532,12 @@ For comments with multiple exchanges, consider:
         """Format a single review comment."""
         lines = []
         # Clean line_range to prevent XML attribute corruption
-        clean_line_range = str(comment.line_range).replace('\n', '').replace('\r', '').replace('---', '').strip()
-        lines.append(f'  <review_comment type="{comment_type}" file="{escape(comment.file_path)}" lines="{escape(clean_line_range)}">')
+        clean_line_range = (
+            str(comment.line_range).replace("\n", "").replace("\r", "").replace("---", "").strip()
+        )
+        lines.append(
+            f'  <review_comment type="{comment_type}" file="{escape(comment.file_path)}" lines="{escape(clean_line_range)}">'
+        )
 
         # Extract detailed information from raw content
         raw_content = comment.raw_content
@@ -536,11 +554,27 @@ For comments with multiple exchanges, consider:
         lines.append(f"      {escape(analysis_text)}")
         lines.append("    </coderabbit_analysis>")
 
-        # AI agent prompt if available
+        # AI agent prompt if available - structured format
         ai_prompt_text = self._extract_ai_agent_prompt_text(raw_content)
         if ai_prompt_text:
             lines.append("    <ai_agent_prompt>")
-            lines.append(f"      {escape(ai_prompt_text)}")
+
+            # Extract code block and description from AI prompt text
+            code_block, language, description = self._parse_ai_agent_prompt(ai_prompt_text)
+
+            if code_block:
+                lines.append("      <code_block>")
+                lines.append(f"        {escape(code_block)}")
+                lines.append("      </code_block>")
+
+            if language:
+                lines.append(f"      <language>{escape(language)}</language>")
+
+            if description:
+                lines.append("      <description>")
+                lines.append(f"        {escape(description)}")
+                lines.append("      </description>")
+
             lines.append("    </ai_agent_prompt>")
 
         # Proposed diff if available
@@ -559,24 +593,30 @@ For comments with multiple exchanges, consider:
     def _format_nitpick_comment(self, comment) -> str:
         """Format a nitpick comment."""
         # Handle different comment types
-        if hasattr(comment, 'file_path'):
+        if hasattr(comment, "file_path"):
             file_path = comment.file_path
-            line_range = getattr(comment, 'line_range', 'Unknown')
-            description = getattr(comment, 'issue_description', str(comment))
+            line_range = getattr(comment, "line_range", "Unknown")
+            description = getattr(comment, "issue_description", str(comment))
         else:
             # Handle dictionary-like objects
-            file_path = comment.get('file_path', 'Unknown')
-            line_range = comment.get('line_range', 'Unknown')
-            description = comment.get('issue_description', str(comment))
+            file_path = comment.get("file_path", "Unknown")
+            line_range = comment.get("line_range", "Unknown")
+            description = comment.get("issue_description", str(comment))
 
         lines = []
         # Clean line_range to prevent XML attribute corruption
-        clean_line_range = str(line_range).replace('\n', '').replace('\r', '').replace('---', '').strip()
-        lines.append(f'  <review_comment type="Nitpick" file="{escape(file_path)}" lines="{escape(clean_line_range)}">')
+        clean_line_range = (
+            str(line_range).replace("\n", "").replace("\r", "").replace("---", "").strip()
+        )
+        lines.append(
+            f'  <review_comment type="Nitpick" file="{escape(file_path)}" lines="{escape(clean_line_range)}">'
+        )
 
         # Issue summary
         lines.append("    <issue_summary>")
-        lines.append(f"      {escape(description.split('\n')[0] if description else 'Nitpick suggestion')}")
+        lines.append(
+            f"      {escape(description.split('\n')[0] if description else 'Nitpick suggestion')}"
+        )
         lines.append("    </issue_summary>")
 
         # CodeRabbit analysis
@@ -587,9 +627,9 @@ For comments with multiple exchanges, consider:
 
         # Proposed diff - generate based on comment type if not available
         proposed_diff = None
-        if hasattr(comment, 'proposed_fix') and comment.proposed_fix:
+        if hasattr(comment, "proposed_fix") and comment.proposed_fix:
             proposed_diff = comment.proposed_fix
-        elif hasattr(comment, 'proposed_diff') and comment.proposed_diff:
+        elif hasattr(comment, "proposed_diff") and comment.proposed_diff:
             proposed_diff = comment.proposed_diff
         else:
             # Generate proposed diff based on the issue type
@@ -599,7 +639,7 @@ For comments with multiple exchanges, consider:
             lines.append("    <proposed_diff>")
             lines.append("      <![CDATA[")
             # Remove markdown code block wrapper if present for clean CDATA format
-            clean_diff = proposed_diff.replace('```diff\n', '').replace('\n```', '').strip()
+            clean_diff = proposed_diff.replace("```diff\n", "").replace("\n```", "").strip()
             lines.append(clean_diff)
             lines.append("]]>")
             lines.append("    </proposed_diff>")
@@ -620,19 +660,28 @@ For comments with multiple exchanges, consider:
         if "phony" in description_lower and "install-packages-gemini-cli" in description:
             return "ヘルプに掲載され、エイリアスも定義されていますが、PHONY未登録です。将来の依存解決の揺れを避けるため明示しておきましょう。"
         elif "リンク元の存在チェック" in description:
-            return "`ln -sfn`前にソース有無を検証し、欠如時は警告してスキップすると運用が安定します。"
+            return (
+                "`ln -sfn`前にソース有無を検証し、欠如時は警告してスキップすると運用が安定します。"
+            )
         elif "二重定義" in description:
-            return "上部(行 513–528)にも同名エイリアスがあります。重複は混乱の元なので片方へ集約を。"
+            return (
+                "上部(行 513–528)にも同名エイリアスがあります。重複は混乱の元なので片方へ集約を。"
+            )
         elif "ヘルプにエイリアス" in description and "install-ccusage" in description:
             return "直接ターゲットを案内したい場合に便利です。"
         elif "path拡張" in description_lower or "変数展開" in description:
             return "`$PATH`より`$$PATH`の方がMakeの二重展開を避けられ、意図どおりにシェル時点で連結されます。"
         else:
             # Extract the first meaningful sentence
-            lines = description.split('\n')
+            lines = description.split("\n")
             for line in lines:
                 line = line.strip()
-                if line and not line.startswith('**') and not line.startswith('```') and len(line) > 10:
+                if (
+                    line
+                    and not line.startswith("**")
+                    and not line.startswith("```")
+                    and len(line) > 10
+                ):
                     return line
 
         # Fallback to first line
@@ -694,21 +743,29 @@ For comments with multiple exchanges, consider:
     def _extract_issue_summary(self, raw_content: str, fallback_description: str) -> str:
         """Extract issue summary from raw content."""
         if not raw_content:
-            return fallback_description.split('\n')[0] if fallback_description else "No summary available"
+            return (
+                fallback_description.split("\n")[0]
+                if fallback_description
+                else "No summary available"
+            )
 
         # Look for markdown headers or bold text that might be the title
-        lines = raw_content.split('\n')
+        lines = raw_content.split("\n")
         for line in lines:
             line = line.strip()
             # Look for patterns like **title** or headers
-            if line.startswith('**') and line.endswith('**') and len(line) > 4:
-                return line.strip('*').strip()
-            elif line.startswith('#') and len(line) > 2:
-                return line.lstrip('#').strip()
-            elif line and not line.startswith('_') and not line.startswith('```') and len(line) > 10:
+            if line.startswith("**") and line.endswith("**") and len(line) > 4:
+                return line.strip("*").strip()
+            elif line.startswith("#") and len(line) > 2:
+                return line.lstrip("#").strip()
+            elif (
+                line and not line.startswith("_") and not line.startswith("```") and len(line) > 10
+            ):
                 return line
 
-        return fallback_description.split('\n')[0] if fallback_description else "No summary available"
+        return (
+            fallback_description.split("\n")[0] if fallback_description else "No summary available"
+        )
 
     def _extract_coderabbit_analysis(self, raw_content: str) -> str:
         """Extract CodeRabbit analysis text from raw content."""
@@ -716,31 +773,37 @@ For comments with multiple exchanges, consider:
             return "No analysis available"
 
         # Look for analysis text between markers or after certain patterns
-        lines = raw_content.split('\n')
+        lines = raw_content.split("\n")
         analysis_lines = []
         in_analysis = False
 
         for line in lines:
             line = line.strip()
             # Skip empty lines and markdown formatting
-            if not line or line.startswith('```') or line.startswith('_'):
+            if not line or line.startswith("```") or line.startswith("_"):
                 continue
 
             # Look for analysis content
-            if ('です' in line or 'ます' in line or 'PATH' in line or
-                'bun' in line or 'Make' in line or 'shell' in line):
+            if (
+                "です" in line
+                or "ます" in line
+                or "PATH" in line
+                or "bun" in line
+                or "Make" in line
+                or "shell" in line
+            ):
                 analysis_lines.append(line)
                 in_analysis = True
             elif in_analysis and len(analysis_lines) >= 2:
                 break
 
         if analysis_lines:
-            return ' '.join(analysis_lines)
+            return " ".join(analysis_lines)
 
         # Fallback: return first substantial line
         for line in lines:
             line = line.strip()
-            if line and len(line) > 20 and not line.startswith('**'):
+            if line and len(line) > 20 and not line.startswith("**"):
                 return line
 
         return "No analysis available"
@@ -751,25 +814,101 @@ For comments with multiple exchanges, consider:
             return ""
 
         # Look for "🤖 Prompt for AI Agents" section
-        lines = raw_content.split('\n')
+        lines = raw_content.split("\n")
         in_ai_prompt = False
         prompt_lines = []
 
         for line in lines:
-            if '🤖 Prompt for AI Agents' in line:
+            if "🤖 Prompt for AI Agents" in line:
                 in_ai_prompt = True
                 continue
             elif in_ai_prompt:
-                if line.strip().startswith('```') and prompt_lines:
+                if line.strip().startswith("```") and prompt_lines:
                     # End of code block
                     break
-                elif line.strip() and not line.strip().startswith('```'):
+                elif line.strip() and not line.strip().startswith("```"):
                     prompt_lines.append(line.strip())
 
         if prompt_lines:
-            return ' '.join(prompt_lines)
+            return " ".join(prompt_lines)
 
         return ""
+
+    def _parse_ai_agent_prompt(self, ai_prompt_text: str) -> tuple[str, str, str]:
+        """Parse AI agent prompt text into structured components.
+
+        Args:
+            ai_prompt_text: Raw AI agent prompt text
+
+        Returns:
+            Tuple of (code_block, language, description)
+        """
+        if not ai_prompt_text:
+            return "", "", ""
+
+        code_block = ""
+        language = ""
+        description = ai_prompt_text
+
+        # Try to extract code block patterns
+        # Pattern 1: Look for inline code or specific syntax mentions
+        if any(
+            keyword in ai_prompt_text.lower()
+            for keyword in ["python", "javascript", "bash", "shell", "sql", "yaml"]
+        ):
+            for lang_keyword in ["python", "javascript", "bash", "shell", "sql", "yaml"]:
+                if lang_keyword in ai_prompt_text.lower():
+                    language = lang_keyword
+                    break
+
+        # Pattern 2: Look for code-like patterns in the text
+
+        # Look for code patterns (method calls, imports, etc.)
+        code_patterns = [
+            r"from\s+\w+\s+import\s+\w+",  # Python imports
+            r"import\s+\w+",  # General imports
+            r"\w+\([^)]*\)",  # Function calls
+            r"def\s+\w+\(",  # Function definitions
+            r"class\s+\w+",  # Class definitions
+            r'if\s+__name__\s*==\s*["\']__main__["\']',  # Python main
+            r"#!/.+",  # Shebang lines
+            r"\$\w+",  # Environment variables
+            r"--\w+",  # Command line options
+        ]
+
+        potential_code_lines = []
+        lines = ai_prompt_text.split("\n")
+
+        for line in lines:
+            line = line.strip()
+            if any(re.search(pattern, line) for pattern in code_patterns):
+                potential_code_lines.append(line)
+
+        if potential_code_lines:
+            code_block = "\n".join(potential_code_lines)
+            # Remove code lines from description
+            remaining_lines = []
+            for line in lines:
+                if line.strip() not in potential_code_lines:
+                    remaining_lines.append(line.strip())
+            description = " ".join(filter(None, remaining_lines))
+
+        # Default language detection based on file extensions or patterns
+        if not language:
+            if any(ext in ai_prompt_text for ext in [".py", "python"]):
+                language = "python"
+            elif any(ext in ai_prompt_text for ext in [".js", ".ts", "javascript", "typescript"]):
+                language = "javascript"
+            elif any(ext in ai_prompt_text for ext in [".sh", "bash", "shell"]):
+                language = "bash"
+            elif any(ext in ai_prompt_text for ext in [".sql"]):
+                language = "sql"
+            elif any(ext in ai_prompt_text for ext in [".yml", ".yaml"]):
+                language = "yaml"
+            else:
+                language = "text"
+
+        return code_block, language, description
 
     def _extract_proposed_diff(self, raw_content: str) -> str:
         """Extract proposed diff from raw content."""
@@ -777,30 +916,30 @@ For comments with multiple exchanges, consider:
             return ""
 
         # Look for diff blocks or code suggestions
-        lines = raw_content.split('\n')
+        lines = raw_content.split("\n")
         diff_lines = []
         in_diff = False
 
         for line in lines:
-            if '```diff' in line or '```suggestion' in line:
+            if "```diff" in line or "```suggestion" in line:
                 in_diff = True
                 continue
-            elif in_diff and line.strip() == '```':
+            elif in_diff and line.strip() == "```":
                 break
             elif in_diff:
                 diff_lines.append(line)
 
         if diff_lines:
-            return '\n'.join(diff_lines)
+            return "\n".join(diff_lines)
 
         # Look for lines starting with + or -
         diff_lines = []
         for line in lines:
-            if line.strip().startswith(('+', '-')) and len(line.strip()) > 1:
+            if line.strip().startswith(("+", "-")) and len(line.strip()) > 1:
                 diff_lines.append(line)
 
         if diff_lines:
-            return '\n'.join(diff_lines)
+            return "\n".join(diff_lines)
 
         return ""
 
@@ -844,3 +983,51 @@ For comments with multiple exchanges, consider:
 </verification_templates>
 
 ```"""
+
+    def _format_outside_diff_comment(self, comment) -> str:
+        """Format a single outside diff comment."""
+        lines = []
+        # Clean line_range to prevent XML attribute corruption
+        clean_line_range = (
+            str(getattr(comment, "line_range", ""))
+            .replace("\n", "")
+            .replace("\r", "")
+            .replace("---", "")
+            .strip()
+        )
+        lines.append(
+            f'  <review_comment type="OutsideDiff" file="{escape(comment.file_path)}" lines="{escape(clean_line_range)}">'
+        )
+
+        # Issue
+        lines.append("    <issue>")
+        lines.append(f"      {escape(getattr(comment, 'content', 'Outside diff range comment'))}")
+        lines.append("    </issue>")
+
+        # Instructions
+        lines.append("    <instructions>")
+        lines.append(f"      {escape(getattr(comment, 'content', 'Outside diff range comment'))}")
+        if hasattr(comment, "reason") and comment.reason:
+            lines.append(f"      Reason: {escape(comment.reason)}")
+        lines.append("    </instructions>")
+
+        # Proposed diff
+        lines.append("    <proposed_diff>")
+        if hasattr(comment, "proposed_diff") and comment.proposed_diff:
+            lines.append("old_code: |")
+            lines.append("  [Code outside current diff range]")
+            lines.append("")
+            lines.append("new_code: |")
+            lines.append(f"  {escape(comment.proposed_diff)}")
+        else:
+            lines.append("old_code: |")
+            lines.append("  [Code outside current diff range]")
+            lines.append("")
+            lines.append("new_code: |")
+            lines.append("  [See comment for suggested changes]")
+        lines.append("    </proposed_diff>")
+
+        lines.append("  </review_comment>")
+        lines.append("")
+
+        return "\n".join(lines)

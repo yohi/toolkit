@@ -4,15 +4,15 @@
 構造化コメント解析と解決状態検出を統合し、最終的なコメント分類を行う
 """
 
-import re
 import logging
-from typing import List, Dict, Optional, Tuple
+import re
 from dataclasses import dataclass
+from typing import Dict, List, Optional
 
-from .structured_comment_parser import StructuredCommentParser, ParsedComment, CommentSection
-from .resolution_detector import ResolutionDetector, CommentResolution, ResolutionStatus
 from ..models.actionable_comment import ActionableComment, CommentType, Priority
-from ..models.review_comment import ReviewComment, NitpickComment, OutsideDiffComment
+from ..models.review_comment import NitpickComment, OutsideDiffComment, ReviewComment
+from .resolution_detector import CommentResolution, ResolutionDetector, ResolutionStatus
+from .structured_comment_parser import CommentSection, ParsedComment, StructuredCommentParser
 
 logger = logging.getLogger(__name__)
 
@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ClassifiedComments:
     """分類済みコメント結果"""
+
     actionable_comments: List[ActionableComment]
     nitpick_comments: List[NitpickComment]
     outside_diff_comments: List[OutsideDiffComment]
@@ -55,10 +56,7 @@ class CommentClassifier:
         self.parser = StructuredCommentParser()
         self.resolution_detector = ResolutionDetector(config)
 
-    def classify_coderabbit_reviews(
-        self,
-        review_bodies: List[str]
-    ) -> ClassifiedComments:
+    def classify_coderabbit_reviews(self, review_bodies: List[str]) -> ClassifiedComments:
         """
         CodeRabbitレビューを解析・分類
 
@@ -82,8 +80,7 @@ class CommentClassifier:
 
         # Phase 2: 解決状態検出
         resolutions = self.resolution_detector.detect_resolution_status(
-            all_parsed_comments,
-            review_bodies
+            all_parsed_comments, review_bodies
         )
         resolution_stats = self.resolution_detector.get_resolution_statistics(resolutions)
 
@@ -114,7 +111,7 @@ class CommentClassifier:
             各レビューのNitpick数のリスト
         """
         counts = []
-        pattern = re.compile(r'🧹 Nitpick comments \((\d+)\)', re.MULTILINE)
+        pattern = re.compile(r"🧹 Nitpick comments \((\d+)\)", re.MULTILINE)
 
         for review_body in review_bodies:
             matches = pattern.findall(review_body)
@@ -135,7 +132,7 @@ class CommentClassifier:
             各レビューのOutside diff数のリスト
         """
         counts = []
-        pattern = re.compile(r'⚠️ Outside diff range comments \((\d+)\)', re.MULTILINE)
+        pattern = re.compile(r"⚠️ Outside diff range comments \((\d+)\)", re.MULTILINE)
 
         for review_body in review_bodies:
             matches = pattern.findall(review_body)
@@ -162,7 +159,7 @@ class CommentClassifier:
                 line_range=f"{i+1}",
                 suggestion=f"Nitpick suggestion {i+1}",
                 raw_content=f"Nitpick comment content {i+1}",
-                proposed_diff=""
+                proposed_diff="",
             )
             comments.append(comment)
 
@@ -186,15 +183,14 @@ class CommentClassifier:
                 content=f"Outside diff comment {i+1}",
                 reason="outside_diff_range",
                 raw_content=f"Outside diff comment content {i+1}",
-                proposed_diff=""
+                proposed_diff="",
             )
             comments.append(comment)
 
         return comments
 
     def _classify_and_convert_comments(
-        self,
-        resolutions: List[CommentResolution]
+        self, resolutions: List[CommentResolution]
     ) -> ClassifiedComments:
         """
         解決状態情報を基にコメントを分類・変換
@@ -237,7 +233,9 @@ class CommentClassifier:
             elif comment.section_type == CommentSection.ADDITIONAL:
                 # Additional Commentsの処理
                 # 内容に基づいて適切なカテゴリに分類
-                self.logger.debug(f"Additional Comment処理: {comment.file_path}:{comment.line_range} - {comment.title}")
+                self.logger.debug(
+                    f"Additional Comment処理: {comment.file_path}:{comment.line_range} - {comment.title}"
+                )
                 categorized = self._categorize_additional_comment(comment)
                 if categorized:
                     self.logger.debug(f"Additional Comment分類結果: {type(categorized).__name__}")
@@ -271,13 +269,11 @@ class CommentClassifier:
             total_nitpick=len(nitpick_comments),
             total_outside_diff=len(outside_diff_comments),
             resolution_statistics={},
-            parsing_statistics={}
+            parsing_statistics={},
         )
 
     def _convert_to_actionable_comment(
-        self,
-        comment: ParsedComment,
-        resolution: CommentResolution
+        self, comment: ParsedComment, resolution: CommentResolution
     ) -> ActionableComment:
         """ParsedCommentをActionableCommentに変換"""
 
@@ -293,7 +289,7 @@ class CommentClassifier:
             priority=priority,
             raw_content=comment.raw_text,
             proposed_diff="",  # 必要に応じて後で設定
-            is_resolved=False
+            is_resolved=False,
         )
 
     def _convert_to_nitpick_comment(self, comment: ParsedComment) -> NitpickComment:
@@ -303,7 +299,7 @@ class CommentClassifier:
             line_range=comment.line_range,
             suggestion=comment.title,
             raw_content=comment.content,
-            proposed_diff=""  # 必要に応じて後で設定
+            proposed_diff="",  # 必要に応じて後で設定
         )
 
     def _convert_to_outside_diff_comment(self, comment: ParsedComment) -> OutsideDiffComment:
@@ -314,13 +310,10 @@ class CommentClassifier:
             content=comment.content,
             reason="outside_diff_range",
             raw_content=comment.raw_text,
-            proposed_diff=""  # 必要に応じて後で設定
+            proposed_diff="",  # 必要に応じて後で設定
         )
 
-    def _categorize_additional_comment(
-        self,
-        comment: ParsedComment
-    ) -> Optional[ReviewComment]:
+    def _categorize_additional_comment(self, comment: ParsedComment) -> Optional[ReviewComment]:
         """
         Additional Commentsを内容に基づいて分類
 
@@ -334,62 +327,86 @@ class CommentClassifier:
         title_lower = comment.title.lower()
 
         # 肯定的な表現を完全除外（これらはコメントとして表示不要）
-        positive_exclusions = [
-            '優れています', '適切', '承認', '問題なし', '問題ありません',
-            'excellent', 'good', 'appropriate', 'approved', 'great',
-            'よくできています', '素晴らしい', '正しく', '適切に',
-            '妥当', '対応不要', '解決済み', '付与済み', '削除不可',
-            'valid', 'good choice', 'appropriate',
-            '確認済み', '解決:', 'lgtm', '完了', '修正されています',
-            # 追加の非重要なコメントパターン
-            'looks good', 'nice work', 'well done', 'perfect',
-            '良い', 'いいですね', '正しい', '適切な', '妥当な',
-            'ok', 'okay', 'fine', 'correct', 'right',
-            'thanks', 'thank you', 'ありがとう', '感謝',
-            'note:', 'info:', '情報:', '注記:', '参考:',
-            'already', '既に', 'すでに', '以前に',
-            'consistent', '一貫', '統一', 'standard', '標準',
-            # オプショナル・任意・推奨レベルの表現
-            '任意', 'optional', '推奨', 'recommend',
-            'suggestion', '提案', 'advice', 'アドバイス',
-            'tip:', 'ヒント:', 'hint:', '参考まで',
-            '（任意）', '(optional)', '（推奨）', '(recommended)'
-        ]
+        # Note: positive_exclusions list was removed to fix F841 linting error
 
         # 解決済みマーカーの検出（Actionableコメントを減らすため）
         resolved_indicators = [
-            '適切', '問題なし', '問題ありません', '承認', '確認済み',
-            '解決済み', '修正済み', '対応済み', '完了', '削除不可',
-            'appropriate', 'good', 'ok', 'fine', 'resolved', 'fixed',
-            'addressed', 'completed', 'approved', 'lgtm', 'confirmed',
-            '実行権限を付与済み', 'パッケージ探索設定は妥当',
-            '使用は問題ありません', 'よくできています', '優れています',
-            '正しく', 'properly', 'correctly', 'valid', 'excellent',
-            '妥当', '対応不要', '付与済み', '削除不可',
+            "適切",
+            "問題なし",
+            "問題ありません",
+            "承認",
+            "確認済み",
+            "解決済み",
+            "修正済み",
+            "対応済み",
+            "完了",
+            "削除不可",
+            "appropriate",
+            "good",
+            "ok",
+            "fine",
+            "resolved",
+            "fixed",
+            "addressed",
+            "completed",
+            "approved",
+            "lgtm",
+            "confirmed",
+            "実行権限を付与済み",
+            "パッケージ探索設定は妥当",
+            "使用は問題ありません",
+            "よくできています",
+            "優れています",
+            "正しく",
+            "properly",
+            "correctly",
+            "valid",
+            "excellent",
+            "妥当",
+            "対応不要",
+            "付与済み",
+            "削除不可",
             # さらなる調整のための追加パターン
-            '任意', 'optional', '推奨', 'recommended',
-            '範囲外', 'out of scope', '将来的', 'future',
-            'pdm設定', 'pdm configuration', 'configuration',
-            'まとめてください', 'please consolidate'
+            "任意",
+            "optional",
+            "推奨",
+            "recommended",
+            "範囲外",
+            "out of scope",
+            "将来的",
+            "future",
+            "pdm設定",
+            "pdm configuration",
+            "configuration",
+            "まとめてください",
+            "please consolidate",
         ]
 
         # 解決済みマーカーが含まれている場合はNone（除外）
-        if any(indicator in content_lower or indicator in title_lower
-               for indicator in resolved_indicators):
+        if any(
+            indicator in content_lower or indicator in title_lower
+            for indicator in resolved_indicators
+        ):
             self.logger.debug(f"解決済みマーカーにより除外: {comment.title}")
             return None
 
         # Nitpickコメントの調整（1個減らすため）
         minor_nitpick_patterns = [
-            'slight', 'minor', '軽微', '微細',
-            'cosmetic', '見た目', 'aesthetic',
-            'formatting', 'フォーマット'
+            "slight",
+            "minor",
+            "軽微",
+            "微細",
+            "cosmetic",
+            "見た目",
+            "aesthetic",
+            "formatting",
+            "フォーマット",
         ]
 
         # Additional Commentsセクションから移ってきた軽微なコメントを除外
-        if (comment.section_type == CommentSection.ADDITIONAL and
-            any(pattern in content_lower or pattern in title_lower
-                for pattern in minor_nitpick_patterns)):
+        if comment.section_type == CommentSection.ADDITIONAL and any(
+            pattern in content_lower or pattern in title_lower for pattern in minor_nitpick_patterns
+        ):
             self.logger.debug(f"軽微なAdditionalコメントを除外: {comment.title}")
             return None
 
@@ -398,35 +415,82 @@ class CommentClassifier:
         # Actionableキーワードの検出（重要な問題を含む）
         critical_actionable_keywords = [
             # セキュリティ・脆弱性問題
-            'vulnerability', 'security', '脆弱性', 'セキュリティ',
-
+            "vulnerability",
+            "security",
+            "脆弱性",
+            "セキュリティ",
             # 重大なエラー・破損問題
-            'error', 'fail', 'bug', 'エラー', '失敗', 'バグ',
-            'missing', '欠けて', 'インストール不可',
-
+            "error",
+            "fail",
+            "bug",
+            "エラー",
+            "失敗",
+            "バグ",
+            "missing",
+            "欠けて",
+            "インストール不可",
             # 緊急対応が必要な問題
-            '対応要確認', '不整合', 'shebang.*不整合',
-            'dependency.*脆弱性', '依存.*脆弱性',
-
+            "対応要確認",
+            "不整合",
+            "shebang.*不整合",
+            "dependency.*脆弱性",
+            "依存.*脆弱性",
             # 重要な機能・構造上の問題
-            'duplicate', '重複', 'redundant', '冗長',
-            'unused', '未使用', 'unreachable', '到達不可',
-            'incorrect', '間違った', 'wrong', '誤った',
-            'broken', '壊れた', 'invalid', '無効',
-            'must', '必須', 'required', '必要',
-            'should', 'すべき', 'need', '必要',
-
+            "duplicate",
+            "重複",
+            "redundant",
+            "冗長",
+            "unused",
+            "未使用",
+            "unreachable",
+            "到達不可",
+            "incorrect",
+            "間違った",
+            "wrong",
+            "誤った",
+            "broken",
+            "壊れた",
+            "invalid",
+            "無効",
+            "must",
+            "必須",
+            "required",
+            "必要",
+            "should",
+            "すべき",
+            "need",
+            "必要",
             # 確認・修正が必要な問題
-            '要確認', 'require', '確認', 'check',
-            '修正', 'fix', 'correct', '対応',
-            'resolve', '解決', '改修', 'repair',
-            'issue', '問題', 'problem', '課題',
-            'inconsist', '不整合', 'conflict', '競合',
-            'warning', '警告', 'caution', '注意'
+            "要確認",
+            "require",
+            "確認",
+            "check",
+            "修正",
+            "fix",
+            "correct",
+            "対応",
+            "resolve",
+            "解決",
+            "改修",
+            "repair",
+            "issue",
+            "問題",
+            "problem",
+            "課題",
+            "inconsist",
+            "不整合",
+            "conflict",
+            "競合",
+            "warning",
+            "警告",
+            "caution",
+            "注意",
         ]
 
-        has_actionable_keywords = any(keyword in content_lower or keyword in title_lower
-                                     for keyword in critical_actionable_keywords)
+        has_actionable_keywords = any(
+            keyword in content_lower or keyword in title_lower
+            for keyword in critical_actionable_keywords
+        )
 
         # 肯定的コメントでなく、かつクリティカルキーワードがある場合のみActionable
         if not is_positive_comment and has_actionable_keywords:
@@ -440,7 +504,7 @@ class CommentClassifier:
                 priority=priority,
                 raw_content=comment.raw_text,
                 proposed_diff="",
-                is_resolved=False
+                is_resolved=False,
             )
 
         # NitpickとしてデフォルトDは分類
@@ -449,7 +513,7 @@ class CommentClassifier:
             line_range=comment.line_range,
             suggestion=comment.title,
             raw_content=comment.content,
-            proposed_diff=""
+            proposed_diff="",
         )
 
     def _determine_priority(self, content: str) -> Priority:
@@ -466,23 +530,59 @@ class CommentClassifier:
 
         # Critical keywords
         critical_keywords = [
-            'security', 'vulnerability', 'inject', 'xss', 'csrf',
-            'credential', 'token', 'password', 'secret',
-            'セキュリティ', '脆弱性', '認証', 'パスワード', 'トークン',
+            "security",
+            "vulnerability",
+            "inject",
+            "xss",
+            "csrf",
+            "credential",
+            "token",
+            "password",
+            "secret",
+            "セキュリティ",
+            "脆弱性",
+            "認証",
+            "パスワード",
+            "トークン",
             # CodeRabbitで見つかった重大問題
-            '重大', 'インストール不可', '矛盾', 'patched',
-            '脆弱性確認', 'credentials 漏洩', '不整合'
+            "重大",
+            "インストール不可",
+            "矛盾",
+            "patched",
+            "脆弱性確認",
+            "credentials 漏洩",
+            "不整合",
         ]
 
         # High priority keywords
         high_keywords = [
-            'error', 'fail', 'crash', 'break', 'timeout',
-            'exception', 'bug', 'must fix',
-            'エラー', '失敗', 'クラッシュ', '例外', 'バグ', '修正必須',
+            "error",
+            "fail",
+            "crash",
+            "break",
+            "timeout",
+            "exception",
+            "bug",
+            "must fix",
+            "エラー",
+            "失敗",
+            "クラッシュ",
+            "例外",
+            "バグ",
+            "修正必須",
             # CodeRabbitで見つかった高優先度問題
-            '対応要確認', 'license', 'ライセンス', '同梱',
-            'missing', '欠けて', 'shebang', '実行権限',
-            'executable', '権限', 'manifest', 'requirements'
+            "対応要確認",
+            "license",
+            "ライセンス",
+            "同梱",
+            "missing",
+            "欠けて",
+            "shebang",
+            "実行権限",
+            "executable",
+            "権限",
+            "manifest",
+            "requirements",
         ]
 
         if any(keyword in content_lower for keyword in critical_keywords):
@@ -505,29 +605,32 @@ class CommentClassifier:
             サマリー辞書
         """
         return {
-            'input_reviews': len(classified.parsing_statistics) if classified.parsing_statistics else 0,
-            'total_parsed_comments': classified.total_parsed,
-            'actionable_filtering': {
-                'total_found': classified.total_actionable_found,
-                'unresolved_filtered': classified.total_actionable_unresolved,
-                'resolution_filter_rate': (
+            "input_reviews": (
+                len(classified.parsing_statistics) if classified.parsing_statistics else 0
+            ),
+            "total_parsed_comments": classified.total_parsed,
+            "actionable_filtering": {
+                "total_found": classified.total_actionable_found,
+                "unresolved_filtered": classified.total_actionable_unresolved,
+                "resolution_filter_rate": (
                     (classified.total_actionable_found - classified.total_actionable_unresolved)
                     / classified.total_actionable_found
-                    if classified.total_actionable_found > 0 else 0
-                )
+                    if classified.total_actionable_found > 0
+                    else 0
+                ),
             },
-            'other_comments': {
-                'nitpick_no_filtering': classified.total_nitpick,
-                'outside_diff_no_filtering': classified.total_outside_diff
+            "other_comments": {
+                "nitpick_no_filtering": classified.total_nitpick,
+                "outside_diff_no_filtering": classified.total_outside_diff,
             },
-            'final_output': {
-                'actionable_unresolved': classified.total_actionable_unresolved,
-                'nitpick_all': classified.total_nitpick,
-                'outside_diff_all': classified.total_outside_diff,
-                'total': (
-                    classified.total_actionable_unresolved +
-                    classified.total_nitpick +
-                    classified.total_outside_diff
-                )
-            }
+            "final_output": {
+                "actionable_unresolved": classified.total_actionable_unresolved,
+                "nitpick_all": classified.total_nitpick,
+                "outside_diff_all": classified.total_outside_diff,
+                "total": (
+                    classified.total_actionable_unresolved
+                    + classified.total_nitpick
+                    + classified.total_outside_diff
+                ),
+            },
         }

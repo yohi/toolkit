@@ -3,7 +3,7 @@ Metadata for comment analysis results.
 """
 
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 from .base import BaseCodeRabbitModel
 
@@ -25,6 +25,13 @@ class CommentMetadata(BaseCodeRabbitModel):
     resolved_comments: int
     actionable_comments: int
     processing_time_seconds: float
+    # Detailed comment type statistics
+    summary_comments: int = 0
+    review_comments: int = 0
+    nitpick_comments: int = 0
+    outside_diff_comments: int = 0
+    additional_comments: int = 0
+    thread_contexts: int = 0
     adjusted_counts: Optional[Dict[str, int]] = None
 
     def __init__(self, **data) -> None:

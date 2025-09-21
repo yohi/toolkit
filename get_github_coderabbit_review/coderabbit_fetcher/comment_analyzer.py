@@ -1,34 +1,36 @@
 """Core comment analysis and filtering functionality."""
 
-import time
 import logging
-from typing import Dict, List, Optional, Any
+import time
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
-from .models import (
-    AnalyzedComments,
-    SummaryComment,
-    ReviewComment,
-    CommentMetadata,
-    ThreadContext,
-    ResolutionStatus,
-    ActionableComment
-)
-from .processors import SummaryProcessor, ReviewProcessor, ThreadProcessor
-from .resolved_marker import ResolvedMarkerConfig, ResolvedMarkerDetector
 from .exceptions import CodeRabbitFetcherError
+from .models import (
+    ActionableComment,
+    AnalyzedComments,
+    CommentMetadata,
+    ResolutionStatus,
+    ReviewComment,
+    SummaryComment,
+    ThreadContext,
+)
+from .processors import ReviewProcessor, SummaryProcessor, ThreadProcessor
+from .resolved_marker import ResolvedMarkerConfig, ResolvedMarkerDetector
 
 logger = logging.getLogger(__name__)
 
 
 class CommentAnalysisError(CodeRabbitFetcherError):
     """Exception raised during comment analysis."""
+
     pass
 
 
 @dataclass
 class CommentStats:
     """Statistics collected during comment analysis."""
+
     total_comments: int = 0
     coderabbit_comments: int = 0
     summary_comments: int = 0
@@ -37,6 +39,9 @@ class CommentStats:
     resolved_comments: int = 0
     actionable_comments: int = 0
     threads_processed: int = 0
+    nitpick_comments: int = 0
+    outside_diff_comments: int = 0
+    additional_comments: int = 0
     processing_time_seconds: float = 0.0
 
 
@@ -95,7 +100,9 @@ class CommentAnalyzer:
                 return self._create_empty_result(pr_info)
 
             # Categorize comments
-            summary_comments, review_comments, inline_comments = self._categorize_comments(coderabbit_comments)
+            summary_comments, review_comments, inline_comments = self._categorize_comments(
+                coderabbit_comments
+            )
 
             # Process each category
             processed_summary = self._process_summary_comments(summary_comments)
@@ -109,7 +116,7 @@ class CommentAnalyzer:
             all_actionables = []
             for review_comment in processed_review:
                 all_actionables.extend(review_comment.actionable_comments)
-            
+
             # Add inline actionables
             all_actionables.extend(inline_actionables)
 
@@ -120,11 +127,13 @@ class CommentAnalyzer:
             # Clear existing actionables and redistribute deduplicated ones
             for review_comment in processed_review:
                 review_comment.actionable_comments = []
-            
+
             # Add deduplicated actionables to the first review comment if any exist
             if processed_review and deduplicated_actionables:
                 processed_review[0].actionable_comments = deduplicated_actionables
-                logger.debug(f"Assigned {len(deduplicated_actionables)} deduplicated actionables to first review comment")
+                logger.debug(
+                    f"Assigned {len(deduplicated_actionables)} deduplicated actionables to first review comment"
+                )
 
             # Apply resolved marker filtering
             filtered_threads = self._filter_resolved_threads(processed_threads)
@@ -139,7 +148,7 @@ class CommentAnalyzer:
                 summary_comments=processed_summary,
                 review_comments=processed_review,
                 unresolved_threads=filtered_threads,
-                metadata=metadata
+                metadata=metadata,
             )
 
         except Exception as e:
@@ -154,7 +163,7 @@ class CommentAnalyzer:
             "owner": pr_data.get("owner", ""),
             "repo": pr_data.get("repo", ""),
             "state": pr_data.get("state", ""),
-            "author": pr_data.get("author", {}).get("login", "") if pr_data.get("author") else ""
+            "author": pr_data.get("author", {}).get("login", "") if pr_data.get("author") else "",
         }
 
     def _collect_all_comments(self, pr_data: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -176,8 +185,10 @@ class CommentAnalyzer:
                         "id": review.get("id"),
                         "body": review["body"],
                         "user": review.get("author", {}),  # GitHub API uses 'author' for reviews
-                        "created_at": review.get("submittedAt"),  # GitHub API uses 'submittedAt' for reviews
-                        "comment_type": "review"
+                        "created_at": review.get(
+                            "submittedAt"
+                        ),  # GitHub API uses 'submittedAt' for reviews
+                        "comment_type": "review",
                     }
                     all_comments.append(review_comment)
 
@@ -215,7 +226,9 @@ class CommentAnalyzer:
             path = comment.get("path", "N/A")
             line = comment.get("line", "N/A")
 
-            logger.debug(f"Categorizing comment {comment_id} | type: {comment_type} | path: {path}:{line}")
+            logger.debug(
+                f"Categorizing comment {comment_id} | type: {comment_type} | path: {path}:{line}"
+            )
             logger.debug(f"Body preview: {body[:100]}...")
 
             # Check if it's a summary comment
@@ -249,6 +262,7 @@ class CommentAnalyzer:
             except Exception as e:
                 # Log error but continue processing
                 import logging
+
                 logging.warning(f"Failed to process summary comment {comment.get('id')}: {e}")
 
         return processed
@@ -262,9 +276,16 @@ class CommentAnalyzer:
                 review = self.review_processor.process_review_comment(comment)
                 processed.append(review)
                 self.stats.actionable_comments += review.actionable_count
+
+                # Count nitpick, outside diff, and additional comments
+                self.stats.nitpick_comments += len(review.nitpick_comments)
+                self.stats.outside_diff_comments += len(review.outside_diff_comments)
+                self.stats.additional_comments += len(review.additional_comments)
+
             except Exception as e:
                 # Log error but continue processing
                 import logging
+
                 logging.warning(f"Failed to process review comment {comment.get('id')}: {e}")
 
         return processed
@@ -280,6 +301,7 @@ class CommentAnalyzer:
         except Exception as e:
             # Log error and return empty list
             import logging
+
             logging.warning(f"Failed to process thread comments: {e}")
             return []
 
@@ -300,36 +322,38 @@ class CommentAnalyzer:
         logger.debug(f"Extracted {len(actionables)} actionable comments from inline")
         return actionables
 
-    def _deduplicate_actionable_comments(self, actionable_comments: List[ActionableComment]) -> List[ActionableComment]:
+    def _deduplicate_actionable_comments(
+        self, actionable_comments: List[ActionableComment]
+    ) -> List[ActionableComment]:
         """Remove duplicate actionable comments based on comment_id and content.
-        
+
         Args:
             actionable_comments: List of actionable comments that may contain duplicates
-            
+
         Returns:
             Deduplicated list of actionable comments
         """
         seen_ids = set()
         seen_content = set()
         deduplicated = []
-        
+
         for comment in actionable_comments:
             # Use comment_id as primary deduplication key
             if comment.comment_id in seen_ids:
                 logger.debug(f"Skipping duplicate actionable comment ID: {comment.comment_id}")
                 continue
-                
+
             # Also check content similarity as fallback
             content_key = (comment.file_path, comment.line_range, comment.issue_description)
             if content_key in seen_content:
                 logger.debug(f"Skipping duplicate actionable comment content: {content_key}")
                 continue
-            
+
             deduplicated.append(comment)
             seen_ids.add(comment.comment_id)
             seen_content.add(content_key)
             logger.debug(f"Added actionable comment: {comment.comment_id}")
-        
+
         logger.debug(f"Deduplicated actionables: {len(actionable_comments)} -> {len(deduplicated)}")
         return deduplicated
 
@@ -348,8 +372,7 @@ class CommentAnalyzer:
 
         # Filter to only unresolved threads
         unresolved = [
-            thread for thread in threads
-            if thread.resolution_status != ResolutionStatus.RESOLVED
+            thread for thread in threads if thread.resolution_status != ResolutionStatus.RESOLVED
         ]
 
         return unresolved
@@ -365,7 +388,13 @@ class CommentAnalyzer:
             coderabbit_comments=self.stats.coderabbit_comments,
             resolved_comments=self.stats.resolved_comments,
             actionable_comments=self.stats.actionable_comments,
-            processing_time_seconds=0.0  # Will be updated by processor
+            summary_comments=self.stats.summary_comments,
+            review_comments=self.stats.review_comments,
+            nitpick_comments=self.stats.nitpick_comments,
+            outside_diff_comments=self.stats.outside_diff_comments,
+            additional_comments=self.stats.additional_comments,
+            thread_contexts=self.stats.threads_processed,
+            processing_time_seconds=self.stats.processing_time_seconds,
         )
 
     def _create_empty_result(self, pr_info: Dict[str, Any]) -> AnalyzedComments:
@@ -373,10 +402,7 @@ class CommentAnalyzer:
         metadata = self._create_metadata(pr_info)
 
         return AnalyzedComments(
-            summary_comments=[],
-            review_comments=[],
-            unresolved_threads=[],
-            metadata=metadata
+            summary_comments=[], review_comments=[], unresolved_threads=[], metadata=metadata
         )
 
     def get_analysis_statistics(self) -> Dict[str, Any]:
@@ -393,12 +419,16 @@ class CommentAnalyzer:
             "inline_comments": self.stats.inline_comments,
             "resolved_comments": self.stats.resolved_comments,
             "actionable_comments": self.stats.actionable_comments,
+            "nitpick_comments": self.stats.nitpick_comments,
+            "outside_diff_comments": self.stats.outside_diff_comments,
+            "additional_comments": self.stats.additional_comments,
             "threads_processed": self.stats.threads_processed,
             "processing_time_seconds": self.stats.processing_time_seconds,
             "resolution_rate": (
                 self.stats.resolved_comments / self.stats.coderabbit_comments
-                if self.stats.coderabbit_comments > 0 else 0.0
-            )
+                if self.stats.coderabbit_comments > 0
+                else 0.0
+            ),
         }
 
     def validate_pr_data(self, pr_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -415,7 +445,7 @@ class CommentAnalyzer:
             "issues": [],
             "warnings": [],
             "comment_count": 0,
-            "review_count": 0
+            "review_count": 0,
         }
 
         # Check required fields
@@ -508,7 +538,7 @@ class CommentAnalyzer:
             "coderabbit_percentage": 0.0,
             "comment_types": {},
             "resolution_patterns": {},
-            "time_distribution": {}
+            "time_distribution": {},
         }
 
         if not comments:

@@ -4,17 +4,18 @@ CodeRabbit構造化コメント解析モジュール
 CodeRabbitのマークダウン形式レビューサマリーから個別コメントを抽出・解析する
 """
 
-import re
 import logging
-from typing import List, Dict, Optional, Tuple, NamedTuple
+import re
 from dataclasses import dataclass
 from enum import Enum
+from typing import Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class CommentSection(Enum):
     """コメントセクションタイプ"""
+
     ACTIONABLE = "actionable"
     NITPICK = "nitpick"
     OUTSIDE_DIFF_RANGE = "outside_diff_range"
@@ -25,6 +26,7 @@ class CommentSection(Enum):
 @dataclass
 class ParsedComment:
     """解析済みコメント情報"""
+
     file_path: str
     line_range: str
     title: str
@@ -47,50 +49,36 @@ class StructuredCommentParser:
     - "Also applies to:" 重複コメントの処理
     """
 
-    def __init__(self):
+    def __init__(self, config: Optional[Dict] = None):
         self.logger = logger
 
         # パターン定義
         self.section_patterns = {
             CommentSection.ACTIONABLE: re.compile(
-                r'\*\*Actionable comments posted:\s*(\d+)\*\*',
-                re.MULTILINE
+                r"\*\*Actionable comments posted:\s*(\d+)\*\*", re.MULTILINE
             ),
             CommentSection.NITPICK: re.compile(
-                r'<summary>🧹 Nitpick comments \((\d+)\)</summary>',
-                re.MULTILINE
+                r"<summary>🧹 Nitpick comments \((\d+)\)</summary>", re.MULTILINE
             ),
             CommentSection.OUTSIDE_DIFF_RANGE: re.compile(
-                r'<summary>⚠️ Outside diff range comments \((\d+)\)</summary>',
-                re.MULTILINE
+                r"<summary>⚠️ Outside diff range comments \((\d+)\)</summary>", re.MULTILINE
             ),
             CommentSection.ADDITIONAL: re.compile(
-                r'<summary>🔇 Additional comments \((\d+)\)</summary>',
-                re.MULTILINE
+                r"<summary>🔇 Additional comments \((\d+)\)</summary>", re.MULTILINE
             ),
             CommentSection.DUPLICATE: re.compile(
-                r'<summary>♻️ Duplicate comments \((\d+)\)</summary>',
-                re.MULTILINE
-            )
+                r"<summary>♻️ Duplicate comments \((\d+)\)</summary>", re.MULTILINE
+            ),
         }
 
         # コメント行番号パターン（例: `3-8`:, `20-20`:, `1-1`:）
-        self.line_comment_pattern = re.compile(
-            r'`(\d+(?:-\d+)?)`: \*\*(.*?)\*\*',
-            re.MULTILINE
-        )
+        self.line_comment_pattern = re.compile(r"`(\d+(?:-\d+)?)`: \*\*(.*?)\*\*", re.MULTILINE)
 
         # ファイル名パターン（例: <summary>setup.py (1)</summary>）
-        self.file_pattern = re.compile(
-            r'<summary>(.*?)(?: \((\d+)\))?</summary>',
-            re.MULTILINE
-        )
+        self.file_pattern = re.compile(r"<summary>(.*?)(?: \((\d+)\))?</summary>", re.MULTILINE)
 
         # "Also applies to:" パターン
-        self.also_applies_pattern = re.compile(
-            r'Also applies to:\s*([0-9,\s-]+)',
-            re.MULTILINE
-        )
+        self.also_applies_pattern = re.compile(r"Also applies to:\s*([0-9,\s-]+)", re.MULTILINE)
 
     def parse_review_summary(self, review_body: str) -> List[ParsedComment]:
         """
@@ -107,6 +95,7 @@ class StructuredCommentParser:
         # セクション別に解析
         for section_type in CommentSection:
             section_comments = self._parse_section(review_body, section_type)
+
             comments.extend(section_comments)
 
         self.logger.info(f"構造化コメント解析完了: {len(comments)}個のコメントを抽出")
@@ -134,9 +123,14 @@ class StructuredCommentParser:
                 self.logger.debug(f"レビューボディの一部: {review_body[:1000]}...")
             return []
 
+        # セクション宣言から数値を抽出
+        declared_count = self._extract_declared_count(section_match, section_type)
+
         # セクション開始位置を特定
         section_start = section_match.end()
-        self.logger.debug(f"セクション {section_type.value} を発見: 開始位置 {section_match.start()}, 終了位置 {section_start}")
+        self.logger.debug(
+            f"セクション {section_type.value} を発見: 開始位置 {section_match.start()}, 終了位置 {section_start}"
+        )
 
         # セクション終了位置を特定（次のセクションまたは終端）
         section_end = self._find_section_end(review_body, section_start)
@@ -147,11 +141,12 @@ class StructuredCommentParser:
             self.logger.debug(f"Outside Diff Range セクション内容: {section_content[:500]}...")
 
         # セクション内のコメントを抽出
-        return self._extract_comments_from_section(
-            section_content,
-            section_type,
-            review_body[section_match.start():section_end]
+        extracted_comments = self._extract_comments_from_section(
+            section_content, section_type, review_body[section_match.start() : section_end]
         )
+
+        # CodeRabbitの宣言数値に従って結果を調整
+        return self._align_with_declared_count(extracted_comments, declared_count, section_type)
 
     def _find_section_end(self, text: str, start_pos: int) -> int:
         """
@@ -177,10 +172,7 @@ class StructuredCommentParser:
             return len(text)
 
     def _extract_comments_from_section(
-        self,
-        section_content: str,
-        section_type: CommentSection,
-        full_section: str
+        self, section_content: str, section_type: CommentSection, full_section: str
     ) -> List[ParsedComment]:
         """
         セクション内容から個別コメントを抽出
@@ -205,11 +197,11 @@ class StructuredCommentParser:
 
                 # ファイル名を抽出（summary内から）
                 file_path = "unknown_file"
-                summary_match = re.search(r'<summary>(.*?)</summary>', section_content, re.DOTALL)
+                summary_match = re.search(r"<summary>(.*?)</summary>", section_content, re.DOTALL)
                 if summary_match:
                     summary_text = summary_match.group(1).strip()
                     # "ファイル名 (1)" のようなパターンからファイル名を抽出
-                    file_name_match = re.match(r'(.+?)\s*\(\d+\)', summary_text)
+                    file_name_match = re.match(r"(.+?)\s*\(\d+\)", summary_text)
                     if file_name_match:
                         file_path = file_name_match.group(1).strip()
                     else:
@@ -227,10 +219,12 @@ class StructuredCommentParser:
                     content=content,
                     section_type=section_type,
                     raw_text=match.group(0),
-                    applies_to_lines=[]
+                    applies_to_lines=[],
                 )
                 comments.append(comment)
-                self.logger.debug(f"Outside Diff Range コメント検出: {file_path}:{line_range} - {title}")
+                self.logger.debug(
+                    f"Outside Diff Range コメント検出: {file_path}:{line_range} - {title}"
+                )
 
         # その他のセクションは従来通り
         else:
@@ -238,16 +232,10 @@ class StructuredCommentParser:
             file_blocks = self._split_by_file_blocks(section_content)
 
             for file_path, file_content in file_blocks.items():
-                file_comments = self._extract_file_comments(
-                    file_path,
-                    file_content,
-                    section_type
-                )
+                file_comments = self._extract_file_comments(file_path, file_content, section_type)
                 comments.extend(file_comments)
 
-        self.logger.debug(
-            f"セクション {section_type.value}: {len(comments)}個のコメントを抽出"
-        )
+        self.logger.debug(f"セクション {section_type.value}: {len(comments)}個のコメントを抽出")
         return comments
 
     def _split_by_file_blocks(self, content: str) -> Dict[str, str]:
@@ -264,14 +252,14 @@ class StructuredCommentParser:
 
         # <details><summary>ファイル名</summary>パターンで分割（blockquote内も対応）
         details_pattern = re.compile(
-            r'<details>\s*<summary>(.*?)</summary><blockquote>(.*?)</blockquote></details>',
-            re.DOTALL | re.MULTILINE
+            r"<details>\s*<summary>(.*?)</summary><blockquote>(.*?)</blockquote></details>",
+            re.DOTALL | re.MULTILINE,
         )
 
         # blockquote内のdetailsパターンも検索（> 記号を含む形式に対応）
         blockquote_details_pattern = re.compile(
-            r'<blockquote>\s*>\s*\s*<details>\s*<summary>(.*?)</summary><blockquote>\s*>\s*(.*?)</blockquote>',
-            re.DOTALL | re.MULTILINE
+            r"<blockquote>\s*>\s*\s*<details>\s*<summary>(.*?)</summary><blockquote>\s*>\s*(.*?)</blockquote>",
+            re.DOTALL | re.MULTILINE,
         )
 
         # 通常のdetailsパターンを検索
@@ -281,7 +269,7 @@ class StructuredCommentParser:
             file_content = match.group(2).strip()
 
             # ファイル名を抽出（例: "setup.py (1)" -> "setup.py"）
-            file_name = re.sub(r'\s*\(\d+\)\s*$', '', file_header)
+            file_name = re.sub(r"\s*\(\d+\)\s*$", "", file_header)
             file_blocks[file_name] = file_content
 
         # blockquote内のdetailsパターンも検索
@@ -291,22 +279,23 @@ class StructuredCommentParser:
             file_content = match.group(2).strip()
 
             # ファイル名を抽出（例: "setup.py (1)" -> "setup.py"）
-            file_name = re.sub(r'\s*\(\d+\)\s*$', '', file_header)
+            file_name = re.sub(r"\s*\(\d+\)\s*$", "", file_header)
             file_blocks[file_name] = file_content
 
         # Outside Diff Rangeの場合、file_blocksの結果をログ出力
         if len(file_blocks) == 0:
             # デバッグ用にパターンマッチング詳細を確認
-            self.logger.debug(f"通常のdetailsパターンマッチ数: {len(list(details_pattern.finditer(content)))}")
-            self.logger.debug(f"blockquoteパターンマッチ数: {len(list(blockquote_details_pattern.finditer(content)))}")
+            self.logger.debug(
+                f"通常のdetailsパターンマッチ数: {len(list(details_pattern.finditer(content)))}"
+            )
+            self.logger.debug(
+                f"blockquoteパターンマッチ数: {len(list(blockquote_details_pattern.finditer(content)))}"
+            )
 
         return file_blocks
 
     def _extract_file_comments(
-        self,
-        file_path: str,
-        file_content: str,
-        section_type: CommentSection
+        self, file_path: str, file_content: str, section_type: CommentSection
     ) -> List[ParsedComment]:
         """
         特定ファイルのコメントを抽出
@@ -323,7 +312,9 @@ class StructuredCommentParser:
 
         # 行番号コメントを検索
         if section_type == CommentSection.OUTSIDE_DIFF_RANGE:
-            self.logger.debug(f"Outside Diff Range パターン検索: {self.line_comment_pattern.pattern}")
+            self.logger.debug(
+                f"Outside Diff Range パターン検索: {self.line_comment_pattern.pattern}"
+            )
             self.logger.debug(f"検索対象コンテンツ: {file_content}")
             matches = list(self.line_comment_pattern.finditer(file_content))
             self.logger.debug(f"マッチした数: {len(matches)}")
@@ -349,7 +340,7 @@ class StructuredCommentParser:
                 content=content,
                 section_type=section_type,
                 raw_text=match.group(0),
-                applies_to_lines=also_applies_lines
+                applies_to_lines=also_applies_lines,
             )
 
             comments.append(comment)
@@ -363,7 +354,7 @@ class StructuredCommentParser:
                     content=content,
                     section_type=section_type,
                     raw_text=match.group(0),
-                    is_duplicate=True
+                    is_duplicate=True,
                 )
                 comments.append(duplicate_comment)
 
@@ -386,7 +377,7 @@ class StructuredCommentParser:
             return next_comment.start()
 
         # "---" 区切りを探す
-        divider_match = re.search(r'\n---\n', text[start_pos:])
+        divider_match = re.search(r"\n---\n", text[start_pos:])
         if divider_match:
             return start_pos + divider_match.start()
 
@@ -410,7 +401,7 @@ class StructuredCommentParser:
         lines_text = match.group(1)
         # "123-456, 789-800" のような形式をパース
         line_ranges = []
-        for line_range in lines_text.split(','):
+        for line_range in lines_text.split(","):
             line_range = line_range.strip()
             if line_range:
                 line_ranges.append(line_range)
@@ -435,10 +426,84 @@ class StructuredCommentParser:
             duplicate_comments = [c for c in section_comments if c.is_duplicate]
 
             stats[section_type.value] = {
-                'total': len(section_comments),
-                'unique': len(unique_comments),
-                'duplicates': len(duplicate_comments),
-                'files': len(set(c.file_path for c in section_comments))
+                "total": len(section_comments),
+                "unique": len(unique_comments),
+                "duplicates": len(duplicate_comments),
+                "files": len(set(c.file_path for c in section_comments)),
             }
 
         return stats
+
+    def _extract_declared_count(
+        self, section_match: re.Match, section_type: CommentSection
+    ) -> Optional[int]:
+        """
+        セクション宣言から数値を抽出
+
+        Args:
+            section_match: セクションパターンのマッチオブジェクト
+            section_type: セクションタイプ
+
+        Returns:
+            宣言された数値、見つからない場合はNone
+        """
+        try:
+            # グループ1に数値が含まれているはず
+            if section_match.groups():
+                declared_count = int(section_match.group(1))
+                self.logger.debug(f"セクション {section_type.value} 宣言数値: {declared_count}")
+                return declared_count
+        except (ValueError, IndexError) as e:
+            self.logger.warning(f"セクション {section_type.value} 数値抽出失敗: {e}")
+
+        return None
+
+    def _align_with_declared_count(
+        self,
+        extracted_comments: List[ParsedComment],
+        declared_count: Optional[int],
+        section_type: CommentSection,
+    ) -> List[ParsedComment]:
+        """
+        抽出されたコメントをCodeRabbitの宣言数値に合わせて調整
+
+        Args:
+            extracted_comments: 抽出されたコメントリスト
+            declared_count: CodeRabbitが宣言した数値
+            section_type: セクションタイプ
+
+        Returns:
+            宣言数値に調整されたコメントリスト
+        """
+        extracted_count = len(extracted_comments)
+
+        # 宣言数値が取得できない場合は、抽出されたものをそのまま返す
+        if declared_count is None:
+            self.logger.debug(
+                f"セクション {section_type.value}: 宣言数値なし、抽出結果 {extracted_count}件をそのまま使用"
+            )
+            return extracted_comments
+
+        # 抽出数と宣言数が一致する場合
+        if extracted_count == declared_count:
+            self.logger.debug(f"セクション {section_type.value}: {extracted_count}件 (一致)")
+            return extracted_comments
+
+        # 抽出数が宣言数より多い場合は制限
+        if extracted_count > declared_count:
+            limited_comments = extracted_comments[:declared_count]
+            self.logger.info(
+                f"セクション {section_type.value}: {extracted_count}件 → {declared_count}件に調整 "
+                f"(CodeRabbit宣言数値に合わせて-{extracted_count - declared_count}件)"
+            )
+            return limited_comments
+
+        # 抽出数が宣言数より少ない場合
+        if extracted_count < declared_count:
+            self.logger.warning(
+                f"セクション {section_type.value}: 抽出 {extracted_count}件 < 宣言 {declared_count}件 "
+                f"(抽出漏れの可能性、そのまま返します)"
+            )
+            return extracted_comments
+
+        return extracted_comments
