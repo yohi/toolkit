@@ -92,7 +92,7 @@
       <!-- NOTE: Missing imports are handled as OUTSIDE DIFF RANGE, not actionable -->
 
       <!-- MEDIUM PRIORITY ACTIONABLE ITEMS (4 unresolved from rounds 1 & 4) -->
-      
+
 
 
 
@@ -388,25 +388,25 @@ LazyGit LLM Commit Message Generator の基本プロジェクト構造を実装�
         <!-- Round 1: 7 actionable comments posted, 3 resolved -->
         <!-- Round 4: 1 actionable comment posted, 1 resolved -->
         <!-- Total: 4 unresolved actionable comments (excluding 4 resolved) -->
-        
+
         <comment id="actionable_git_processing_order" file="lazygit-llm/src/main.py" line="176-183" type="performance">
           <description>Inefficient Git processing order</description>
           <details>Reading diff before checking if staged changes exist</details>
           <severity>MEDIUM</severity>
         </comment>
-        
+
         <comment id="actionable_provider_logging" file="lazygit-llm/src/api_providers/__init__.py" line="17-26" type="logging">
           <description>Missing overwrite warning in provider registration</description>
           <details>Provider registration overwrites without notification</details>
           <severity>MEDIUM</severity>
         </comment>
-        
+
         <comment id="actionable_cli_provider_logging" file="lazygit-llm/src/cli_providers/__init__.py" line="16-25" type="logging">
           <description>Missing overwrite warning in CLI provider registration</description>
           <details>CLI provider registration overwrites without notification</details>
           <severity>MEDIUM</severity>
         </comment>
-        
+
         <comment id="actionable_null_handler" file="lazygit-llm/src/base_provider.py" line="12-13" type="logging">
           <description>Library logger missing NullHandler</description>
           <details>May cause warnings when no handlers configured</details>

@@ -61,7 +61,7 @@ Quality, Security, Standards, Specificity, Impact-awareness
 </coderabbit_review_summary>
 
 <comment_metadata>
-  <primary_issues>command syntax, PATH handling, file existence checks</primary_issues>
+  <primary_issues>file existence checks, command syntax, PATH handling</primary_issues>
   <complexity_level>Medium (build system configuration)</complexity_level>
   <change_impact_scope>build automation, configuration management, environment configuration, package installation, script execution</change_impact_scope>
   <testing_requirements>Manual execution verification, cross-platform compatibility</testing_requirements>

@@ -8,10 +8,7 @@ import re
 from typing import Any, Dict, List, Optional
 from xml.sax.saxutils import escape
 
-from ..models import (
-    ActionableComment,
-    AnalyzedComments,
-)
+from ..models import ActionableComment, AnalyzedComments
 from .base_formatter import BaseFormatter
 
 
@@ -596,12 +593,17 @@ For comments with multiple exchanges, consider:
         if hasattr(comment, "file_path"):
             file_path = comment.file_path
             line_range = getattr(comment, "line_range", "Unknown")
-            description = getattr(comment, "issue_description", str(comment))
+            # For NitpickComment objects, use 'raw_content' for analysis and 'suggestion' for title
+            title = getattr(comment, "suggestion", "Nitpick suggestion")
+            analysis_content = getattr(
+                comment, "raw_content", getattr(comment, "suggestion", str(comment))
+            )
         else:
             # Handle dictionary-like objects
             file_path = comment.get("file_path", "Unknown")
             line_range = comment.get("line_range", "Unknown")
-            description = comment.get("issue_description", str(comment))
+            title = comment.get("suggestion", "Nitpick suggestion")
+            analysis_content = comment.get("raw_content", comment.get("suggestion", str(comment)))
 
         lines = []
         # Clean line_range to prevent XML attribute corruption
@@ -614,14 +616,12 @@ For comments with multiple exchanges, consider:
 
         # Issue summary
         lines.append("    <issue_summary>")
-        lines.append(
-            f"      {escape(description.split('\n')[0] if description else 'Nitpick suggestion')}"
-        )
+        lines.append(f"      {escape(title)}")
         lines.append("    </issue_summary>")
 
         # CodeRabbit analysis
         lines.append("    <coderabbit_analysis>")
-        analysis_text = self._extract_analysis_text(description)
+        analysis_text = self._extract_analysis_text(analysis_content)
         lines.append(f"      {escape(analysis_text)}")
         lines.append("    </coderabbit_analysis>")
 
@@ -633,7 +633,7 @@ For comments with multiple exchanges, consider:
             proposed_diff = comment.proposed_diff
         else:
             # Generate proposed diff based on the issue type
-            proposed_diff = self._generate_proposed_diff(description, file_path, line_range)
+            proposed_diff = self._generate_proposed_diff(analysis_content, file_path, line_range)
 
         if proposed_diff:
             lines.append("    <proposed_diff>")
@@ -648,44 +648,148 @@ For comments with multiple exchanges, consider:
         lines.append("")
         return "\n".join(lines)
 
+    def _extract_issue_title(self, description: str) -> str:
+        """Extract the issue title from a CodeRabbit comment (bold text)."""
+        if not description:
+            return "Nitpick suggestion"
+
+        # Handle inline format: **Title** analysis_content
+        import re
+
+        inline_pattern = r"\*\*([^*]+)\*\*\s*(.*)"
+        inline_match = re.match(inline_pattern, description.strip())
+
+        if inline_match:
+            title, content = inline_match.groups()
+            return title.strip()
+
+        lines = description.split("\n")
+        for line in lines:
+            line = line.strip()
+            # Find the title (bold text **...** pattern)
+            if line.startswith("**") and line.endswith("**"):
+                # Remove the ** markers and return clean title
+                return line[2:-2].strip()
+
+        # Fallback: return the first non-empty line
+        for line in lines:
+            line = line.strip()
+            if line:
+                return line
+
+        return "Nitpick suggestion"
+
     def _extract_analysis_text(self, description: str) -> str:
-        """Extract the main analysis text from a comment description."""
+        """Extract the main analysis text from a CodeRabbit comment using structural parsing."""
         if not description:
             return "No analysis available"
 
-        # For nitpick comments, provide more detailed analysis based on the issue type
-        description_lower = description.lower()
+        # Handle inline format: **Title** analysis_content
+        # Check if the description contains both title and content in one line
+        import re
 
-        # Map common nitpick patterns to detailed analysis (avoid redundancy with issue_summary)
-        if "phony" in description_lower and "install-packages-gemini-cli" in description:
-            return "ヘルプに掲載され、エイリアスも定義されていますが、PHONY未登録です。将来の依存解決の揺れを避けるため明示しておきましょう。"
-        elif "リンク元の存在チェック" in description:
-            return (
-                "`ln -sfn`前にソース有無を検証し、欠如時は警告してスキップすると運用が安定します。"
-            )
-        elif "二重定義" in description:
-            return (
-                "上部(行 513–528)にも同名エイリアスがあります。重複は混乱の元なので片方へ集約を。"
-            )
-        elif "ヘルプにエイリアス" in description and "install-ccusage" in description:
-            return "直接ターゲットを案内したい場合に便利です。"
-        elif "path拡張" in description_lower or "変数展開" in description:
-            return "`$PATH`より`$$PATH`の方がMakeの二重展開を避けられ、意図どおりにシェル時点で連結されます。"
-        else:
-            # Extract the first meaningful sentence
-            lines = description.split("\n")
-            for line in lines:
-                line = line.strip()
-                if (
-                    line
-                    and not line.startswith("**")
-                    and not line.startswith("```")
-                    and len(line) > 10
-                ):
-                    return line
+        inline_pattern = r"\*\*([^*]+)\*\*\s*(.*)"
+        inline_match = re.match(inline_pattern, description.strip())
 
-        # Fallback to first line
-        return lines[0] if lines else "No analysis available"
+        if inline_match:
+            title, content = inline_match.groups()
+            if content.strip():
+                return content.strip()
+
+        # If the content doesn't contain **title** format, treat as plain analysis text
+        if not re.search(r"\*\*[^*]+\*\*", description):
+            # Plain text - clean up diff blocks and separators before returning
+            cleaned = self._clean_analysis_text(description)
+            if cleaned and len(cleaned) > 10:  # Only return if substantial content
+                return cleaned
+
+        # Parse multi-line CodeRabbit comment structure:
+        # 1. **タイトル部分** (bold title)
+        # 2. 分析内容部分 (analysis content - normal text)
+        # 3. ```diff code block
+        # 4. Also applies to: 行番号 (optional)
+
+        lines = description.split("\n")
+        analysis_content = []
+        title_found = False
+        in_code_block = False
+
+        for line in lines:
+            line = line.strip()
+
+            # Skip empty lines
+            if not line:
+                continue
+
+            # Detect code block start/end
+            if line.startswith("```"):
+                in_code_block = not in_code_block
+                continue
+
+            # Skip content inside code blocks
+            if in_code_block:
+                continue
+
+            # Skip "Also applies to:" lines
+            if line.startswith("Also applies to:") or "Also applies to:" in line:
+                continue
+
+            # Identify title (bold text **...** pattern)
+            if line.startswith("**") and line.endswith("**"):
+                title_found = True
+                continue
+
+            # Extract analysis content (after title, before code block)
+            if title_found and not in_code_block:
+                # This is likely analysis content - collect all substantial lines
+                analysis_content.append(line)
+
+        # Return the combined analysis content
+        if analysis_content:
+            return " ".join(analysis_content)
+
+        # Fallback: only return "No analysis available" if no detailed content found
+        return "No analysis available"
+
+    def _clean_analysis_text(self, text: str) -> str:
+        """Clean analysis text by removing diff blocks, separators, and code blocks."""
+        if not text:
+            return ""
+
+        lines = text.split("\n")
+        cleaned_lines = []
+        in_code_block = False
+
+        for line in lines:
+            line_stripped = line.strip()
+
+            # Skip empty lines
+            if not line_stripped:
+                continue
+
+            # Detect code block start/end (```diff, ```bash, etc.)
+            if line_stripped.startswith("```"):
+                in_code_block = not in_code_block
+                continue
+
+            # Skip content inside code blocks
+            if in_code_block:
+                continue
+
+            # Skip separator lines
+            if line_stripped == "---" or line_stripped.startswith("---"):
+                continue
+
+            # Skip "Also applies to:" lines
+            if line_stripped.startswith("Also applies to:") or "Also applies to:" in line_stripped:
+                continue
+
+            # Add meaningful content
+            cleaned_lines.append(line_stripped)
+
+        # Join and clean up extra whitespace
+        result = " ".join(cleaned_lines).strip()
+        return result
 
     def _generate_proposed_diff(self, description: str, file_path: str, line_range: str) -> str:
         """Generate proposed diff based on the issue description."""
@@ -772,38 +876,73 @@ For comments with multiple exchanges, consider:
         if not raw_content:
             return "No analysis available"
 
-        # Look for analysis text between markers or after certain patterns
+        # Split content into lines and find the analysis part
         lines = raw_content.split("\n")
         analysis_lines = []
-        in_analysis = False
 
-        for line in lines:
+        # First, try to identify the title line (usually first meaningful line)
+        title_line = ""
+        content_start_index = 0
+
+        for i, line in enumerate(lines):
             line = line.strip()
-            # Skip empty lines and markdown formatting
+            if line and not line.startswith("```") and not line.startswith("_"):
+                title_line = line
+                content_start_index = i + 1
+                break
+
+        # Look for analysis content after the title
+        for i in range(content_start_index, len(lines)):
+            line = lines[i].strip()
+
+            # Skip empty lines, markdown code blocks, and emphasis
             if not line or line.startswith("```") or line.startswith("_"):
                 continue
 
-            # Look for analysis content
+            # Skip lines that are just repetitions of the title
+            if line == title_line:
+                continue
+
+            # Look for substantial analysis content (not just titles or headers)
             if (
-                "です" in line
-                or "ます" in line
-                or "PATH" in line
-                or "bun" in line
-                or "Make" in line
-                or "shell" in line
+                len(line) > 10
+                and not line.startswith("**")
+                and not line.startswith("#")
+                and not line.endswith(":")
+                and (
+                    "です" in line
+                    or "ます" in line
+                    or "。" in line
+                    or "PATH" in line
+                    or "bun" in line
+                    or "Make" in line
+                    or "shell" in line
+                    or "安全" in line
+                    or "推奨" in line
+                    or "限定" in line
+                    or "ビルド" in line
+                )
             ):
                 analysis_lines.append(line)
-                in_analysis = True
-            elif in_analysis and len(analysis_lines) >= 2:
-                break
 
         if analysis_lines:
-            return " ".join(analysis_lines)
+            # Return the most detailed analysis line, or combine multiple lines
+            if len(analysis_lines) == 1:
+                return analysis_lines[0]
+            else:
+                # For multiple lines, prefer the most detailed one
+                return max(analysis_lines, key=len)
 
-        # Fallback: return first substantial line
+        # Fallback: look for any substantial content that's not the title
         for line in lines:
             line = line.strip()
-            if line and len(line) > 20 and not line.startswith("**"):
+            if (
+                line
+                and len(line) > 20
+                and not line.startswith("**")
+                and line != title_line
+                and not line.startswith("#")
+            ):
                 return line
 
         return "No analysis available"

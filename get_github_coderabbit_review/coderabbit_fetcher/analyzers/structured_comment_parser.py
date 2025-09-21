@@ -333,6 +333,17 @@ class StructuredCommentParser:
             # "Also applies to:" の処理
             also_applies_lines = self._extract_also_applies_to(content)
 
+            # Debug: log the extracted content for lib/ comments
+            if "lib/" in title:
+                self.logger.info("DEBUG: lib/ comment extraction:")
+                self.logger.info(f"  title: {repr(title)}")
+                self.logger.info(f"  content: {repr(content)}")
+                self.logger.info(f"  raw match: {repr(match.group(0))}")
+                self.logger.info(f"  content_start: {content_start}, content_end: {content_end}")
+                self.logger.info(
+                    f"  file_content[content_start:content_end]: {repr(file_content[content_start:content_end])}"
+                )
+
             comment = ParsedComment(
                 file_path=file_path,
                 line_range=line_range,
@@ -500,10 +511,17 @@ class StructuredCommentParser:
 
         # 抽出数が宣言数より少ない場合
         if extracted_count < declared_count:
-            self.logger.warning(
-                f"セクション {section_type.value}: 抽出 {extracted_count}件 < 宣言 {declared_count}件 "
-                f"(抽出漏れの可能性、そのまま返します)"
-            )
+            # Actionableコメントは別途inline comments APIから取得されるため、summary解析では抽出漏れが正常
+            if section_type == CommentSection.ACTIONABLE:
+                self.logger.debug(
+                    f"セクション {section_type.value}: 抽出 {extracted_count}件 < 宣言 {declared_count}件 "
+                    f"(Actionableコメントは別APIから取得済み)"
+                )
+            else:
+                self.logger.warning(
+                    f"セクション {section_type.value}: 抽出 {extracted_count}件 < 宣言 {declared_count}件 "
+                    f"(抽出漏れの可能性、そのまま返します)"
+                )
             return extracted_comments
 
         return extracted_comments
