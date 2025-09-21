@@ -834,7 +834,6 @@ class ReviewProcessor:
                             pass
 
                         # Generate unique comment ID
-                        import hashlib
 
                         # comment_id = hashlib.md5(
                         #     f"{file_path}:{line_range}:{title}:additional".encode()
@@ -1180,12 +1179,9 @@ class ReviewProcessor:
             if not line or len(line) < 10:  # Skip very short lines
                 continue
 
-            matched = False
-
             for i, pattern in enumerate(patterns):
                 match = re.match(pattern, line, re.IGNORECASE | re.MULTILINE)
                 if match:
-                    # matched = True  # Not used currently
                     pass
 
                     if i == 3:  # LanguageTool pattern

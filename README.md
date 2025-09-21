@@ -16,9 +16,20 @@ GitHubのプルリクエストからCodeRabbitのコメントを取得・分析�
 
 **詳細:** [get_github_coderabbit_review/README.md](get_github_coderabbit_review/README.md)
 
-## Git フックの設定
+## Git フック & テスト自動化
 
-このリポジトリではpre-pushフックが設定されており、`get_github_coderabbit_review`に変更があった場合に自動的にテストが実行されます。
+このリポジトリでは**自動テスト検出・実行システム**を採用しており、新しいテストを追加すると自動的にpre-commit/pre-pushで実行されます。
+
+### ✨ 自動テスト機能
+
+**🧪 新機能**: テストファイルを追加するだけで、pre-pushフックが自動的に検出・実行します！
+
+```bash
+# 例: 新しいテストファイルを追加
+tests/new_feature/test_awesome_feature.py
+
+# → 次回のpushで自動的に実行される！
+```
 
 ### セットアップ
 
@@ -27,23 +38,61 @@ GitHubのプルリクエストからCodeRabbitのコメントを取得・分析�
 ./setup-hooks.sh
 ```
 
-### 使用方法
+### 🚀 テスト実行モード
 
+#### 手動実行
 ```bash
-# 通常のpush（完全テスト実行）
-git push origin branch-name
+# クイックテスト（コア機能のみ）
+./scripts/coderabbit-auto-test.sh quick
 
-# クイックテスト付きpush
-QUICK_TEST=true git push origin branch-name
+# 包括テスト（推奨）
+./scripts/coderabbit-auto-test.sh comprehensive
+
+# 全テスト（パフォーマンステスト含む）
+./scripts/coderabbit-auto-test.sh all
+```
+
+#### 自動実行（Git フック）
+```bash
+# pre-commit: クイックテスト自動実行
+git commit -m "your changes"
+
+# pre-push: 包括テスト自動実行
+git push origin branch-name
 
 # フックをスキップ
 git push --no-verify origin branch-name
 ```
 
-### フック動作
+### 🔍 テスト検出ロジック
 
-- `get_github_coderabbit_review/` 配下のファイルに変更がある場合のみテスト実行
-- 変更がない場合はテストをスキップして高速化
-- テスト失敗時はpushを自動的に阻止
+自動検出される対象：
+- **Unit Tests**: `tests/unit/test_*.py` (12 files)
+- **Integration Tests**: `tests/integration/test_*.py` (4 files)
+- **PR Tests**: `tests/pr*/test_*.py` (6 files)
+- **Performance Tests**: `tests/performance/test_*.py` (1 file)
 
-**詳細:** [.githooks/README.md](.githooks/README.md)
+**現在の検出状況**: 合計 **23 テストファイル** が自動実行対象
+
+### 📊 テストレポート機能
+
+```bash
+# 詳細なテスト統計を表示
+./scripts/coderabbit-auto-test.sh comprehensive
+
+# 出力例:
+# 📊 Test Statistics:
+#    Unit Tests:        12
+#    Integration Tests: 4
+#    PR Tests:          6
+#    Performance Tests: 1
+#    Total Tests:       23
+```
+
+### 💡 依存関係の自動ハンドリング
+
+- **自己完結テスト**: `uvx` を使用したテストは常に実行
+- **依存関係エラー**: `pytest`/`pydantic` 不足時は自動スキップ
+- **フォールバック**: コアテストで基本機能を保証
+
+**詳細:** [scripts/coderabbit-auto-test.sh](scripts/coderabbit-auto-test.sh)

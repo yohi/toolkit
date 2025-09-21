@@ -2356,7 +2356,6 @@ class MarkdownFormatter(BaseFormatter):
             lines = raw_content.split("\n")
             in_code = False
             code_lines = []
-            code_lang = ""
 
             for line in lines:
                 if line.strip().startswith("```"):

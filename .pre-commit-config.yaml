@@ -50,6 +50,15 @@ repos:
         verbose: true
         pass_filenames: false
 
+      - id: coderabbit-comprehensive-test
+        name: Comprehensive test (CodeRabbit Review)
+        entry: ./scripts/coderabbit-auto-test.sh comprehensive
+        language: script
+        files: ^get_github_coderabbit_review/(coderabbit_fetcher|tests)/.*\.py$
+        stages: [pre-push]
+        verbose: true
+        pass_filenames: false
+
   # Additional Python checks for get_github_coderabbit_review
   - repo: local
     hooks:
@@ -63,8 +72,8 @@ repos:
 
       - id: coderabbit-quick-test
         name: Quick test (CodeRabbit Review)
-        entry: bash -c 'cd get_github_coderabbit_review && python3 tests/pr38/test_pr38_direct.py'
-        language: system
+        entry: ./scripts/coderabbit-auto-test.sh quick
+        language: script
         files: ^get_github_coderabbit_review/(coderabbit_fetcher|tests)/.*\.py$
         stages: [pre-commit]
         pass_filenames: false
@@ -79,5 +88,5 @@ ci:
   autoupdate_branch: ''
   autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
   autoupdate_schedule: weekly
-  skip: [coderabbit-review-validation, coderabbit-mypy, coderabbit-quick-test]
+  skip: [coderabbit-review-validation, coderabbit-mypy, coderabbit-quick-test, coderabbit-comprehensive-test]
   submodules: false
