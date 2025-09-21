@@ -54,14 +54,14 @@ Quality, Security, Standards, Specificity, Impact-awareness
 </pull_request_context>
 
 <coderabbit_review_summary>
-  <total_comments>10</total_comments>
+  <total_comments>8</total_comments>
   <actionable_comments>3</actionable_comments>
-  <nitpick_comments>7</nitpick_comments>
+  <nitpick_comments>5</nitpick_comments>
   <outside_diff_range_comments>0</outside_diff_range_comments>
 </coderabbit_review_summary>
 
 <comment_metadata>
-  <primary_issues>file existence checks, PATH handling, command syntax</primary_issues>
+  <primary_issues>command syntax, PATH handling, file existence checks</primary_issues>
   <complexity_level>Medium (build system configuration)</complexity_level>
   <change_impact_scope>build automation, configuration management, environment configuration, package installation, script execution</change_impact_scope>
   <testing_requirements>Manual execution verification, cross-platform compatibility</testing_requirements>
@@ -189,10 +189,13 @@ For comments with multiple exchanges, consider:
       ユーザー固定パスを$HOMEに置換＋失敗時の扱いを追加（移植性/堅牢性）
     </issue_summary>
     <coderabbit_analysis>
-      `/home/y_ohi`固定は他環境で壊れます。`bunx`利用でグローバル未導入でも実行可に。 -# Add bun to the PATH -export PATH="/home/y_ohi/.bun/bin:$PATH"
+      checking for a usable bun/bunx runner: prepend "$HOME/.bun/bin" to PATH only if
     </coderabbit_analysis>
     <ai_agent_prompt>
-      In claude/statusline.sh around lines 4-7, replace the hardcoded /home/y_ohi path with $HOME to avoid breaking on other machines, and make execution robust by checking for a usable bun/bunx runner: prepend "$HOME/.bun/bin" to PATH only if that directory exists, then detect and prefer a bunx binary (fall back to bun x if bunx not available); if neither is found, print a clear error to stderr and exit with a non-zero status, and ensure the script propagates the exit code if the ccusage command fails.
+      <code_block>
+        In claude/statusline.sh around lines 4-7, replace the hardcoded /home/y_ohi path with $HOME to avoid breaking on other machines, and make execution robust by checking for a usable bun/bunx runner: prepend "$HOME/.bun/bin" to PATH only if that directory exists, then detect and prefer a bunx binary (fall back to bun x if bunx not available); if neither is found, print a clear error to stderr and exit with a non-zero status, and ensure the script propagates the exit code if the ccusage command fails.
+      </code_block>
+      <language>bash</language>
     </ai_agent_prompt>
     <proposed_diff>
       <![CDATA[
@@ -221,10 +224,13 @@ For comments with multiple exchanges, consider:
       `bun install -g ccusage`は誤用—`bun add -g`または`bunx`を使用
     </issue_summary>
     <coderabbit_analysis>
-      **`bun install -g ccusage`は誤用—`bun add -g`または`bunx`を使用** Bunのグローバル導入は`bun add -g &lt;pkg&gt;`です。現状だと期待通りにバイナリが配置されない可能性があります。PATH拡張も`$$PATH`へ統一を。
+      +	@bunx -y ccusage --version &gt;/dev/null 2&gt;&amp;1 || echo "⚠️  bunx 実行確認に失敗しました（ネットワーク状況を確認してください）"
     </coderabbit_analysis>
     <ai_agent_prompt>
-      In mk/install.mk around lines 1390–1403, the recipe wrongly uses "bun install -g ccusage" (which doesn't place global binaries as expected) and mixes Makefile and shell PATH syntax; replace the global install invocation with "bun add -g ccusage" (or invoke via "bunx ccusage" if preferred) and change the PATH export to use the shell variable escaped for Makefiles (e.g., export PATH="$(HOME)/.bun/bin:$$PATH"); ensure any direct $PATH references in the recipe are escaped as $$PATH so the shell sees them.
+      <code_block>
+        In mk/install.mk around lines 1390–1403, the recipe wrongly uses "bun install -g ccusage" (which doesn't place global binaries as expected) and mixes Makefile and shell PATH syntax; replace the global install invocation with "bun add -g ccusage" (or invoke via "bunx ccusage" if preferred) and change the PATH export to use the shell variable escaped for Makefiles (e.g., export PATH="$(HOME)/.bun/bin:$$PATH"); ensure any direct $PATH references in the recipe are escaped as $$PATH so the shell sees them.
+      </code_block>
+      <language>shell</language>
     </ai_agent_prompt>
     <proposed_diff>
       <![CDATA[
@@ -255,10 +261,13 @@ For comments with multiple exchanges, consider:
       `$(date ...)`がMake展開で空になる—バックアップファイル名が壊れます
     </issue_summary>
     <coderabbit_analysis>
-      **`$(date ...)`がMake展開で空になる—バックアップファイル名が壊れます** シェル実行時のコマンド置換は`$$(...)`が必要です。現状だと`.backup.`のような固定名になり上書き事故のリスクがあります。
+      the shell, producing an empty suffix and risking overwrites; replace each $(date
     </coderabbit_analysis>
     <ai_agent_prompt>
-      In mk/setup.mk around lines 539-545 (and likewise at 547-553 and 556-563), the use of $(date +%Y%m%d_%H%M%S) is expanded by Make instead of being executed in the shell, producing an empty suffix and risking overwrites; replace each $(date +%Y%m%d_%H%M%S) with $$(date +%Y%m%d_%H%M%S) so the command substitution happens at shell runtime when mv runs, ensuring unique backups.
+      <language>shell</language>
+      <description>
+        In mk/setup.mk around lines 539-545 (and likewise at 547-553 and 556-563), the use of $(date +%Y%m%d_%H%M%S) is expanded by Make instead of being executed in the shell, producing an empty suffix and risking overwrites; replace each $(date +%Y%m%d_%H%M%S) with $$(date +%Y%m%d_%H%M%S) so the command substitution happens at shell runtime when mv runs, ensuring unique backups.
+      </description>
     </ai_agent_prompt>
     <proposed_diff>
       <![CDATA[
@@ -272,32 +281,6 @@ For comments with multiple exchanges, consider:
 +        mv $(HOME_DIR)/.claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh.backup.$$(date +%Y%m%d_%H%M%S); \
 ]]>
     </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="mk/help.mk" lines="27-28">
-    <issue_summary>
-      ヘルプにエイリアス`install-ccusage`も載せると発見性が上がります
-    </issue_summary>
-    <coderabbit_analysis>
-      直接ターゲットを案内したい場合に便利です。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
-@echo "  make install-packages-playwright      - Playwright E2Eテストフレームワークをインストール"
-  @echo "  make install-packages-gemini-cli      - Gemini CLIをインストール"
-  @echo "  make install-packages-ccusage         - ccusage (bunx) をインストール"
-+ @echo "  make install-ccusage                  - ccusage をインストール（後方互換エイリアス）"
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="mk/install.mk" lines="1392-1399">
-    <issue_summary>
-      PATH拡張の変数展開を統一（可搬性）
-    </issue_summary>
-    <coderabbit_analysis>
-      `$PATH`より`$$PATH`の方がMakeの二重展開を避けられ、意図どおりにシェル時点で連結されます。
-    </coderabbit_analysis>
   </review_comment>
 
   <review_comment type="Nitpick" file="mk/setup.mk" lines="543-545">

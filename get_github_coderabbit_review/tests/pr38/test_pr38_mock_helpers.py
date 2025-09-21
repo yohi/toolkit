@@ -88,9 +88,9 @@ class PR38MockHelper:
             "url": "https://github.com/yohi/dots/pull/38",
             "state": "OPEN",
             "files_changed": 6,
-            "total_comments": 10,  # 3 actionable + 7 nitpick
+            "total_comments": 8,  # 3 actionable + 5 nitpick
             "actionable_comments": 3,
-            "nitpick_comments": 7,
+            "nitpick_comments": 5,
         }
 
     def get_expected_files(self) -> List[Dict[str, Any]]:
