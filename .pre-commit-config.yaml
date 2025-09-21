@@ -1,0 +1,83 @@
+# Pre-commit configuration for toolkit repository
+# See https://pre-commit.com for more information
+
+repos:
+  # Standard pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-json
+      - id: check-toml
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: ['--maxkb=500']
+      - id: mixed-line-ending
+
+  # Python hooks for get_github_coderabbit_review
+  - repo: https://github.com/psf/black
+    rev: 24.8.0
+    hooks:
+      - id: black
+        files: ^get_github_coderabbit_review/.*\.py$
+        language_version: python3.13
+
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        files: ^get_github_coderabbit_review/.*\.py$
+        args: ["--profile", "black"]
+
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: v0.6.5
+    hooks:
+      - id: ruff
+        files: ^get_github_coderabbit_review/.*\.py$
+        args: [--fix, --exit-non-zero-on-fix]
+
+  # Custom hook for get_github_coderabbit_review validation
+  - repo: local
+    hooks:
+      - id: coderabbit-review-validation
+        name: CodeRabbit Review Tool Validation
+        entry: ./scripts/validate-coderabbit-changes.sh
+        language: script
+        files: ^get_github_coderabbit_review/
+        stages: [pre-push]
+        verbose: true
+        pass_filenames: false
+
+  # Additional Python checks for get_github_coderabbit_review
+  - repo: local
+    hooks:
+      - id: coderabbit-mypy
+        name: MyPy type checking (CodeRabbit Review)
+        entry: ./scripts/mypy-check.sh
+        language: script
+        files: ^get_github_coderabbit_review/.*\.py$
+        stages: [pre-commit]
+        pass_filenames: false
+
+      - id: coderabbit-quick-test
+        name: Quick test (CodeRabbit Review)
+        entry: bash -c 'cd get_github_coderabbit_review && python3 tests/pr38/test_pr38_direct.py'
+        language: system
+        files: ^get_github_coderabbit_review/(coderabbit_fetcher|tests)/.*\.py$
+        stages: [pre-commit]
+        pass_filenames: false
+
+# Configuration for specific tools
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: [coderabbit-review-validation, coderabbit-mypy, coderabbit-quick-test]
+  submodules: false

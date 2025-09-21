@@ -1,0 +1,149 @@
+#!/bin/bash
+
+# Pre-push hook for get_github_coderabbit_review project
+# Runs PR38 validation tests when changes are detected in the get_github_coderabbit_review directory
+
+set -e
+
+echo "🔍 Pre-push hook: Checking for changes in get_github_coderabbit_review..."
+
+# Get the remote name and URL being pushed to
+remote="$1"
+url="$2"
+
+# Project directory
+PROJECT_DIR="get_github_coderabbit_review"
+REPO_ROOT="/home/y_ohi/program/toolkit"
+PROJECT_PATH="$REPO_ROOT/$PROJECT_DIR"
+
+# Check if the project directory exists
+if [ ! -d "$PROJECT_PATH" ]; then
+    echo "❌ Project directory not found: $PROJECT_PATH"
+    exit 1
+fi
+
+# Function to detect changes in the project directory
+detect_changes() {
+    local local_ref remote_ref
+
+    # Read from stdin to get the refs being pushed
+    while read local_ref local_sha remote_ref remote_sha; do
+        echo "🔄 Checking refs: $local_ref -> $remote_ref"
+
+        # Skip if this is a deletion
+        if [ "$local_sha" = "0000000000000000000000000000000000000000" ]; then
+            echo "⏭️  Skipping deletion of $remote_ref"
+            continue
+        fi
+
+        # Determine the range to check
+        if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+            # New branch - check against main/master
+            if git rev-parse --verify origin/main >/dev/null 2>&1; then
+                range="origin/main..$local_sha"
+            elif git rev-parse --verify origin/master >/dev/null 2>&1; then
+                range="origin/master..$local_sha"
+            else
+                # Fallback to checking all commits in the branch
+                range="$local_sha"
+            fi
+        else
+            # Existing branch - check the range
+            range="$remote_sha..$local_sha"
+        fi
+
+        echo "📋 Checking range: $range"
+
+        # Check if there are changes in the project directory
+        if git diff --name-only "$range" | grep -q "^$PROJECT_DIR/"; then
+            echo "✅ Changes detected in $PROJECT_DIR/"
+            git diff --name-only "$range" | grep "^$PROJECT_DIR/" | head -10
+            return 0
+        fi
+    done
+
+    echo "ℹ️  No changes detected in $PROJECT_DIR/"
+    return 1
+}
+
+# Function to run tests
+run_tests() {
+    echo "🚀 Running PR38 validation tests..."
+
+    cd "$PROJECT_PATH"
+
+    # Check if test files exist
+    if [ ! -f "tests/pr38/test_pr38_final.py" ]; then
+        echo "❌ Test file not found: tests/pr38/test_pr38_final.py"
+        exit 1
+    fi
+
+    # Run the main validation test
+    echo "📦 Executing PR38 final validation test..."
+    if python3 tests/pr38/test_pr38_final.py; then
+        echo "✅ PR38 validation tests passed!"
+        return 0
+    else
+        echo "❌ PR38 validation tests failed!"
+        return 1
+    fi
+}
+
+# Function to run quick structure check
+run_quick_check() {
+    echo "⚡ Running quick structure check..."
+
+    cd "$PROJECT_PATH"
+
+    # Run the direct test for quick validation
+    if python3 tests/pr38/test_pr38_direct.py; then
+        echo "✅ Quick validation passed!"
+        return 0
+    else
+        echo "❌ Quick validation failed!"
+        return 1
+    fi
+}
+
+# Main execution logic
+main() {
+    echo "🎯 Pre-push validation for $PROJECT_DIR"
+    echo "📍 Remote: $remote"
+    echo "📍 URL: $url"
+    echo "📍 Project path: $PROJECT_PATH"
+
+    # Detect changes
+    if detect_changes; then
+        echo ""
+        echo "🧪 Changes detected - running validation tests..."
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+        # Check if we should run quick or full tests
+        if [ "${QUICK_TEST:-false}" = "true" ]; then
+            if ! run_quick_check; then
+                echo ""
+                echo "❌ Quick validation failed. Push aborted."
+                echo "💡 Hint: Fix the issues and try again, or set FULL_TEST=true for detailed analysis"
+                exit 1
+            fi
+        else
+            if ! run_tests; then
+                echo ""
+                echo "❌ Validation tests failed. Push aborted."
+                echo "💡 Hint: Run 'cd $PROJECT_DIR && python3 tests/pr38/test_pr38_final.py' to debug"
+                echo "💡 Or set QUICK_TEST=true for faster validation"
+                exit 1
+            fi
+        fi
+
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "🎉 All validation tests passed! Push proceeding..."
+    else
+        echo "ℹ️  No changes in $PROJECT_DIR - skipping tests"
+    fi
+
+    echo "✅ Pre-push hook completed successfully"
+}
+
+# Execute main function
+main
