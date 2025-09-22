@@ -322,8 +322,8 @@ class AsyncCommentAnalyzer:
                 session_id=session_id,
             )
 
-            # Run combination in thread pool to avoid blocking
-            loop = asyncio.get_running_loop()
+        # Run combination in thread pool to avoid blocking
+        loop = asyncio.get_running_loop()
 
         def combine_sync():
             """Synchronous combination logic."""

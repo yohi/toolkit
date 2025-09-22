@@ -274,6 +274,24 @@ class ActionRunner:
         """
         logger.info(f"Running job: {job.name}")
 
+        # Evaluate job-level condition
+        if job.if_condition and not self._evaluate_condition(job.if_condition):
+            logger.info(f"Job {job.name} skipped due to condition: {job.if_condition}")
+            return {
+                "job_name": job.name,
+                "status": "skipped",
+                "start_time": datetime.now().isoformat(),
+                "end_time": datetime.now().isoformat(),
+                "steps": [],
+                "summary": {
+                    "total_steps": len(job.steps),
+                    "successful_steps": 0,
+                    "failed_steps": 0,
+                    "skipped_steps": len(job.steps),
+                },
+                "skipped_reason": f"Condition not met: {job.if_condition}",
+            }
+
         start_time = datetime.now()
         job_result = {
             "job_name": job.name,

@@ -368,10 +368,27 @@ class AsyncTaskManager:
                     ready_tasks.append(task_id)
 
             if not ready_tasks:
-                # Circular dependency detected
-                unresolved = list(remaining_tasks.keys())
-                logger.error(f"Circular dependency detected in tasks: {unresolved}")
-                raise ValueError(f"Circular dependency detected in tasks: {unresolved}")
+                # Check if we have failed/cancelled dependencies blocking progress
+                blocked_by_failed = []
+                for task_id, task in remaining_tasks.items():
+                    for dep_id in task.dependencies:
+                        if dep_id in self.tasks:
+                            dep_task = self.tasks[dep_id]
+                            if dep_task.status in [TaskStatus.FAILED, TaskStatus.CANCELLED]:
+                                blocked_by_failed.append((task_id, dep_id, dep_task.status))
+
+                if blocked_by_failed:
+                    # Tasks blocked by failed dependencies
+                    error_msg = "Tasks blocked by failed dependencies:"
+                    for task_id, dep_id, status in blocked_by_failed:
+                        error_msg += f"\n- {task_id} blocked by {dep_id} ({status.value})"
+                    logger.error(error_msg)
+                    raise ValueError(error_msg)
+                else:
+                    # True circular dependency
+                    unresolved = list(remaining_tasks.keys())
+                    logger.error(f"Circular dependency detected in tasks: {unresolved}")
+                    raise ValueError(f"Circular dependency detected in tasks: {unresolved}")
 
             # Sort by priority (highest first)
             ready_tasks.sort(key=lambda tid: self.tasks[tid].priority.value, reverse=True)
@@ -403,7 +420,26 @@ class AsyncTaskManager:
                 task_id for task_id, t in self.tasks.items() if t.status == TaskStatus.COMPLETED
             }
 
-        return all(dep_id in completed_tasks for dep_id in task.dependencies)
+        # Check each dependency
+        for dep_id in task.dependencies:
+            # Dependency must exist
+            if dep_id not in self.tasks:
+                logger.error(f"Task {task.task_id} depends on non-existent task {dep_id}")
+                return False
+
+            # Dependency must be completed
+            if dep_id not in completed_tasks:
+                dep_task = self.tasks[dep_id]
+                # If dependency failed or was cancelled, this task cannot proceed
+                if dep_task.status in [TaskStatus.FAILED, TaskStatus.CANCELLED]:
+                    logger.error(
+                        f"Task {task.task_id} cannot proceed: dependency {dep_id} {dep_task.status.value}"
+                    )
+                    return False
+                # Otherwise, dependency is just not complete yet
+                return False
+
+        return True
 
     async def _execute_task_wave(self, task_ids: List[str]) -> None:
         """Execute a wave of tasks in parallel.

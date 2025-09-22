@@ -916,7 +916,7 @@ class CodeRabbitOrchestrator:
                         if re.search(pattern, comment.raw_content, re.IGNORECASE):
                             # Extract the prompt content
                             prompt_match = re.search(
-                                rf"{pattern}\s*\n(.*?)(?=\n## |\n\Z)",
+                                rf"{pattern}\s*\n(.*?)(?=\n## |\Z)",
                                 comment.raw_content,
                                 re.DOTALL | re.IGNORECASE,
                             )

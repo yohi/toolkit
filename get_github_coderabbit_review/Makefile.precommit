@@ -1,8 +1,10 @@
 # Makefile for pre-commit and code quality management
 .PHONY: install setup-precommit fix-all run-precommit clean help
+.DEFAULT_GOAL := help
 
 PYTHON := python3.13
-SRC_DIRS := coderabbit_fetcher auth cicd microservices scripts tests
+# Dynamically detect existing directories to avoid fix-all failures
+EXISTING_DIRS := $(shell find . -maxdepth 2 -type d \( -name "coderabbit_fetcher" -o -name "auth" -o -name "cicd" -o -name "microservices" -o -name "scripts" -o -name "tests" \) 2>/dev/null | sort)
 
 # Install development dependencies
 install:
@@ -17,8 +19,13 @@ setup-precommit:
 # Fix formatting and basic issues
 fix-all:
 	@echo "Fixing code formatting and basic issues..."
-	-$(PYTHON) -m black --line-length=100 $(SRC_DIRS)
-	-$(PYTHON) -m isort --profile=black --line-length=100 $(SRC_DIRS)
+	@echo "Target directories: $(EXISTING_DIRS)"
+	@if [ -n "$(EXISTING_DIRS)" ]; then \
+		$(PYTHON) -m black --line-length=100 $(EXISTING_DIRS); \
+		$(PYTHON) -m isort --profile=black --line-length=100 $(EXISTING_DIRS); \
+	else \
+		echo "No target directories found"; \
+	fi
 
 # Run pre-commit on all files
 run-precommit:

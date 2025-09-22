@@ -1,6 +1,7 @@
 """Prompt templates for AI-powered analysis."""
 
 import logging
+import threading
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
@@ -491,6 +492,7 @@ def create_prompt_template(template_type: str) -> PromptTemplate:
 
 # Global template instances
 _global_templates: Dict[str, PromptTemplate] = {}
+_global_templates_lock = threading.RLock()
 
 
 def get_prompt_template(template_type: str) -> PromptTemplate:
@@ -502,10 +504,11 @@ def get_prompt_template(template_type: str) -> PromptTemplate:
     Returns:
         Prompt template instance
     """
-    if template_type not in _global_templates:
-        _global_templates[template_type] = create_prompt_template(template_type)
-
-    return _global_templates[template_type]
+    key = template_type.lower().strip()
+    with _global_templates_lock:
+        if key not in _global_templates:
+            _global_templates[key] = create_prompt_template(key)
+        return _global_templates[key]
 
 
 def register_prompt_template(template_type: str, template: PromptTemplate) -> None:
@@ -515,8 +518,12 @@ def register_prompt_template(template_type: str, template: PromptTemplate) -> No
         template_type: Type identifier
         template: Template instance
     """
-    _global_templates[template_type] = template
-    logger.info(f"Registered custom prompt template: {template_type}")
+    if not isinstance(template, PromptTemplate):
+        raise TypeError("template must be an instance of PromptTemplate")
+    key = template_type.lower().strip()
+    with _global_templates_lock:
+        _global_templates[key] = template
+    logger.info(f"Registered custom prompt template: {key}")
 
 
 # Template validation and testing utilities
@@ -543,16 +550,18 @@ def validate_prompt_template(template: PromptTemplate, test_data: Dict[str, Any]
             logger.warning("Generated prompt too short or empty")
             return False
 
-        # Check for template variables
-        if "{" in prompt and "}" in prompt:
-            logger.warning("Unresolved template variables found")
+        # Detect unresolved placeholders like {var} while ignoring JSON braces
+        import re
+
+        unresolved_placeholder = re.compile(r"{\s*[A-Za-z_][\w.]*\s*}")
+        if unresolved_placeholder.search(prompt):
+            logger.warning("Unresolved template placeholders detected")
             return False
-
-        return True
-
-    except Exception as e:
-        logger.error(f"Template validation failed: {e}")
+    except Exception:
+        logger.exception("Template validation failed")
         return False
+    else:
+        return True
 
 
 # Example usage and testing

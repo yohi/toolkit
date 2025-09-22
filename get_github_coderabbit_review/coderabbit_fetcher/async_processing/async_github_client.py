@@ -3,11 +3,12 @@
 import asyncio
 import logging
 import re
+import time
 from typing import Any, Dict, List, Optional
 
 import aiohttp
 
-from ..exceptions import GitHubAuthenticationError, InvalidPRUrlError
+from ..exceptions import APIRateLimitError, GitHubAuthenticationError, InvalidPRUrlError
 
 logger = logging.getLogger(__name__)
 
@@ -115,7 +116,16 @@ class AsyncGitHubClient:
                 # Check for rate limiting
                 if response.status == 403 and "rate limit" in (await response.text()).lower():
                     logger.warning("GitHub API rate limit exceeded")
-                    # Could implement backoff strategy here
+                    # Calculate wait time until rate limit resets
+                    wait_time = max(0, self.rate_limit_reset - time.time())
+                    if wait_time > 0 and wait_time < 3600:  # Wait up to 1 hour
+                        logger.info(f"Waiting {wait_time:.0f} seconds for rate limit reset")
+                        await asyncio.sleep(wait_time)
+                        # Retry the request
+                        return await self._make_request(method, url, **kwargs)
+                    raise APIRateLimitError(
+                        f"Rate limit exceeded. Reset at {self.rate_limit_reset}"
+                    )
 
                 # Handle authentication errors
                 if response.status == 401:

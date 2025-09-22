@@ -437,8 +437,8 @@ class SentimentAnalyzer:
             sentiment_score = float(score_match.group(1))
 
         # Determine sentiment label
-        if sentiment_score > 0.5:
-            sentiment_label = SentimentLabel.POSITIVE
+        if sentiment_score > 0.6:
+            sentiment_label = SentimentLabel.VERY_POSITIVE
         elif sentiment_score > 0.1:
             sentiment_label = SentimentLabel.POSITIVE
         elif sentiment_score < -0.5:

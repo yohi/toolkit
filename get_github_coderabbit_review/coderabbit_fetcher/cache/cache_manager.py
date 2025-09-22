@@ -14,7 +14,10 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class CacheKey:
-    """Cache key structure."""
+    """Cache key structure for namespaced cache entries.
+
+    Provides hierarchical organization with namespace, identifier, and version.
+    """
 
     namespace: str
     identifier: str
@@ -32,7 +35,10 @@ class CacheKey:
 
 @dataclass
 class CacheEntry:
-    """Cache entry structure."""
+    """Cache entry structure with comprehensive metadata and lifecycle tracking.
+
+    Includes creation time, access patterns, and expiration management.
+    """
 
     key: CacheKey
     value: Any
@@ -53,7 +59,7 @@ class CacheEntry:
         self.access_count += 1
         self.last_accessed = datetime.now()
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Union[str, Any, int, None]]:
         """Convert to dictionary for serialization."""
         return {
             "key": self.key.to_string(),
@@ -68,7 +74,10 @@ class CacheEntry:
 
 @dataclass
 class CacheConfig:
-    """Cache configuration."""
+    """Configuration for cache management system.
+
+    Defines TTL, size limits, and cleanup policies for cache entries.
+    """
 
     default_ttl_seconds: int = 3600  # 1 hour
     max_entries: int = 1000

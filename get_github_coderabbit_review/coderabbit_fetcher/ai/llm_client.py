@@ -72,6 +72,9 @@ class LLMClient(ABC):
         # Rate limiting
         self._request_times: List[float] = []
         self._rate_limit_lock = asyncio.Lock()
+        import threading
+
+        self._rate_limit_thread_lock = threading.Lock()
 
         # Statistics
         self.stats = {
@@ -186,18 +189,18 @@ class LLMClient(ABC):
 
     async def _enforce_rate_limit(self) -> None:
         """Enforce rate limiting."""
-        current_time = time.monotonic()
-        async with self._rate_limit_lock:
-            # Remove requests older than 1 minute
-            self._request_times = [t for t in self._request_times if current_time - t < 60]
-            # Check rate limit
-            if len(self._request_times) >= self.config.rate_limit_per_minute:
-                wait_time = 60 - (current_time - self._request_times[0])
-                if wait_time > 0:
-                    logger.info(f"Rate limit reached, waiting {wait_time:.1f}s")
-                    await asyncio.sleep(wait_time)
-                    current_time = time.monotonic()
-            self._request_times.append(current_time)
+        while True:
+            current_time = time.monotonic()
+            with self._rate_limit_thread_lock:
+                # Remove requests older than 1 minute
+                self._request_times = [t for t in self._request_times if current_time - t < 60]
+                if len(self._request_times) < self.config.rate_limit_per_minute:
+                    self._request_times.append(current_time)
+                    return
+                wait_time = max(0.0, 60 - (current_time - self._request_times[0]))
+            if wait_time > 0:
+                logger.info(f"Rate limit reached, waiting {wait_time:.1f}s")
+                await asyncio.sleep(wait_time)
 
     def get_stats(self) -> Dict[str, Any]:
         """Get client statistics."""

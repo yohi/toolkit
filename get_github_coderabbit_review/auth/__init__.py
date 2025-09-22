@@ -47,7 +47,7 @@ except ImportError:
 try:
     from .sso import OpenIDConnectProvider, SAMLProvider
 
-    __all__.extend(["SAMLProvider", "OpenIDConnectProvider"])
+    __all__.extend(["OpenIDConnectProvider", "SAMLProvider"])
 except ImportError:
     # 高度なSSO機能はオプション
     pass

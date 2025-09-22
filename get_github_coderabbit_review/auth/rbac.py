@@ -523,6 +523,18 @@ class RBACManager:
         # Initialize default roles and permissions
         self._init_default_roles()
 
+    def _policy_allows(self, context: Dict[str, Any]) -> bool:
+        """Evaluate zero or more policy IDs from context. Empty -> allow."""
+        policies = context.get("policies") or context.get("policy_id")
+        if not policies:
+            return True
+        if isinstance(policies, str):
+            policies = [policies]
+        for pid in policies:
+            if not self.policy_engine.evaluate_policy(pid, context):
+                return False
+        return True
+
     def _init_default_roles(self) -> None:
         """Initialize default roles and permissions."""
         # Admin permissions
@@ -740,14 +752,14 @@ class RBACManager:
         for role_id in user.roles:
             role = self.get_role(role_id)
             if role and role.has_permission(permission_type, resource_type, eval_context):
-                return True
+                return self._policy_allows(eval_context)
 
         # Check ACL permissions for specific resources
         if resource_id:
             acl_key = f"{resource_type.value}:{resource_id}"
             acl = self.acls.get(acl_key)
             if acl and acl.has_permission(user_id, permission_type):
-                return True
+                return self._policy_allows(eval_context)
 
         return False
 

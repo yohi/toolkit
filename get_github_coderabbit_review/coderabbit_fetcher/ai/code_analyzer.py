@@ -234,7 +234,10 @@ class AICodeAnalyzer:
         # Rule-based patterns for fallback
         self._init_analysis_patterns()
 
-        # Statistics
+        # Statistics (thread-safe)
+        import threading
+
+        self._stats_lock = threading.Lock()
         self.stats = {
             "analyses_performed": 0,
             "ai_analyses": 0,
@@ -617,7 +620,8 @@ class AICodeAnalyzer:
             # Parse AI response
             result = self._parse_ai_analysis_response(response.content)
 
-            self.stats["ai_analyses"] += 1
+            with self._stats_lock:
+                self.stats["ai_analyses"] += 1
             return result
 
         except Exception as e:
@@ -1145,26 +1149,28 @@ class AICodeAnalyzer:
 
     def _update_stats(self, result: ComprehensiveAnalysis) -> None:
         """Update analyzer statistics."""
-        self.stats["analyses_performed"] += 1
-        self.stats["issues_found"] += (
-            len(result.security.vulnerabilities)
-            + len(result.performance.bottlenecks)
-            + len(result.quality.issues)
-        )
-        self.stats["critical_issues"] += result.critical_issues_count
-        self.stats["security_issues"] += len(result.security.vulnerabilities)
-        self.stats["performance_issues"] += len(result.performance.bottlenecks)
-        self.stats["quality_issues"] += len(result.quality.issues)
+        with self._stats_lock:
+            self.stats["analyses_performed"] += 1
+            self.stats["issues_found"] += (
+                len(result.security.vulnerabilities)
+                + len(result.performance.bottlenecks)
+                + len(result.quality.issues)
+            )
+            self.stats["critical_issues"] += result.critical_issues_count
+            self.stats["security_issues"] += len(result.security.vulnerabilities)
+            self.stats["performance_issues"] += len(result.performance.bottlenecks)
+            self.stats["quality_issues"] += len(result.quality.issues)
 
-        # Update average score
-        total_analyses = self.stats["analyses_performed"]
-        self.stats["average_score"] = (
-            self.stats["average_score"] * (total_analyses - 1) + result.overall_health_score
-        ) / total_analyses
+            # Update average score
+            total_analyses = self.stats["analyses_performed"]
+            self.stats["average_score"] = (
+                self.stats["average_score"] * (total_analyses - 1) + result.overall_health_score
+            ) / total_analyses
 
     def get_stats(self) -> Dict[str, Any]:
         """Get analyzer statistics."""
-        stats = self.stats.copy()
+        with self._stats_lock:
+            stats = self.stats.copy()
 
         # Calculate percentages
         if stats["analyses_performed"] > 0:

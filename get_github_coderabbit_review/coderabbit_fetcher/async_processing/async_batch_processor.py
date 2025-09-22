@@ -47,23 +47,19 @@ class AsyncBatchProcessor:
             # Create batches
             batches = [files[i : i + batch_size] for i in range(0, len(files), batch_size)]
 
-            # Process batches concurrently
-            tasks = [
-                asyncio.create_task(
-                    self._process_file_batch(batch, i + 1, len(batches)), name=f"file_batch_{i + 1}"
-                )
-                for i, batch in enumerate(batches)
-            ]
-
             # Execute with controlled concurrency
             semaphore = asyncio.Semaphore(self.max_workers)
 
-            async def process_with_semaphore(task):
+            async def run_batch(i: int, batch):
                 async with semaphore:
-                    return await task
+                    return await self._process_file_batch(batch, i + 1, len(batches))
 
             results = await asyncio.gather(
-                *[process_with_semaphore(task) for task in tasks], return_exceptions=True
+                *[
+                    asyncio.create_task(run_batch(i, batch), name=f"file_batch_{i + 1}")
+                    for i, batch in enumerate(batches)
+                ],
+                return_exceptions=True,
             )
 
             # Combine results
@@ -106,24 +102,19 @@ class AsyncBatchProcessor:
             # Create batches
             batches = [commits[i : i + batch_size] for i in range(0, len(commits), batch_size)]
 
-            # Process batches concurrently
-            tasks = [
-                asyncio.create_task(
-                    self._process_commit_batch(batch, i + 1, len(batches)),
-                    name=f"commit_batch_{i + 1}",
-                )
-                for i, batch in enumerate(batches)
-            ]
-
             # Execute with controlled concurrency
             semaphore = asyncio.Semaphore(self.max_workers)
 
-            async def process_with_semaphore(task):
+            async def run_batch(i: int, batch):
                 async with semaphore:
-                    return await task
+                    return await self._process_commit_batch(batch, i + 1, len(batches))
 
             results = await asyncio.gather(
-                *[process_with_semaphore(task) for task in tasks], return_exceptions=True
+                *[
+                    asyncio.create_task(run_batch(i, batch), name=f"commit_batch_{i + 1}")
+                    for i, batch in enumerate(batches)
+                ],
+                return_exceptions=True,
             )
 
             # Combine results
@@ -498,7 +489,8 @@ class AsyncBatchProcessor:
     async def close(self) -> None:
         """Close the batch processor and cleanup resources."""
         if self.executor:
-            self.executor.shutdown(wait=True)
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, self.executor.shutdown, True)
             logger.info("AsyncBatchProcessor executor shut down")
 
     async def __aenter__(self):

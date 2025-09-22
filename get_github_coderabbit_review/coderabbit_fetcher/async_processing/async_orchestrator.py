@@ -218,6 +218,18 @@ class AsyncCodeRabbitOrchestrator:
 
         except asyncio.TimeoutError:
             logger.error("Timeout while fetching GitHub data")
+            # Cancel all pending tasks
+            for task in tasks:
+                if not task.done():
+                    logger.warning(f"Cancelling task: {task.get_name()}")
+                    task.cancel()
+
+            # Wait briefly for cancellation to complete
+            try:
+                await asyncio.wait_for(asyncio.gather(*tasks, return_exceptions=True), timeout=5)
+            except asyncio.TimeoutError:
+                logger.warning("Some tasks did not cancel within timeout")
+
             raise CodeRabbitFetcherError("Timeout while fetching GitHub data")
 
     async def _analyze_comments_async(self, github_data: Dict[str, Any]) -> AnalyzedComments:
