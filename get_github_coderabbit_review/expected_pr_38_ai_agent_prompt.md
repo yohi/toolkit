@@ -314,72 +314,9 @@ For comments with multiple exchanges, consider:
 +    fi
 ]]>
     </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="mk/setup.mk" lines="552-554">
-    <issue_summary>
-      リンク元の存在チェックを追加してください（壊れたシンボリックリンク防止）
-    </issue_summary>
-    <coderabbit_analysis>
-      `ln -sfn`前にソース有無を検証し、欠如時は警告してスキップすると運用が安定します。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--    @ln -sfn $(DOTFILES_DIR)/claude/claude-settings.json $(HOME_DIR)/.claude/settings.json
-+    @if [ -f "$(DOTFILES_DIR)/claude/claude-settings.json" ]; then \
-+        ln -sfn $(DOTFILES_DIR)/claude/claude-settings.json $(HOME_DIR)/.claude/settings.json; \
-+    else \
-+        echo "⚠️  missing: $(DOTFILES_DIR)/claude/claude-settings.json（リンクをスキップ）"; \
-+    fi
-@@
--    @ln -sfn $(DOTFILES_DIR)/claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md
-+    @if [ -f "$(DOTFILES_DIR)/claude/CLAUDE.md" ]; then \
-+        ln -sfn $(DOTFILES_DIR)/claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md; \
-+    else \
-+        echo "⚠️  missing: $(DOTFILES_DIR)/claude/CLAUDE.md（リンクをスキップ）"; \
-+    fi
-@@
--    @ln -sfn $(DOTFILES_DIR)/claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh
-+    @if [ -f "$(DOTFILES_DIR)/claude/statusline.sh" ]; then \
-+        ln -sfn $(DOTFILES_DIR)/claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh; \
-+    else \
-+        echo "⚠️  missing: $(DOTFILES_DIR)/claude/statusline.sh（リンクをスキップ）"; \
-+    fi
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="mk/setup.mk" lines="561-563">
-    <issue_summary>
-      リンク元の存在チェックを追加してください（壊れたシンボリックリンク防止）
-    </issue_summary>
-    <coderabbit_analysis>
-      `ln -sfn`前にソース有無を検証し、欠如時は警告してスキップすると運用が安定します。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--    @ln -sfn $(DOTFILES_DIR)/claude/claude-settings.json $(HOME_DIR)/.claude/settings.json
-+    @if [ -f "$(DOTFILES_DIR)/claude/claude-settings.json" ]; then \
-+        ln -sfn $(DOTFILES_DIR)/claude/claude-settings.json $(HOME_DIR)/.claude/settings.json; \
-+    else \
-+        echo "⚠️  missing: $(DOTFILES_DIR)/claude/claude-settings.json（リンクをスキップ）"; \
-+    fi
-@@
--    @ln -sfn $(DOTFILES_DIR)/claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md
-+    @if [ -f "$(DOTFILES_DIR)/claude/CLAUDE.md" ]; then \
-+        ln -sfn $(DOTFILES_DIR)/claude/CLAUDE.md $(HOME_DIR)/.claude/CLAUDE.md; \
-+    else \
-+        echo "⚠️  missing: $(DOTFILES_DIR)/claude/CLAUDE.md（リンクをスキップ）"; \
-+    fi
-@@
--    @ln -sfn $(DOTFILES_DIR)/claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh
-+    @if [ -f "$(DOTFILES_DIR)/claude/statusline.sh" ]; then \
-+        ln -sfn $(DOTFILES_DIR)/claude/statusline.sh $(HOME_DIR)/.claude/statusline.sh; \
-+    else \
-+        echo "⚠️  missing: $(DOTFILES_DIR)/claude/statusline.sh（リンクをスキップ）"; \
-+    fi
-]]>
-    </proposed_diff>
+    <also_applies_to>
+      552-554, 561-563
+    </also_applies_to>
   </review_comment>
 
   <review_comment type="Nitpick" file="mk/setup.mk" lines="599-602">
@@ -412,6 +349,38 @@ For comments with multiple exchanges, consider:
 -        install-gemini-cli install-packages-ccusage install-ccusage
 +        fonts-setup fonts-install fonts-install-nerd fonts-install-google fonts-install-japanese fonts-clean fonts-update fonts-list fonts-refresh fonts-debug fonts-backup fonts-configure \
 +        install-gemini-cli install-packages-gemini-cli install-packages-ccusage install-ccusage
+]]>
+    </proposed_diff>
+  </review_comment>
+
+  <review_comment type="Nitpick" file="mk/help.mk" lines="27-28">
+    <issue_summary>
+      ヘルプにエイリアス`install-ccusage`も載せると発見性が上がります
+    </issue_summary>
+    <coderabbit_analysis>
+      直接ターゲットを案内したい場合に便利です。
+    </coderabbit_analysis>
+    <proposed_diff>
+      <![CDATA[
+  @echo "  make install-packages-playwright      - Playwright E2Eテストフレームワークをインストール"
+  @echo "  make install-packages-gemini-cli      - Gemini CLIをインストール"
+  @echo "  make install-packages-ccusage         - ccusage (bunx) をインストール"
++ @echo "  make install-ccusage                  - ccusage をインストール（後方互換エイリアス）"
+]]>
+    </proposed_diff>
+  </review_comment>
+
+  <review_comment type="Nitpick" file="mk/install.mk" lines="1392-1399">
+    <issue_summary>
+      PATH拡張の変数展開を統一（可搬性）
+    </issue_summary>
+    <coderabbit_analysis>
+      `$PATH`より`$$PATH`の方がMakeの二重展開を避けられ、意図どおりにシェル時点で連結されます。
+    </coderabbit_analysis>
+    <proposed_diff>
+      <![CDATA[
+-		export PATH="$(HOME)/.bun/bin:$PATH"; \
++		export PATH="$$HOME/.bun/bin:$$PATH"; \
 ]]>
     </proposed_diff>
   </review_comment>

@@ -1,5 +1,3 @@
-DEBUG: Review has 1 outside_diff_comments
-DEBUG: Final counts - actionable: 4, nitpick: 82, outside_diff: 1
 # CodeRabbit Review Analysis - AI Agent Prompt
 
 <role>
@@ -214,7 +212,7 @@ For comments with multiple exchanges, consider:
       &lt;summary&gt;🧩 Analysis chain&lt;/summary&gt;
     </issue_summary>
     <coderabbit_analysis>
-      - 要修正箇所（例）: lazygit-llm/src/main.py（現: from src.base_provider ...）、lazygit-llm/lazygit_llm/main.py（現: from lazygit_llm.base_provider ...）、および lazygit-llm/lazygit_llm/api_providers/__init__.py、lazygit-llm/lazygit_llm/cli_providers/__init__.py を更新すること。
+      🧩 Analysis chain
     </coderabbit_analysis>
     <ai_agent_prompt>
       <code_block>
@@ -228,8 +226,8 @@ For comments with multiple exchanges, consider:
 ---
 ---
 ---
-- 確認: 以下の重複ファイルを検出（内容一致、MD5=06243edb1911b71561dd2a03ca59473b）: lazygit-llm/lazygit_llm/base_provider.py、lazygit-llm/src/base_provider.py。
-- 対応: 単一の正本を src/lazygit_llm/base_provider.py に配置するか、プロジェクトで採用しているパッケージ構成に合わせて canonical な場所を決定して移動・統一する。重複ファイルを削除し、全ての import を canonical パスに揃えること。
+- 確認: 以下の重複ファイルを検出（内容一致、MD5=06243edb1911b71561dd2a03ca59473b）: lazygit-llm/lazygit_llm/base_provider.py、lazygit-llm/src/base_provider.py。  
+- 対応: 単一の正本を src/lazygit_llm/base_provider.py に配置するか、プロジェクトで採用しているパッケージ構成に合わせて canonical な場所を決定して移動・統一する。重複ファイルを削除し、全ての import を canonical パスに揃えること。  
 - 要修正箇所（例）: lazygit-llm/src/main.py（現: from src.base_provider ...）、lazygit-llm/lazygit_llm/main.py（現: from lazygit_llm.base_provider ...）、および lazygit-llm/lazygit_llm/api_providers/__init__.py、lazygit-llm/lazygit_llm/cli_providers/__init__.py を更新すること。
 ]]>
     </proposed_diff>
@@ -240,14 +238,14 @@ For comments with multiple exchanges, consider:
       &lt;summary&gt;🧩 Analysis chain&lt;/summary&gt;
     </issue_summary>
     <coderabbit_analysis>
-      setup.py は packages=find_packages(where="lazygit-llm") と package_dir={"": "lazygit-llm"} を使い、console_scripts は "lazygit-llm-generate=src.main:main" を指しています（setup.py:21–23,56–58）。現状 lazygit-llm/src/main.py が project_root を sys.path に挿入して動作を補っているため、配布や仮想環境で壊れやすい。
+      🧩 Analysis chain
     </coderabbit_analysis>
     <proposed_diff>
       <![CDATA[
 ---
 ---
-- lazygit-llm/src/main.py の project_root/sys.path.insert(...)（先頭、約26–33行）を削除。
-- パッケージ名とエントリポイントを整合させる：パッケージを適切なトップレベル名にリネームして setup.py の console_scripts をそのパッケージの絶対 import（例: lazygit_llm.main:main）に変更する、もしくは 'src' を正式なパッケージ名として一貫させて相対 import／python -m 実行フローに統一する。
+- lazygit-llm/src/main.py の project_root/sys.path.insert(...)（先頭、約26–33行）を削除。  
+- パッケージ名とエントリポイントを整合させる：パッケージを適切なトップレベル名にリネームして setup.py の console_scripts をそのパッケージの絶対 import（例: lazygit_llm.main:main）に変更する、もしくは 'src' を正式なパッケージ名として一貫させて相対 import／python -m 実行フローに統一する。  
 - インポートをパッケージ絶対 import に統一（'from src.…' を実際のパッケージ名に合わせるか、相対 import に切り替える）。
 ]]>
     </proposed_diff>
@@ -258,7 +256,7 @@ For comments with multiple exchanges, consider:
       致命的: setup_logging が重複定義され、関数内に import が混入しており構文エラーになります
     </issue_summary>
     <coderabbit_analysis>
-      +    ログ出力を初期化。常に一時ファイルへ出力し、verbose=True のとき STDERR にも出力。
+      このブロックは崩れていて実行不能です。単一の関数に統合し、ハンドラを明示的に組み立ててください。
     </coderabbit_analysis>
     <ai_agent_prompt>
       <code_block>
@@ -308,6 +306,9 @@ For comments with multiple exchanges, consider:
     <issue_summary>
       パッケージ名が`src`になる構成は衝突リスク高。固有名パッケージへ変更を。
     </issue_summary>
+    <also_applies_to>
+      56-60
+    </also_applies_to>
     <coderabbit_analysis>
       現状`find_packages(where="lazygit-llm")`配下の`src`がトップレベルパッケージになります（`import src`）。他プロジェクトと衝突/誤インポートを招きやすいため、`lazygit_llm`等の固有名に改称し、エントリポイントも合わせて修正してください。
     </coderabbit_analysis>
@@ -355,6 +356,9 @@ For comments with multiple exchanges, consider:
     <issue_summary>
       環境変数ファイルの網羅性を強化（漏洩予防）。
     </issue_summary>
+    <also_applies_to>
+      148-157
+    </also_applies_to>
     <coderabbit_analysis>
       `.env.*` と `.envrc` を追加し、環境別ファイルやdirenvの誤コミットを防止しましょう。
     </coderabbit_analysis>
@@ -405,35 +409,15 @@ For comments with multiple exchanges, consider:
     <issue_summary>
       バックアップパターンの重複（`*~`）を削除。
     </issue_summary>
+    <also_applies_to>
+      181-185
+    </also_applies_to>
     <coderabbit_analysis>
       `*~` が2回記載されています。どちらかを削除してスリムに。
     </coderabbit_analysis>
     <proposed_diff>
       <![CDATA[
 - *~
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file=".gitignore" lines="148-157">
-    <issue_summary>
-      環境変数ファイルの網羅性を強化（漏洩予防）。
-    </issue_summary>
-    <coderabbit_analysis>
-      `.env.*` と `.envrc` を追加し、環境別ファイルやdirenvの誤コミットを防止しましょう。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
-# Environments
- .env
- .venv
- env/
- venv/
- ENV/
- env.bak/
- venv.bak/
-+ .env.*
-+ .envrc
 ]]>
     </proposed_diff>
   </review_comment>
@@ -449,20 +433,6 @@ For comments with multiple exchanges, consider:
       <![CDATA[
 - .coverage
 - htmlcov/
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file=".gitignore" lines="181-185">
-    <issue_summary>
-      バックアップパターンの重複（`*~`）を削除。
-    </issue_summary>
-    <coderabbit_analysis>
-      `*~` が2回記載されています。どちらかを削除してスリムに。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
-- *~
 ]]>
     </proposed_diff>
   </review_comment>
@@ -498,6 +468,9 @@ For comments with multiple exchanges, consider:
     <issue_summary>
       PEP 585準拠へ型ヒントを統一（Dict→dict）
     </issue_summary>
+    <also_applies_to>
+      16-18
+    </also_applies_to>
     <coderabbit_analysis>
       CLI側と同様にビルトインジェネリクスへ統一しておくと一貫性が保てます。
     </coderabbit_analysis>
@@ -517,12 +490,12 @@ For comments with multiple exchanges, consider:
       公開APIを明示 (__all__) を追加
     </issue_summary>
     <coderabbit_analysis>
-      No analysis available
+      API_PROVIDERS: Dict[str, Type[BaseProvider]] = {}
     </coderabbit_analysis>
     <proposed_diff>
       <![CDATA[
 API_PROVIDERS: Dict[str, Type[BaseProvider]] = {}
-
+ 
 +__all__ = [
 +    "API_PROVIDERS",
 +    "register_provider",
@@ -813,44 +786,9 @@ if "{diff}" in prompt_template:
     <issue_summary>
       PEP 585準拠へ型ヒントを統一（Dict→dict）＋Optional追加
     </issue_summary>
-    <coderabbit_analysis>
-      ビルトインジェネリクスへ統一すると可読性が上がります。`get_provider_class`を追加する前提で`Optional`もインポートしておくと良いです。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--from typing import Dict, Type
-+from typing import Optional, Type
-@@
--CLI_PROVIDERS: Dict[str, Type[BaseProvider]] = {}
-+CLI_PROVIDERS: dict[str, Type[BaseProvider]] = {}
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="lazygit-llm/lazygit_llm/cli_providers/__init__.py" lines="15-18">
-    <issue_summary>
-      公開APIを明示 (__all__) を追加
-    </issue_summary>
-    <coderabbit_analysis>
-      レジストリの公開面を固定し、静的解析/補完を補助。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
-CLI_PROVIDERS: Dict[str, Type[BaseProvider]] = {}
-
-+__all__ = [
-+    "CLI_PROVIDERS",
-+    "register_provider",
-+    "get_available_providers",
-+]
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="lazygit-llm/lazygit_llm/cli_providers/__init__.py" lines="16-17">
-    <issue_summary>
-      PEP 585準拠へ型ヒントを統一（Dict→dict）＋Optional追加
-    </issue_summary>
+    <also_applies_to>
+      16-17
+    </also_applies_to>
     <coderabbit_analysis>
       ビルトインジェネリクスへ統一すると可読性が上がります。`get_provider_class`を追加する前提で`Optional`もインポートしておくと良いです。
     </coderabbit_analysis>
@@ -871,21 +809,6 @@ CLI_PROVIDERS: Dict[str, Type[BaseProvider]] = {}
     </issue_summary>
     <coderabbit_analysis>
       全角の「（」「）」がRuffで警告になります。日本語コメントは維持しつつ半角へ置換しましょう（もしくはルール除外）。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--# プロバイダー登録レジストリ（実装時に各プロバイダーが追加）
-+# プロバイダー登録レジストリ(実装時に各プロバイダーが追加)
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="lazygit-llm/lazygit_llm/cli_providers/__init__.py" lines="16-16">
-    <issue_summary>
-      Ruff RUF003: 全角カッコを半角に
-    </issue_summary>
-    <coderabbit_analysis>
-      コメント内の「（」「）」を「(」「)」へ。スタイル警告抑止と一貫性のため。
     </coderabbit_analysis>
     <proposed_diff>
       <![CDATA[
@@ -993,36 +916,6 @@ def get_available_providers() -> list[str]:
     </proposed_diff>
   </review_comment>
 
-  <review_comment type="Nitpick" file="lazygit-llm/lazygit_llm/cli_providers/__init__.py" lines="46-46">
-    <issue_summary>
-      docstring内の全角括弧を半角に修正
-    </issue_summary>
-    <coderabbit_analysis>
-      Line 46のdocstringに全角括弧が含まれています。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--    """名前でCLIプロバイダーのクラスを取得（見つからない場合はNone）。"""
-+    """名前でCLIプロバイダーのクラスを取得(見つからない場合はNone)。"""
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="lazygit-llm/lazygit_llm/cli_providers/__init__.py" lines="51-51">
-    <issue_summary>
-      __all__のソート順を修正
-    </issue_summary>
-    <coderabbit_analysis>
-      `__all__`リストをアルファベット順にソートすることを推奨します。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--__all__ = ["register_provider", "get_available_providers", "get_provider_class", "CLI_PROVIDERS"]
-+__all__ = ["CLI_PROVIDERS", "get_available_providers", "get_provider_class", "register_provider"]
-]]>
-    </proposed_diff>
-  </review_comment>
-
   <review_comment type="Nitpick" file="lazygit-llm/lazygit_llm/main.py" lines="1-1">
     <issue_summary>
       shebang は不要(モジュール用途)または実行権付与
@@ -1083,39 +976,39 @@ level = logging.DEBUG if verbose else logging.INFO
       例外処理とログ出力の改善
     </issue_summary>
     <coderabbit_analysis>
-      例外処理に以下の改善点があります： 1. Line 122で包括的な例外キャッチ 2. Line 123でlogging.exceptionを使用すべき 以下の修正を適用してください：
+      例外処理に以下の改善点があります：
     </coderabbit_analysis>
     <proposed_diff>
       <![CDATA[
 def test_configuration(config_manager: ConfigManager) -> bool:
      """
      設定をテストして結果を表示
-
+ 
      Args:
          config_manager: 設定マネージャー
-
+ 
      Returns:
          設定が有効な場合True
      """
      logger = logging.getLogger(__name__)
-
+ 
      try:
          # 設定の基本検証
          if not config_manager.validate_config():
              print("❌ 設定ファイルの検証に失敗しました")
              return False
-
+ 
          # プロバイダーの接続テスト
          provider_factory = ProviderFactory()
          provider = provider_factory.create_provider(config_manager.config)
-
+ 
          if provider.test_connection():
              print("✅ 設定とプロバイダー接続は正常です")
              return True
          else:
              print("❌ プロバイダーへの接続に失敗しました")
              return False
-
+ 
 -    except Exception as e:
 -        logger.error(f"設定テスト中にエラー: {e}")
 +    except (ProviderError, AuthenticationError, ProviderTimeoutError) as e:
@@ -1131,24 +1024,24 @@ def test_configuration(config_manager: ConfigManager) -> bool:
       例外処理とエラーログの改善
     </issue_summary>
     <coderabbit_analysis>
-      main()関数の例外処理に以下の改善が必要です： 1. Line 177のログ文がtry文内にある 2. Lines 180, 185, 190, 198でlogging.exceptionを使用すべき 3. Lines 181, 186で不要なf-stringプレフィックス 4. Line 197で包括的な例外キャッチ 以下の修正を適用してください：
+      main()関数の例外処理に以下の改善が必要です：
     </coderabbit_analysis>
     <proposed_diff>
       <![CDATA[
 # メッセージをフォーマット
          formatter = MessageFormatter()
          formatted_message = formatter.format_response(raw_message)
-
+ 
          # LazyGitに出力
          print(formatted_message)
-
+ 
 -        logger.info("コミットメッセージ生成完了")
 -        return 0
 +    except AuthenticationError as e:
 +        logger.exception("認証エラー")
 +        print("❌ 認証エラー: APIキーを確認してください")
 +        return 1
-
+ 
 -    except AuthenticationError as e:
 -        logger.error(f"認証エラー: {e}")
 -        print(f"❌ 認証エラー: APIキーを確認してください")
@@ -1170,7 +1063,7 @@ def test_configuration(config_manager: ConfigManager) -> bool:
 +        logger.exception("プロバイダーエラー")
          print(f"❌ プロバイダーエラー: {e}")
          return 1
-
+ 
      except KeyboardInterrupt:
          print("⛔ 操作が中断されました")
          return 130
@@ -1250,7 +1143,7 @@ logger.info("コミットメッセージ生成完了")
 +        logger.exception("認証エラー: %s", e)
 +        print("❌ 認証エラー: APIキーを確認してください")
          return 1
-
+ 
 -    except ProviderTimeoutError as e:
 -        logger.error(f"タイムアウトエラー: {e}")
 -        print(f"❌ タイムアウト: ネットワーク接続を確認してください")
@@ -1373,24 +1266,6 @@ logger = logging.getLogger(__name__)
     </proposed_diff>
   </review_comment>
 
-  <review_comment type="Nitpick" file="lazygit-llm/src/base_provider.py" lines="43-47">
-    <issue_summary>
-      Raises 節に ResponseError を追記
-    </issue_summary>
-    <coderabbit_analysis>
-      レスポンス検証失敗時の例外を明示することで API 契約が明確になります。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
-Raises:
-             ProviderError: プロバイダー固有のエラー
-             ProviderTimeoutError: タイムアウトエラー
-             AuthenticationError: 認証エラー
-+            ResponseError: レスポンス検証エラー
-]]>
-    </proposed_diff>
-  </review_comment>
-
   <review_comment type="Nitpick" file="lazygit-llm/src/base_provider.py" lines="67-79">
     <issue_summary>
       設定検証で「存在」だけでなく「非空」も確認を。
@@ -1453,6 +1328,9 @@ Raises:
     <issue_summary>
       Ruffの全角括弧警告（RUF002/003）の解消。
     </issue_summary>
+    <also_applies_to>
+      117-117
+    </also_applies_to>
     <coderabbit_analysis>
       ドキュメント/コメント内の全角括弧（（ ））はASCII括弧へ統一するか、プロジェクト側で該当ルールを除外してください。
     </coderabbit_analysis>
@@ -1469,21 +1347,6 @@ Raises:
       <![CDATA[
 -            prompt_template: プロンプトテンプレート（{diff}プレースホルダーを含む）
 +            prompt_template: プロンプトテンプレート ($diff プレースホルダーを含む)
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="lazygit-llm/src/base_provider.py" lines="99-99">
-    <issue_summary>
-      全角括弧を半角に修正してください
-    </issue_summary>
-    <coderabbit_analysis>
-      docstringに全角括弧が使用されています。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--            prompt_template: プロンプトテンプレート（{diff}プレースホルダーを含む）
-+            prompt_template: プロンプトテンプレート({diff}プレースホルダーを含む)
 ]]>
     </proposed_diff>
   </review_comment>
@@ -1526,45 +1389,6 @@ if "{diff}" in prompt_template:
     </proposed_diff>
   </review_comment>
 
-  <review_comment type="Nitpick" file="lazygit-llm/src/base_provider.py" lines="117-117">
-    <issue_summary>
-      Ruffの全角括弧警告（RUF002/003）の解消。
-    </issue_summary>
-    <coderabbit_analysis>
-      ドキュメント/コメント内の全角括弧（（ ））はASCII括弧へ統一するか、プロジェクト側で該当ルールを除外してください。
-    </coderabbit_analysis>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="lazygit-llm/src/base_provider.py" lines="123-123">
-    <issue_summary>
-      コメント内の全角括弧を半角に修正してください
-    </issue_summary>
-    <coderabbit_analysis>
-      コメントに全角括弧が使用されています。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--        # 最大長チェック（LazyGitでの表示を考慮）
-+        # 最大長チェック(LazyGitでの表示を考慮)
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="lazygit-llm/src/base_provider.py" lines="123-123">
-    <issue_summary>
-      コメントの全角カッコをASCIIへ（RUF003）
-    </issue_summary>
-    <coderabbit_analysis>
-      Ruff 指摘に合わせて修正を。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--        # 最大長チェック（LazyGitでの表示を考慮）
-+        # 最大長チェック (LazyGit での表示を考慮)
-]]>
-    </proposed_diff>
-  </review_comment>
-
   <review_comment type="Nitpick" file="lazygit-llm/src/base_provider.py" lines="124-127">
     <issue_summary>
       `max_message_length` の安全なパース
@@ -1584,37 +1408,6 @@ if "{diff}" in prompt_template:
     </proposed_diff>
   </review_comment>
 
-  <review_comment type="Nitpick" file="lazygit-llm/src/cli_providers/__init__.py" lines="4-7">
-    <issue_summary>
-      Docstringの全角コロンをASCIIに。
-    </issue_summary>
-    <coderabbit_analysis>
-      リンタ（Ruff RUF002）回避のため`：`→`:`へ。
-    </coderabbit_analysis>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="lazygit-llm/src/cli_providers/__init__.py" lines="16-25">
-    <issue_summary>
-      同名登録の上書きを検知して警告を。
-    </issue_summary>
-    <coderabbit_analysis>
-      誤って既存エントリを潰さないよう、上書き時にwarnを出すのが安全です。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--from typing import Dict, Type
-+from typing import Dict, Type
-+import logging
-+logger = logging.getLogger(__name__)
-@@
--    CLI_PROVIDERS[name] = provider_class
-+    if name in CLI_PROVIDERS:
-+        logger.warning("CLI provider '%s' を上書き登録します", name)
-+    CLI_PROVIDERS[name] = provider_class
-]]>
-    </proposed_diff>
-  </review_comment>
-
   <review_comment type="Nitpick" file="lazygit-llm/src/main.py" lines="1-1">
     <issue_summary>
       シェバンがあるファイルに実行権限を付与してください
@@ -1628,6 +1421,9 @@ if "{diff}" in prompt_template:
     <issue_summary>
       標準の TimeoutError と名前衝突しうるため別名に
     </issue_summary>
+    <also_applies_to>
+      207-211
+    </also_applies_to>
     <coderabbit_analysis>
       可読性・誤捕捉防止のためプロバイダの Timeout を別名で捕捉してください。
     </coderabbit_analysis>
@@ -1708,6 +1504,9 @@ if "{diff}" in prompt_template:
     <issue_summary>
       `logging.exception`を使用してトレースバックを記録してください
     </issue_summary>
+    <also_applies_to>
+      189-189, 194-194, 202-202
+    </also_applies_to>
     <coderabbit_analysis>
       例外処理では`logging.error`より`logging.exception`の使用が推奨されます。
     </coderabbit_analysis>
@@ -1723,6 +1522,9 @@ if "{diff}" in prompt_template:
     <issue_summary>
       不要なf-stringプレフィックスを削除してください
     </issue_summary>
+    <also_applies_to>
+      190-190
+    </also_applies_to>
     <coderabbit_analysis>
       プレースホルダーのないf-stringです。
     </coderabbit_analysis>
@@ -1730,87 +1532,6 @@ if "{diff}" in prompt_template:
       <![CDATA[
 -        print(f"❌ 認証エラー: APIキーを確認してください")
 +        print("❌ 認証エラー: APIキーを確認してください")
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="lazygit-llm/src/main.py" lines="189-189">
-    <issue_summary>
-      `logging.exception`を使用してトレースバックを記録してください
-    </issue_summary>
-    <coderabbit_analysis>
-      例外処理では`logging.error`より`logging.exception`の使用が推奨されます。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--        logger.error(f"認証エラー: {e}")
-+        logger.exception(f"認証エラー: {e}")
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="lazygit-llm/src/main.py" lines="190-190">
-    <issue_summary>
-      不要なf-stringプレフィックスを削除してください
-    </issue_summary>
-    <coderabbit_analysis>
-      プレースホルダーのないf-stringです。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--        print(f"❌ 認証エラー: APIキーを確認してください")
-+        print("❌ 認証エラー: APIキーを確認してください")
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="lazygit-llm/src/main.py" lines="194-194">
-    <issue_summary>
-      `logging.exception`を使用してトレースバックを記録してください
-    </issue_summary>
-    <coderabbit_analysis>
-      例外処理では`logging.error`より`logging.exception`の使用が推奨されます。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--        logger.error(f"認証エラー: {e}")
-+        logger.exception(f"認証エラー: {e}")
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="lazygit-llm/src/main.py" lines="202-202">
-    <issue_summary>
-      `logging.exception`を使用してトレースバックを記録してください
-    </issue_summary>
-    <coderabbit_analysis>
-      例外処理では`logging.error`より`logging.exception`の使用が推奨されます。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--        logger.error(f"認証エラー: {e}")
-+        logger.exception(f"認証エラー: {e}")
-]]>
-    </proposed_diff>
-  </review_comment>
-
-  <review_comment type="Nitpick" file="lazygit-llm/src/main.py" lines="207-211">
-    <issue_summary>
-      標準の TimeoutError と名前衝突しうるため別名に
-    </issue_summary>
-    <coderabbit_analysis>
-      可読性・誤捕捉防止のためプロバイダの Timeout を別名で捕捉してください。
-    </coderabbit_analysis>
-    <proposed_diff>
-      <![CDATA[
--from src.base_provider import ProviderError, AuthenticationError, TimeoutError
-+from src.base_provider import ProviderError, AuthenticationError, TimeoutError as ProviderTimeoutError
-@@
--    except TimeoutError as e:
-+    except ProviderTimeoutError as e:
-         logger.error(f"タイムアウトエラー: {e}")
-         print(f"❌ タイムアウト: ネットワーク接続を確認してください")
-         return 1
 ]]>
     </proposed_diff>
   </review_comment>
@@ -1832,9 +1553,9 @@ if "{diff}" in prompt_template:
 
   <review_comment type="OutsideDiff" file="lazygit-llm/src/main.py" lines="1-209">
     <issue>
-      &gt;
+      &gt; 
 &gt; 最小ラッパーに置き換え、ドキュメントのパイプ例も削除。
-&gt;
+&gt; 
 &gt; ```diff
 &gt; -#!/usr/bin/env python3
 &gt; -"""
@@ -1851,17 +1572,17 @@ if "{diff}" in prompt_template:
 &gt; +if __name__ == "__main__":
 &gt; +    sys.exit(main())
 &gt; ```
-&gt;
+&gt; 
 &gt; &lt;/blockquote&gt;&lt;/details&gt;
-&gt;
+&gt; 
 &gt; &lt;/blockquote&gt;&lt;/details&gt;
 
 &lt;details&gt;
     </issue>
     <instructions>
-      &gt;
+      &gt; 
 &gt; 最小ラッパーに置き換え、ドキュメントのパイプ例も削除。
-&gt;
+&gt; 
 &gt; ```diff
 &gt; -#!/usr/bin/env python3
 &gt; -"""
@@ -1878,9 +1599,9 @@ if "{diff}" in prompt_template:
 &gt; +if __name__ == "__main__":
 &gt; +    sys.exit(main())
 &gt; ```
-&gt;
+&gt; 
 &gt; &lt;/blockquote&gt;&lt;/details&gt;
-&gt;
+&gt; 
 &gt; &lt;/blockquote&gt;&lt;/details&gt;
 
 &lt;details&gt;
