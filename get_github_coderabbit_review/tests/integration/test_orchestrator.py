@@ -99,7 +99,10 @@ class TestOrchestratorIntegration(unittest.TestCase):
         mock_github.return_value = mock_github_instance
 
         mock_persona_instance = Mock()
-        mock_persona_instance.get_default_persona.return_value = "Test persona"
+        # Mock all persona manager methods that orchestrator uses
+        mock_persona_instance.get_default_persona.return_value = "Test persona content that is long enough to pass validation checks and provide meaningful analysis for the code review process"
+        mock_persona_instance.load_from_file.return_value = "Test persona content that is long enough to pass validation checks and provide meaningful analysis for the code review process"
+        mock_persona_instance.load_persona.return_value = "Test persona content that is long enough to pass validation checks and provide meaningful analysis for the code review process"
         mock_persona.return_value = mock_persona_instance
 
         # Mock analyzed comments

@@ -77,7 +77,14 @@ class GitHubClient:
             )
 
             # gh auth status returns 0 when authenticated
-            return result.returncode == 0
+            if result.returncode == 0:
+                return True
+            else:
+                # Authentication failed, raise an error
+                error_msg = (
+                    result.stderr.strip() if result.stderr else "Authentication check failed"
+                )
+                raise GitHubAuthenticationError(f"Not authenticated: {error_msg}")
 
         except subprocess.TimeoutExpired as e:
             raise GitHubAuthenticationError("Authentication check timed out") from e

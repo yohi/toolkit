@@ -201,16 +201,15 @@ class TestGitHubIntegration(unittest.TestCase):
 
         result = self.client.post_comment(pr_url=self.sample_pr_url, comment="Test comment")
 
-        self.assertIsInstance(result, dict)
-        self.assertIn("id", result)
-        self.assertEqual(result["body"], "Test comment")
+        self.assertTrue(result)  # post_comment returns bool, not dict
 
         mock_run.assert_called_once()
 
         # Verify command structure
         call_args = mock_run.call_args[0][0]
         self.assertIn("gh", call_args)
-        self.assertIn("api", call_args)
+        self.assertIn("pr", call_args)  # Implementation uses 'gh pr comment', not 'gh api'
+        self.assertIn("comment", call_args)
 
     @patch("subprocess.run")
     def test_post_comment_failure(self, mock_run):
@@ -219,8 +218,8 @@ class TestGitHubIntegration(unittest.TestCase):
             returncode=1, stdout="", stderr="gh: HTTP 403: You do not have permission"
         )
 
-        with self.assertRaises(Exception):  # Should raise some form of error
-            self.client.post_comment(pr_url=self.sample_pr_url, comment="Test comment")
+        result = self.client.post_comment(pr_url=self.sample_pr_url, comment="Test comment")
+        self.assertFalse(result)  # post_comment returns False on failure, not exception
 
     @patch("subprocess.run")
     def test_github_cli_timeout(self, mock_run):
