@@ -37,6 +37,11 @@ class AbstractProvider(ABC):
 class ClassProvider(AbstractProvider):
     """Provider that creates instances from a class."""
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .container import DIContainer
+
     def __init__(
         self,
         service_type: Type[T],

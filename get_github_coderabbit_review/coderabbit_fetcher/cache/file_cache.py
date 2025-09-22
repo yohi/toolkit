@@ -190,7 +190,8 @@ class FileCache(CacheProvider):
             logger.error(f"Error writing cache file {file_path}: {e}")
             # Clean up temporary file
             try:
-                temp_file.unlink()
+                if 'temp_file' in locals() and temp_file.exists():
+                    temp_file.unlink()
             except Exception:
                 pass
             return False
@@ -473,10 +474,14 @@ class FileCache(CacheProvider):
 
             if namespace_dir.exists():
                 try:
+                    # Count files before removal
+                    removed_count += sum(
+                        1
+                        for root, dirs, files in os.walk(namespace_dir)
+                        for f in files
+                        if f.endswith('.cache')
+                    )
                     shutil.rmtree(namespace_dir)
-                    # Count files that were removed
-                    for root, dirs, files in os.walk(namespace_dir):
-                        removed_count += len([f for f in files if f.endswith('.cache')])
                 except Exception as e:
                     logger.error(f"Error clearing namespace {namespace}: {e}")
 

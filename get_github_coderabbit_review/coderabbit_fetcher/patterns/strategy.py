@@ -446,7 +446,13 @@ class ProcessingStrategyManager:
             return len(data)
         elif hasattr(data, '__iter__') and not isinstance(data, (str, dict)):
             try:
-                return len(list(data))
+                # 最大1000要素までカウント
+                count = 0
+                for _ in data:
+                    count += 1
+                    if count >= 1000:
+                        break
+                return count
             except Exception:
                 return 100  # Default estimate
         else:

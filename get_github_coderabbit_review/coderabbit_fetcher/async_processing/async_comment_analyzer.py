@@ -169,7 +169,7 @@ class AsyncCommentAnalyzer:
         chunks = [comments[i:i + chunk_size] for i in range(0, len(comments), chunk_size)]
 
         # Run filtering in thread pool
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         tasks = [
             loop.run_in_executor(self.executor, filter_coderabbit, chunk)
             for chunk in chunks
@@ -281,7 +281,7 @@ class AsyncCommentAnalyzer:
 
         try:
             # Run synchronous analysis in thread pool
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
 
             # Create a synthetic PR data structure for the batch
             pr_data = {
@@ -347,7 +347,7 @@ class AsyncCommentAnalyzer:
             )
 
         # Run combination in thread pool to avoid blocking
-        loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
 
         def combine_sync():
             """Synchronous combination logic."""
@@ -402,7 +402,8 @@ class AsyncCommentAnalyzer:
     async def close(self) -> None:
         """Close the async comment analyzer and cleanup resources."""
         if self.executor:
-            self.executor.shutdown(wait=True)
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, self.executor.shutdown, True)
             logger.info("AsyncCommentAnalyzer executor shut down")
 
     async def __aenter__(self):

@@ -188,16 +188,21 @@ class AICommentClassifier:
         Returns:
             Classification result
         """
-        # Run async method
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+    def classify_comment(
+        self,
+        comment_text: str,
+        context: Optional[Dict[str, Any]] = None
+    ) -> ClassificationResult:
+        """Classify a single comment synchronously.
 
-        return loop.run_until_complete(
-            self.classify_comment_async(comment_text, context)
-        )
+        Args:
+            comment_text: Comment text to classify
+            context: Optional context
+
+        Returns:
+            Classification result
+        """
+        return asyncio.run(self.classify_comment_async(comment_text, context))
 
     async def classify_comments_batch_async(
         self,
@@ -516,7 +521,10 @@ class AICommentClassifier:
 
     def _extract_keywords(self, text: str, pattern: str) -> List[str]:
         """Extract keywords matching the pattern."""
-        import re
+    def _extract_keywords(self, text: str, pattern: str) -> List[str]:
+        """Extract keywords matching the pattern."""
+        matches = re.findall(pattern, text, re.IGNORECASE)
+        return list(set(matches)) if matches else []
         matches = re.findall(pattern, text, re.IGNORECASE)
         return list(set(matches)) if matches else []
 

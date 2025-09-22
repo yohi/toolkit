@@ -1,10 +1,12 @@
 """Review comment processor for extracting actionable comments and specialized sections."""
 
 import logging
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from ..exceptions import CommentParsingError
-from ..models.review_comment import ReviewComment
+from ..models.actionable_comment import ActionableComment
+from ..models.ai_agent_prompt import AIAgentPrompt
+from ..models.review_comment import ReviewComment, BasicReviewComment, NitpickComment, OutsideDiffComment
 from .comment_parser import CommentParser
 from .content_analyzer import ContentAnalyzer
 from .output_formatter import OutputFormatter

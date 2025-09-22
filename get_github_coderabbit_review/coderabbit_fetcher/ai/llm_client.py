@@ -193,6 +193,24 @@ class LLMClient(ABC):
         current_time = time.time()
 
         # Remove requests older than 1 minute
+def __init__(self, config: LLMConfig, cache_manager: Optional[CacheManager] = None):
+    """Initialize LLM client."""
+    self.config = config
+    self.cache_manager = cache_manager
+
+    # Rate limiting
+    self._request_times: List[float] = []
+    self._rate_limit_lock = asyncio.Lock()
+
+    # Statistics
+    self.stats = {
+
+async def _enforce_rate_limit(self) -> None:
+    """Enforce rate limiting."""
+    async with self._rate_limit_lock:
+        current_time = time.time()
+        
+        # Remove requests older than 1 minute
         self._request_times = [
             t for t in self._request_times
             if current_time - t < 60

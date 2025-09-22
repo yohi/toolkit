@@ -320,8 +320,7 @@ class TestPhase1PerformanceImprovements(unittest.TestCase):
             return None
 
         start_memory = memory_manager.get_memory_stats().process_mb
-
-        results = stream_processor.process_comments_streaming(
+        results = stream_processor.process_streaming(
             large_comments,
             filter_coderabbit
         )

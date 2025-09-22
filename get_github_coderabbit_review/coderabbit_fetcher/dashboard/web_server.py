@@ -448,7 +448,7 @@ class DashboardEventObserver(EventObserver):
         """
         self.dashboard = dashboard
 
-    def on_event(self, event: Event) -> None:
+    def update(self, event: Event) -> None:
         """Handle event.
 
         Args:
@@ -456,6 +456,9 @@ class DashboardEventObserver(EventObserver):
         """
         self.dashboard.handle_event(event)
 
+    def get_name(self) -> str:
+        """Get observer name."""
+        return "DashboardEventObserver"
 
 def create_dashboard_app(config: Optional[DashboardConfig] = None) -> DashboardServer:
     """Create dashboard application.

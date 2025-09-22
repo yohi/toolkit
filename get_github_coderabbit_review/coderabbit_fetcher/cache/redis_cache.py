@@ -12,6 +12,8 @@ from .cache_manager import CacheProvider, CacheKey, CacheEntry, CacheError
 logger = logging.getLogger(__name__)
 
 
+from dataclasses import dataclass, field
+
 @dataclass
 class RedisConfig:
     """Redis cache configuration."""
@@ -22,14 +24,13 @@ class RedisConfig:
     socket_timeout: float = 5.0
     socket_connect_timeout: float = 5.0
     socket_keepalive: bool = True
-    socket_keepalive_options: Dict[str, Any] = None
+    socket_keepalive_options: Dict[str, Any] = field(default_factory=dict)
     retry_on_timeout: bool = True
     decode_responses: bool = True
     max_connections: int = 50
     serialization: str = "json"  # json, pickle
     compression: bool = False
     key_prefix: str = "coderabbit:"
-
 
 class RedisCache(CacheProvider):
     """Redis cache implementation."""

@@ -20,7 +20,8 @@ class EventRecord:
     """Event record for storage."""
     id: str
     event: Event
-    stored_at: datetime = field(default_factory=datetime.now)
+from datetime import timezone
+    stored_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -236,9 +237,21 @@ class FileEventStore(EventStore):
             record_json = json.dumps(record.to_dict()) + '\n'
 
             try:
-                with open(self._current_file_path, 'a', encoding='utf-8') as f:
-                    f.write(record_json)
-                    f.flush()
+                # Write to temporary file first
+                temp_fd, temp_path = tempfile.mkstemp(dir=self.storage_dir, text=True)
+                try:
+                    with os.fdopen(temp_fd, 'w', encoding='utf-8') as temp_file:
+                        # Read existing content
+                        if self._current_file_path.exists():
+                            with open(self._current_file_path, 'r', encoding='utf-8') as f:
+                                temp_file.write(f.read())
+                        # Append new record
+                        temp_file.write(record_json)
+                    # Atomically replace the file
+                    os.replace(temp_path, self._current_file_path)
+                except:
+                    os.unlink(temp_path)
+                    raise
 
                 self.stats['events_stored'] += 1
                 return event_id

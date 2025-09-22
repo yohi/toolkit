@@ -43,40 +43,33 @@ from .session import (
 )
 
 __all__ = [
-    # SSO
-    "SSOProvider",
-    "SSOConfig",
-    "SSOManager",
-    "OAuthProvider",
-    "SAMLProvider",
-    "OpenIDConnectProvider",
-
-    # RBAC
-    "RBACManager",
+    # Core authentication (required)
+    "User",
     "Role",
     "Permission",
-    "User",
-    "AccessControlList",
-    "PolicyEngine",
-
-    # Audit
-    "AuditLogger",
-    "AuditEvent",
-    "AuditConfig",
-    "ComplianceReporter",
-    "SecurityAnalyzer",
-
-    # LDAP
-    "LDAPConnector",
-    "LDAPConfig",
-    "UserManager",
-    "GroupManager",
-    "DirectorySync",
-
-    # Session Management
+    "RBACManager",
     "SessionManager",
-    "SessionConfig",
-    "TokenManager",
-    "JWTProvider",
-    "RefreshTokenHandler"
+    "AuditLogger",
+
+    # Basic providers (standard)
+    "SSOProvider",
+    "SSOManager",
+
+    # Enterprise features (optional)
+    # Import explicitly if needed
 ]
+
+# エンタープライズ機能の段階的導入
+try:
+    from .ldap import LDAPConnector
+    __all__.extend(["LDAPConnector"])
+except ImportError:
+    # LDAP機能はオプション
+    pass
+
+try:
+    from .sso import SAMLProvider, OpenIDConnectProvider
+    __all__.extend(["SAMLProvider", "OpenIDConnectProvider"])
+except ImportError:
+    # 高度なSSO機能はオプション
+    pass
