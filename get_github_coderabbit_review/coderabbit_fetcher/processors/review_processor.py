@@ -1,6 +1,8 @@
 """Review comment processor for extracting actionable comments and specialized sections."""
 
+from __future__ import annotations
 import logging
+import re
 from typing import Any, Dict, List, Optional
 
 from ..exceptions import CommentParsingError
@@ -16,10 +18,10 @@ logger = logging.getLogger(__name__)
 
 class ReviewProcessor:
     """Processes CodeRabbit review comments to extract actionable items and specialized sections.
-    
+
     This refactored version delegates responsibilities to specialized components:
     - CommentParser: Handles parsing and extraction
-    - ContentAnalyzer: Analyzes content patterns and complexity  
+    - ContentAnalyzer: Analyzes content patterns and complexity
     - OutputFormatter: Formats output for different use cases
     """
 
@@ -53,8 +55,8 @@ class ReviewProcessor:
             outside_diff_comments = self.parser.extract_outside_diff_comments(body)
             ai_agent_prompts = self.parser.extract_ai_agent_prompts(body)
 
-            # Use analyzer for additional comments analysis
-            additional_comments = self._extract_additional_comments_with_analysis(body)
+            # Use existing extractor for additional comments
+            additional_comments = self.extract_additional_comments(body)
 
             logger.debug(
                 f"Creating ReviewComment with {len(nitpick_comments)} nitpick comments and {len(additional_comments)} additional comments"

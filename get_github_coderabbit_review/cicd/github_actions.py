@@ -183,7 +183,22 @@ class ActionRunner:
                     env=env
                 )
 
-                stdout, stderr = await process.communicate()
+                # Enforce timeout if specified
+                if step.timeout_minutes:
+                    try:
+                        stdout, stderr = await asyncio.wait_for(
+                            process.communicate(),
+                            timeout=step.timeout_minutes * 60
+                        )
+                    except asyncio.TimeoutError:
+                        process.kill()
+                        await process.wait()
+                        result["status"] = "failure"
+                        result["error"] = f"Step timed out after {step.timeout_minutes} minutes"
+                        result["exit_code"] = 124  # Standard timeout exit code
+                        return result
+                else:
+                    stdout, stderr = await process.communicate()
 
                 result["output"] = stdout.decode()
                 result["error"] = stderr.decode()
@@ -199,7 +214,7 @@ class ActionRunner:
         except Exception as e:
             result["status"] = "error"
             result["error"] = str(e)
-            logger.error(f"Step execution error: {e}")
+            logger.exception("Step execution error")
 
         end_time = datetime.now()
         result["end_time"] = end_time.isoformat()

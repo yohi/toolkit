@@ -2,6 +2,7 @@
 
 import logging
 import asyncio
+import threading
 from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
@@ -111,6 +112,7 @@ class AICommentClassifier:
         ]
 
         # Statistics
+        self._stats_lock = threading.Lock()
         self.stats = {
             'comments_classified': 0,
             'ai_classifications': 0,
@@ -142,14 +144,16 @@ class AICommentClassifier:
             if self.llm_client:
                 result = await self._classify_with_ai(comment_text, context)
                 if result:
-                    self.stats['ai_classifications'] += 1
+                    with self._stats_lock:
+                        self.stats['ai_classifications'] += 1
                     self._update_stats(result)
                     return result
 
             # Fallback to rule-based classification
             if self.fallback_enabled:
                 result = self._classify_with_rules(comment_text, context)
-                self.stats['fallback_classifications'] += 1
+                with self._stats_lock:
+                    self.stats['fallback_classifications'] += 1
                 self._update_stats(result)
                 return result
 
@@ -226,7 +230,8 @@ class AICommentClassifier:
                     batch_results = await self._classify_batch_with_ai(batch)
                     if batch_results:
                         results.extend(batch_results)
-                        self.stats['batch_classifications'] += 1
+                        with self._stats_lock:
+                            self.stats['batch_classifications'] += 1
                         continue
 
                 # Fallback to individual classification
@@ -514,39 +519,37 @@ class AICommentClassifier:
 
     def _extract_keywords(self, text: str, pattern: str) -> List[str]:
         """Extract keywords matching the pattern."""
-    def _extract_keywords(self, text: str, pattern: str) -> List[str]:
-        """Extract keywords matching the pattern."""
         matches = re.findall(pattern, text, re.IGNORECASE)
-        return list(set(matches)) if matches else []
-        matches = re.findall(pattern, text, re.IGNORECASE)
-        return list(set(matches)) if matches else []
+        return sorted(set(matches)) if matches else []
 
     def _update_stats(self, result: ClassificationResult) -> None:
         """Update classification statistics."""
-        self.stats['comments_classified'] += 1
+        with self._stats_lock:
+            self.stats['comments_classified'] += 1
 
-        # Update confidence average
-        total_confidence = (
-            self.stats['average_confidence'] * (self.stats['comments_classified'] - 1) +
-            result.confidence
-        ) / self.stats['comments_classified']
-        self.stats['average_confidence'] = total_confidence
+            # Update confidence average
+            total_confidence = (
+                self.stats['average_confidence'] * (self.stats['comments_classified'] - 1) +
+                result.confidence
+            ) / self.stats['comments_classified']
+            self.stats['average_confidence'] = total_confidence
 
-        # Update category distribution
-        category = result.category.value
-        self.stats['category_distribution'][category] = (
-            self.stats['category_distribution'].get(category, 0) + 1
-        )
+            # Update category distribution
+            category = result.category.value
+            self.stats['category_distribution'][category] = (
+                self.stats['category_distribution'].get(category, 0) + 1
+            )
 
-        # Update priority distribution
-        priority = result.priority.value
-        self.stats['priority_distribution'][priority] = (
-            self.stats['priority_distribution'].get(priority, 0) + 1
-        )
+            # Update priority distribution
+            priority = result.priority.value
+            self.stats['priority_distribution'][priority] = (
+                self.stats['priority_distribution'].get(priority, 0) + 1
+            )
 
     def get_stats(self) -> Dict[str, Any]:
         """Get classification statistics."""
-        stats = self.stats.copy()
+        with self._stats_lock:
+            stats = self.stats.copy()
 
         # Calculate percentages
         if stats['comments_classified'] > 0:
