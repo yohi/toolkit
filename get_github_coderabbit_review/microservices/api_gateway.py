@@ -122,7 +122,7 @@ class GatewayConfig:
 class RateLimiter:
     """Rate limiter for API requests."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize rate limiter."""
         self.requests: Dict[str, deque] = defaultdict(deque)
         self.lock = threading.Lock()

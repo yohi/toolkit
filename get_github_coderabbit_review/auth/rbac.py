@@ -451,7 +451,7 @@ class AccessControlList:
 class PolicyEngine:
     """Policy evaluation engine."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize policy engine."""
         self.policies: Dict[str, Dict[str, Any]] = {}
 
@@ -512,7 +512,7 @@ class PolicyEngine:
 class RBACManager:
     """Role-Based Access Control Manager."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize RBAC manager."""
         self.users: Dict[str, User] = {}
         self.roles: Dict[str, Role] = {}

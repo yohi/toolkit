@@ -55,12 +55,12 @@ class ComponentFactory(ABC):
 class ProcessorFactory(ComponentFactory):
     """Factory for creating processor components."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize processor factory."""
         self._processor_registry: Dict[str, Type] = {}
         self._register_default_processors()
 
-    def _register_default_processors(self):
+    def _register_default_processors(self) -> None:
         """Register default processor types."""
         try:
             from ..processors import ReviewProcessor, SummaryProcessor, ThreadProcessor
@@ -110,7 +110,7 @@ class ProcessorFactory(ComponentFactory):
 class FormatterFactory(ComponentFactory):
     """Factory for creating formatter components."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize formatter factory."""
         self._formatter_registry: Dict[str, Type] = {}
         self._register_default_formatters()

@@ -378,7 +378,7 @@ def run_examples_command() -> int:
     return 0
 
 
-def main():
+def main() -> None:
     """Main entry point for the CLI."""
     try:
         parser = create_argument_parser()
