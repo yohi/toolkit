@@ -320,7 +320,7 @@ Quality, Security, Standards, Specificity, Impact-awareness
                     )
 
             # Count from thread contexts (these are typically actionable)
-            for thread in analyzed_comments.unresolved_threads:
+            for _thread in analyzed_comments.unresolved_threads:
                 actionable_comments += 1
 
             # Total comments is the sum of all individual comments

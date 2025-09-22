@@ -52,18 +52,20 @@ class TestPR38Validation:
                 try:
                     # uvx でコマンドを実行（quietモード）
                     cmd = [
-                        "uvx",
-                        "--from",
-                        ".",
-                        "-n",
-                        "crf",
+                        "/home/linuxbrew/.linuxbrew/bin/python3",
+                        "-m",
+                        "coderabbit_fetcher.cli.main",
                         "https://github.com/yohi/dots/pull/38",
                         "--quiet",
-                        "--output",
+                        "--output-file",
                         temp_file.name,
                     ]
 
-                    result = subprocess.run(cmd, capture_output=True, text=True, cwd=self.repo_root)
+                    env = os.environ.copy()
+                    env["PYTHONPATH"] = str(self.repo_root)
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True, cwd=self.repo_root, env=env
+                    )
 
                     # コマンドが成功したか確認
                     assert result.returncode == 0, f"Command failed: {result.stderr}"
@@ -166,7 +168,7 @@ class TestPR38Validation:
                             "crf",
                             "https://github.com/yohi/dots/pull/38",
                             "--quiet",
-                            "--output",
+                            "--output-file",
                             temp_file.name,
                         ]
 
@@ -229,18 +231,20 @@ class TestPR38Validation:
             with tempfile.NamedTemporaryFile(mode="w+", suffix=".md", delete=False) as temp_file:
                 try:
                     cmd = [
-                        "uvx",
-                        "--from",
-                        ".",
-                        "-n",
-                        "crf",
+                        "/home/linuxbrew/.linuxbrew/bin/python3",
+                        "-m",
+                        "coderabbit_fetcher.cli.main",
                         "https://github.com/yohi/dots/pull/38",
                         "--quiet",
-                        "--output",
+                        "--output-file",
                         temp_file.name,
                     ]
 
-                    result = subprocess.run(cmd, capture_output=True, text=True, cwd=self.repo_root)
+                    env = os.environ.copy()
+                    env["PYTHONPATH"] = str(self.repo_root)
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True, cwd=self.repo_root, env=env
+                    )
 
                     assert result.returncode == 0
 
@@ -285,18 +289,20 @@ class TestPR38Validation:
             with tempfile.NamedTemporaryFile(mode="w+", suffix=".md", delete=False) as temp_file:
                 try:
                     cmd = [
-                        "uvx",
-                        "--from",
-                        ".",
-                        "-n",
-                        "crf",
+                        "/home/linuxbrew/.linuxbrew/bin/python3",
+                        "-m",
+                        "coderabbit_fetcher.cli.main",
                         "https://github.com/yohi/dots/pull/38",
                         "--quiet",
-                        "--output",
+                        "--output-file",
                         temp_file.name,
                     ]
 
-                    result = subprocess.run(cmd, capture_output=True, text=True, cwd=self.repo_root)
+                    env = os.environ.copy()
+                    env["PYTHONPATH"] = str(self.repo_root)
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True, cwd=self.repo_root, env=env
+                    )
 
                     assert result.returncode == 0
 
@@ -336,16 +342,18 @@ class TestPR38Validation:
             mock_subprocess.side_effect = mock_run_with_error
 
             cmd = [
-                "uvx",
-                "--from",
-                ".",
-                "-n",
-                "crf",
+                "/home/linuxbrew/.linuxbrew/bin/python3",
+                "-m",
+                "coderabbit_fetcher.cli.main",
                 "https://github.com/yohi/dots/pull/38",
                 "--quiet",
             ]
 
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=self.repo_root)
+            env = os.environ.copy()
+            env["PYTHONPATH"] = str(self.repo_root)
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, cwd=self.repo_root, env=env
+            )
 
             # エラーハンドリングが適切に動作することを確認
             # （具体的な動作はツールの実装による）
