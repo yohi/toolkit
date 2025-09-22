@@ -410,7 +410,7 @@ class PlainTextFormatter(BaseFormatter):
 
             return "AI assistant for CodeRabbit comment analysis"
 
-    def _wrap_text(self, text: str, indent: int = 0, max_length: int = None) -> str:
+    def _wrap_text(self, text: str, indent: int = 0, max_length: int | None = None) -> str:
         """Wrap text to fit line width.
 
         Args:

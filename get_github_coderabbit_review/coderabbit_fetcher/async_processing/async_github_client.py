@@ -468,7 +468,7 @@ class AsyncGitHubClient:
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
             # Process results
-            data = {}
+            data: dict[str, Any] = {}
             task_names = ["comments", "reviews", "files", "commits", "review_comments"]
 
             for i, result in enumerate(results):

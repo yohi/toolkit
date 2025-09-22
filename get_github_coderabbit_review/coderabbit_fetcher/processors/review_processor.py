@@ -395,7 +395,7 @@ class ReviewProcessor:
         Returns:
             List of NitpickComment objects
         """
-        nitpick_comments = []
+        nitpick_comments: list[NitpickComment] = []
 
         # Extract the nitpick section using manual parsing to handle nested blockquotes
         nitpick_start = content.find("<summary>🧹 Nitpick comments (")
@@ -663,7 +663,7 @@ class ReviewProcessor:
 
     def extract_additional_comments(self, content: str) -> List:
         """Extract additional comments as a separate category."""
-        additional_comments = []
+        additional_comments: list[AdditionalComment] = []
 
         # Find the Additional comments section
         additional_start = content.find("<summary>🔇 Additional comments (")
@@ -722,7 +722,7 @@ class ReviewProcessor:
 
     def _extract_additional_comments_as_nitpicks(self, content: str) -> List:
         """Extract additional comments that should be treated as nitpicks."""
-        nitpick_comments = []
+        nitpick_comments: list[NitpickComment] = []
         import re
 
         from ..models.review_comment import NitpickComment
