@@ -208,7 +208,7 @@ class GitHubClient:
                         raise CodeRabbitFetcherError(
                             f"Invalid JSON response from GitHub CLI: {e}",
                             details=f"Output: {result.stdout[:500]}",
-                        )
+                        ) from e
 
                 # Handle specific error cases
                 stderr_lower = result.stderr.lower()
