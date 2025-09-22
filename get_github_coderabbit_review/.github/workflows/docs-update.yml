@@ -1,0 +1,80 @@
+name: 📚 Documentation Update
+
+on:
+  push:
+    paths:
+      - "get_github_coderabbit_review/docs/**"
+      - "get_github_coderabbit_review/README.md"
+      - "get_github_coderabbit_review/**/*.md"
+    branches: [main, develop]
+  pull_request:
+    paths:
+      - "get_github_coderabbit_review/docs/**"
+      - "get_github_coderabbit_review/README.md"
+      - "get_github_coderabbit_review/**/*.md"
+    branches: [main, develop]
+
+env:
+  PROJECT_DIR: get_github_coderabbit_review
+
+jobs:
+  # 📚 ドキュメント品質チェック
+  docs-quality:
+    name: 📚 Documentation Quality Check
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🔍 Check markdown formatting
+        uses: DavidAnson/markdownlint-cli2-action@v13
+        with:
+          globs: |
+            get_github_coderabbit_review/**/*.md
+          config: |
+            {
+              "MD013": false,
+              "MD033": false,
+              "MD041": false
+            }
+
+      - name: 📊 Generate docs summary
+        run: |
+          echo "## 📚 Documentation Update Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Changed Files" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          git diff --name-only HEAD~1 HEAD | grep -E "\.md$" | head -10 | while read file; do
+            echo "- \`$file\`" >> $GITHUB_STEP_SUMMARY
+          done
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Documentation formatting validated" >> $GITHUB_STEP_SUMMARY
+
+  # 🔄 ドキュメント同期チェック
+  docs-sync:
+    name: 🔄 Documentation Sync Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: 🔍 Check if code changes require doc updates
+        run: |
+          # コードファイルが変更されているかチェック
+          CODE_CHANGES=$(git diff --name-only HEAD~1 HEAD | grep -E "\.(py|toml)$" | wc -l)
+          DOC_CHANGES=$(git diff --name-only HEAD~1 HEAD | grep -E "\.md$" | wc -l)
+
+          echo "Code changes: $CODE_CHANGES"
+          echo "Doc changes: $DOC_CHANGES"
+
+          if [ $CODE_CHANGES -gt 0 ] && [ $DOC_CHANGES -eq 0 ]; then
+            echo "⚠️ Code changes detected but no documentation updates" >> $GITHUB_STEP_SUMMARY
+            echo "Consider updating documentation if API or behavior changed" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "✅ Documentation sync status is good" >> $GITHUB_STEP_SUMMARY
+          fi
