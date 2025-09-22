@@ -103,10 +103,15 @@ class Permission:
             if condition == "time_of_day":
                 current_hour = datetime.now().hour
                 if isinstance(expected_value, dict):
-                    start_hour = expected_value.get("start", 0)
-                    end_hour = expected_value.get("end", 23)
-                    if not (start_hour <= current_hour <= end_hour):
-                        return False
+                    start_hour = int(expected_value.get("start", 0))
+                    end_hour = int(expected_value.get("end", 23))
+                    if start_hour <= end_hour:
+                        if not (start_hour <= current_hour <= end_hour):
+                            return False
+                    else:
+                        # overnight window (e.g., 22-6)
+                        if not (current_hour >= start_hour or current_hour <= end_hour):
+                            return False
 
             elif condition == "ip_range":
                 # CIDR-aware IP range check
@@ -122,7 +127,14 @@ class Permission:
 
             elif condition == "department":
                 user_department = context.get("department", "")
-                if user_department not in expected_value:
+                if isinstance(expected_value, (list, tuple, set)):
+                    if user_department not in expected_value:
+                        return False
+                elif isinstance(expected_value, str):
+                    if user_department != expected_value:
+                        return False
+                else:
+                    logger.warning("Unsupported 'department' expected_value type: %s", type(expected_value))
                     return False
 
             elif context_value != expected_value:

@@ -5,8 +5,6 @@ from .sso import (
     SSOConfig,
     SSOManager,
     OAuthProvider,
-    SAMLProvider,
-    OpenIDConnectProvider
 )
 
 from .rbac import (
@@ -26,13 +24,7 @@ from .audit import (
     SecurityAnalyzer
 )
 
-from .ldap import (
-    LDAPConnector,
-    LDAPConfig,
-    UserManager,
-    GroupManager,
-    DirectorySync
-)
+# LDAP imports handled in try/except block below for optional dependency
 
 from .session import (
     SessionManager,
@@ -43,20 +35,30 @@ from .session import (
 )
 
 __all__ = [
-    # Core authentication (required)
-    "User",
-    "Role",
-    "Permission",
-    "RBACManager",
-    "SessionManager",
+    # Audit
+    "AuditConfig",
+    "AuditEvent",
     "AuditLogger",
-
-    # Basic providers (standard)
-    "SSOProvider",
+    "ComplianceReporter",
+    "SecurityAnalyzer",
+    # RBAC
+    "AccessControlList",
+    "Permission",
+    "PolicyEngine",
+    "RBACManager",
+    "Role",
+    "User",
+    # Session
+    "JWTProvider",
+    "RefreshTokenHandler",
+    "SessionConfig",
+    "SessionManager",
+    "TokenManager",
+    # SSO (standard)
+    "OAuthProvider",
+    "SSOConfig",
     "SSOManager",
-
-    # Enterprise features (optional)
-    # Import explicitly if needed
+    "SSOProvider",
 ]
 
 # エンタープライズ機能の段階的導入

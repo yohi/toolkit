@@ -188,20 +188,6 @@ class AICommentClassifier:
         Returns:
             Classification result
         """
-    def classify_comment(
-        self,
-        comment_text: str,
-        context: Optional[Dict[str, Any]] = None
-    ) -> ClassificationResult:
-        """Classify a single comment synchronously.
-
-        Args:
-            comment_text: Comment text to classify
-            context: Optional context
-
-        Returns:
-            Classification result
-        """
         try:
             asyncio.get_running_loop()
             import concurrent.futures

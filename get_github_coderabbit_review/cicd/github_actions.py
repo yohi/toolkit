@@ -4,7 +4,7 @@ import logging
 import asyncio
 import json
 import yaml
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any, Union, Tuple
 from dataclasses import dataclass, field
 from pathlib import Path
 from datetime import datetime
@@ -42,8 +42,7 @@ class StepConfig:
             step["if"] = self.if_condition
         if self.continue_on_error:
             step["continue-on-error"] = self.continue_on_error
-        if self.timeout_minutes:
-            step["timeout-minutes"] = self.timeout_minutes
+        # Note: GitHub Actions では step レベルの timeout は未対応（job レベルのみ）
 
         return step
 
@@ -316,16 +315,25 @@ class ActionRunner:
         Returns:
             True if condition is met
         """
-        # Simple condition evaluation
-        # In production, implement proper GitHub Actions condition parser
-        if "success()" in condition:
+        # Enhanced condition evaluation with basic GitHub context support
+        cond = condition.strip()
+        if "success()" in cond:
             return True
-        elif "failure()" in condition:
+        elif "failure()" in cond:
             return False
-        elif "always()" in condition:
+        elif "always()" in cond:
             return True
-        else:
-            return True
+        # naive equality checks: github.event_name / github.ref
+        import re, os
+        m = re.match(r"github\.(event_name|ref)\s*==\s*'([^']+)'", cond)
+        if m:
+            key, expected = m.group(1), m.group(2)
+            actual = {
+                "event_name": os.environ.get("GITHUB_EVENT_NAME", ""),
+                "ref": os.environ.get("GITHUB_REF", ""),
+            }.get(key, "")
+            return actual == expected
+        return True  # default permissive
 
 
 class GitHubActionsIntegration:
@@ -553,12 +561,17 @@ class GitHubActionsIntegration:
 
         build_job.add_step(StepConfig(
             name="Install dependencies",
-            run="pip install -r requirements.txt"
+            run="python -m pip install -r requirements.txt"
         ))
 
         build_job.add_step(StepConfig(
             name="Run tests",
             run="python -m pytest tests/ -v"
+        ))
+
+        build_job.add_step(StepConfig(
+            name="Install build backend",
+            run="python -m pip install --upgrade build"
         ))
 
         build_job.add_step(StepConfig(
