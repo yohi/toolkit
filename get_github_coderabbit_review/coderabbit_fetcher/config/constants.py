@@ -42,7 +42,8 @@ QUIET_MODE_LOG_MODULES = [
     'coderabbit_fetcher.orchestrator',
     'coderabbit_fetcher.github_client',
     'coderabbit_fetcher.comment_analyzer',
-    'coderabbit_fetcher.formatters.markdown_formatter'
+    'coderabbit_fetcher.formatters.markdown_formatter',
+    'coderabbit_fetcher.formatters.ai_agent_prompt_formatter'
 ]
 
 # Performance configuration

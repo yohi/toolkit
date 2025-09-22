@@ -27,7 +27,7 @@ class AIAgentPromptFormatter(BaseFormatter):
         Args:
             persona: AI persona prompt string (not used - uses built-in template)
             analyzed_comments: Analyzed CodeRabbit comments
-            quiet: Not used in this formatter
+            quiet: Enable quiet mode to suppress debug output
             pr_info: Pull request information from GitHub API
 
         Returns:
@@ -57,7 +57,7 @@ class AIAgentPromptFormatter(BaseFormatter):
         sections.append(self._format_pull_request_context(pr_info))
 
         # CodeRabbit review summary
-        sections.append(self._format_coderabbit_review_summary(analyzed_comments))
+        sections.append(self._format_coderabbit_review_summary(analyzed_comments, quiet))
 
         # Comment metadata
         sections.append(self._format_comment_metadata(analyzed_comments))
@@ -284,7 +284,7 @@ Quality, Security, Standards, Specificity, Impact-awareness
             "build_system": build_system,
         }
 
-    def _format_coderabbit_review_summary(self, analyzed_comments: AnalyzedComments) -> str:
+    def _format_coderabbit_review_summary(self, analyzed_comments: AnalyzedComments, quiet: bool = False) -> str:
         """Format CodeRabbit review summary section."""
         # Count different types of comments
         actionable_comments = 0
@@ -296,7 +296,8 @@ Quality, Security, Standards, Specificity, Impact-awareness
             actionable_comments += len(review.actionable_comments)
             nitpick_comments += len(review.nitpick_comments)
             outside_diff_comments += len(review.outside_diff_comments)
-            print(f"DEBUG: Review has {len(review.outside_diff_comments)} outside_diff_comments")
+            if not quiet:
+                print(f"DEBUG: Review has {len(review.outside_diff_comments)} outside_diff_comments")
 
         # Count from thread contexts (these are typically actionable)
         for thread in analyzed_comments.unresolved_threads:
@@ -305,9 +306,10 @@ Quality, Security, Standards, Specificity, Impact-awareness
         # Total comments is the sum of all individual comments
         total_comments = actionable_comments + nitpick_comments + outside_diff_comments
 
-        print(
-            f"DEBUG: Final counts - actionable: {actionable_comments}, nitpick: {nitpick_comments}, outside_diff: {outside_diff_comments}"
-        )
+        if not quiet:
+            print(
+                f"DEBUG: Final counts - actionable: {actionable_comments}, nitpick: {nitpick_comments}, outside_diff: {outside_diff_comments}"
+            )
 
         return f"""<coderabbit_review_summary>
   <total_comments>{total_comments}</total_comments>
@@ -514,8 +516,9 @@ For comments with multiple exchanges, consider:
         for comment in sorted(all_actionable, key=sort_key):
             sections.append(self._format_review_comment(comment, "Actionable"))
 
-        # Format nitpick comments
-        for comment in sorted(all_nitpick, key=sort_key):
+        # Format nitpick comments (with deduplication for also_applies_to cases)
+        deduplicated_nitpick = self._deduplicate_nitpick_comments(sorted(all_nitpick, key=sort_key))
+        for comment in deduplicated_nitpick:
             sections.append(self._format_nitpick_comment(comment))
 
         # Format outside diff comments
@@ -524,6 +527,33 @@ For comments with multiple exchanges, consider:
 
         sections.append("</review_comments>")
         return "\n".join(sections)
+
+    def _deduplicate_nitpick_comments(self, nitpick_comments):
+        """Deduplicate nitpick comments that have 'also_applies_to' information."""
+        seen_issues = set()
+        deduplicated = []
+        
+        for comment in nitpick_comments:
+            # Extract the issue summary/title to use as a deduplication key
+            if hasattr(comment, "suggestion"):
+                issue_key = comment.suggestion
+            elif hasattr(comment, "raw_content"):
+                issue_key = self._extract_issue_summary(comment.raw_content, "")
+            else:
+                issue_key = str(comment)
+            
+            # Normalize the issue key for comparison
+            normalized_key = issue_key.strip().lower()
+            
+            # Skip if we've already seen this issue
+            if normalized_key in seen_issues:
+                continue
+                
+            # Add to seen issues and deduplicated list
+            seen_issues.add(normalized_key)
+            deduplicated.append(comment)
+            
+        return deduplicated
 
     def _format_review_comment(self, comment: ActionableComment, comment_type: str) -> str:
         """Format a single review comment."""
@@ -545,8 +575,15 @@ For comments with multiple exchanges, consider:
         lines.append(f"      {escape(issue_summary)}")
         lines.append("    </issue_summary>")
 
-        # CodeRabbit analysis - extract analysis text from raw content
-        analysis_text = self._extract_coderabbit_analysis(raw_content)
+        # Add "Also applies to" information if this is a consolidated comment
+        also_applies_to = self._extract_also_applies_to(raw_content)
+        if also_applies_to:
+            lines.append("    <also_applies_to>")
+            lines.append(f"      {escape(also_applies_to)}")
+            lines.append("    </also_applies_to>")
+
+        # CodeRabbit analysis - use the same method as nitpick comments
+        analysis_text = self._extract_analysis_text(raw_content)
         lines.append("    <coderabbit_analysis>")
         lines.append(f"      {escape(analysis_text)}")
         lines.append("    </coderabbit_analysis>")
@@ -619,6 +656,13 @@ For comments with multiple exchanges, consider:
         lines.append(f"      {escape(title)}")
         lines.append("    </issue_summary>")
 
+        # Add "Also applies to" information if this is a consolidated comment
+        also_applies_to = self._extract_also_applies_to(analysis_content)
+        if also_applies_to:
+            lines.append("    <also_applies_to>")
+            lines.append(f"      {escape(also_applies_to)}")
+            lines.append("    </also_applies_to>")
+
         # CodeRabbit analysis
         lines.append("    <coderabbit_analysis>")
         analysis_text = self._extract_analysis_text(analysis_content)
@@ -684,32 +728,28 @@ For comments with multiple exchanges, consider:
         if not description:
             return "No analysis available"
 
+        # Clean the input first to remove HTML comments and tags
+        cleaned_description = self._clean_html_and_comments(description)
+        
         # Handle inline format: **Title** analysis_content
-        # Check if the description contains both title and content in one line
         import re
 
         inline_pattern = r"\*\*([^*]+)\*\*\s*(.*)"
-        inline_match = re.match(inline_pattern, description.strip())
+        inline_match = re.match(inline_pattern, cleaned_description.strip())
 
         if inline_match:
             title, content = inline_match.groups()
-            if content.strip():
+            if content.strip() and len(content.strip()) > 10:
                 return content.strip()
 
-        # If the content doesn't contain **title** format, treat as plain analysis text
-        if not re.search(r"\*\*[^*]+\*\*", description):
-            # Plain text - clean up diff blocks and separators before returning
-            cleaned = self._clean_analysis_text(description)
-            if cleaned and len(cleaned) > 10:  # Only return if substantial content
-                return cleaned
-
         # Parse multi-line CodeRabbit comment structure:
-        # 1. **タイトル部分** (bold title)
-        # 2. 分析内容部分 (analysis content - normal text)
-        # 3. ```diff code block
-        # 4. Also applies to: 行番号 (optional)
+        # 1. _⚠️ Potential issue_ (warning indicator - optional)
+        # 2. **タイトル部分** (bold title)
+        # 3. 分析内容部分 (analysis content - normal text) ← This is what we want
+        # 4. ```diff code block
+        # 5. HTML comments and tags (already cleaned)
 
-        lines = description.split("\n")
+        lines = cleaned_description.split("\n")
         analysis_content = []
         title_found = False
         in_code_block = False
@@ -719,6 +759,10 @@ For comments with multiple exchanges, consider:
 
             # Skip empty lines
             if not line:
+                continue
+
+            # Skip warning indicators
+            if line.startswith("_") and line.endswith("_"):
                 continue
 
             # Detect code block start/end
@@ -742,13 +786,32 @@ For comments with multiple exchanges, consider:
             # Extract analysis content (after title, before code block)
             if title_found and not in_code_block:
                 # This is likely analysis content - collect all substantial lines
-                analysis_content.append(line)
+                if len(line) > 5:  # Any meaningful content after the title
+                    analysis_content.append(line)
+                    # Continue collecting until we hit a structural element or code block
 
-        # Return the combined analysis content
+        # Return the analysis content - join multiple lines if found
         if analysis_content:
-            return " ".join(analysis_content)
+            # Join the collected analysis lines with space
+            full_analysis = " ".join(analysis_content)
+            # Return the combined analysis, but limit to reasonable length
+            if len(full_analysis) > 500:  # Prevent extremely long analysis
+                return full_analysis[:500] + "..."
+            return full_analysis
 
-        # Fallback: only return "No analysis available" if no detailed content found
+        # Fallback: look for any substantial content that's not markup
+        lines = cleaned_description.split("\n")
+        for line in lines:
+            line = line.strip()
+            if (
+                line
+                and len(line) > 10
+                and not line.startswith(("**", "_", "```", "#"))
+                and not line.endswith("**")
+            ):
+                # Include lines that have meaningful content, not just code references
+                return line
+
         return "No analysis available"
 
     def _clean_analysis_text(self, text: str) -> str:
@@ -790,6 +853,60 @@ For comments with multiple exchanges, consider:
         # Join and clean up extra whitespace
         result = " ".join(cleaned_lines).strip()
         return result
+
+    def _clean_html_and_comments(self, text: str) -> str:
+        """Clean HTML tags, comments, and other unwanted content from text."""
+        if not text:
+            return ""
+
+        import re
+
+        # Remove HTML comments
+        text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
+        
+        # Remove HTML tags
+        text = re.sub(r'<[^>]+>', '', text)
+        
+        # Remove markdown indicators and special markers
+        text = re.sub(r'^[\s]*[‼️📝🤖>|*+-].*$', '', text, flags=re.MULTILINE)
+        
+        # Remove "IMPORTANT" and "Carefully review" lines
+        text = re.sub(r'^.*(?:IMPORTANT|Carefully review).*$', '', text, flags=re.MULTILINE)
+        
+        # Remove "This is an auto-generated comment" lines
+        text = re.sub(r'^.*This is an auto-generated comment.*$', '', text, flags=re.MULTILINE)
+        
+        # Remove fingerprinting comments
+        text = re.sub(r'^.*fingerprinting:.*$', '', text, flags=re.MULTILINE)
+        
+        # Remove excessive whitespace and clean up
+        text = re.sub(r'\n\s*\n', '\n', text)  # Remove empty lines
+        text = re.sub(r'[ \t]+', ' ', text)    # Normalize spaces
+        text = text.strip()
+        
+        return text
+
+    def _extract_also_applies_to(self, raw_content: str) -> str:
+        """Extract 'Also applies to' information from raw content."""
+        if not raw_content:
+            return ""
+
+        import re
+        
+        # Look for "Also applies to:" pattern
+        also_applies_match = re.search(
+            r"Also applies to:\s*([0-9\-,\s]+)", raw_content, re.IGNORECASE
+        )
+        
+        if also_applies_match:
+            # Extract and clean the match
+            result = also_applies_match.group(1).strip()
+            # Remove any trailing separators or unwanted characters
+            result = re.sub(r'\s*[-]{2,}.*$', '', result, flags=re.MULTILINE | re.DOTALL)
+            result = result.strip()
+            return result
+        
+        return ""
 
     def _generate_proposed_diff(self, description: str, file_path: str, line_range: str) -> str:
         """Generate proposed diff based on the issue description."""
@@ -871,81 +988,6 @@ For comments with multiple exchanges, consider:
             fallback_description.split("\n")[0] if fallback_description else "No summary available"
         )
 
-    def _extract_coderabbit_analysis(self, raw_content: str) -> str:
-        """Extract CodeRabbit analysis text from raw content."""
-        if not raw_content:
-            return "No analysis available"
-
-        # Split content into lines and find the analysis part
-        lines = raw_content.split("\n")
-        analysis_lines = []
-
-        # First, try to identify the title line (usually first meaningful line)
-        title_line = ""
-        content_start_index = 0
-
-        for i, line in enumerate(lines):
-            line = line.strip()
-            if line and not line.startswith("```") and not line.startswith("_"):
-                title_line = line
-                content_start_index = i + 1
-                break
-
-        # Look for analysis content after the title
-        for i in range(content_start_index, len(lines)):
-            line = lines[i].strip()
-
-            # Skip empty lines, markdown code blocks, and emphasis
-            if not line or line.startswith("```") or line.startswith("_"):
-                continue
-
-            # Skip lines that are just repetitions of the title
-            if line == title_line:
-                continue
-
-            # Look for substantial analysis content (not just titles or headers)
-            if (
-                len(line) > 10
-                and not line.startswith("**")
-                and not line.startswith("#")
-                and not line.endswith(":")
-                and (
-                    "です" in line
-                    or "ます" in line
-                    or "。" in line
-                    or "PATH" in line
-                    or "bun" in line
-                    or "Make" in line
-                    or "shell" in line
-                    or "安全" in line
-                    or "推奨" in line
-                    or "限定" in line
-                    or "ビルド" in line
-                )
-            ):
-                analysis_lines.append(line)
-
-        if analysis_lines:
-            # Return the most detailed analysis line, or combine multiple lines
-            if len(analysis_lines) == 1:
-                return analysis_lines[0]
-            else:
-                # For multiple lines, prefer the most detailed one
-                return max(analysis_lines, key=len)
-
-        # Fallback: look for any substantial content that's not the title
-        for line in lines:
-            line = line.strip()
-            if (
-                line
-                and len(line) > 20
-                and not line.startswith("**")
-                and line != title_line
-                and not line.startswith("#")
-            ):
-                return line
-
-        return "No analysis available"
 
     def _extract_ai_agent_prompt_text(self, raw_content: str) -> str:
         """Extract AI agent prompt text from raw content."""
