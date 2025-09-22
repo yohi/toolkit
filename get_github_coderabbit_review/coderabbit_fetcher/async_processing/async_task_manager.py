@@ -240,7 +240,7 @@ class AsyncTaskManager:
             try:
                 return await asyncio.wait_for(self.running_tasks[task_id], timeout=timeout)
             except asyncio.TimeoutError:
-                raise TimeoutError(f"Task {task_id} did not complete within {timeout}s")
+                raise TimeoutError(f"Task {task_id} did not complete within {timeout}s") from None
 
         # Task is pending, execute it
         return await self.execute_task(task_id)
@@ -355,7 +355,7 @@ class AsyncTaskManager:
             List of waves, each containing task IDs that can be executed in parallel
         """
         # Topological sort for dependency resolution
-        remaining_tasks = {task_id: task for task_id, task in self.tasks.items()}
+        remaining_tasks = dict(self.tasks)
         execution_waves = []
 
         while remaining_tasks:

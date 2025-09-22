@@ -188,7 +188,7 @@ class CacheManager:
 
     def _cleanup_expired_entries(self) -> None:
         """Clean up expired entries from all providers."""
-        for provider_name, provider in self.providers.items():
+        for provider_name, _provider in self.providers.items():
             try:
                 # This is a simplified approach - actual implementation would depend on provider
                 logger.debug(f"Cleaning up expired entries in provider: {provider_name}")
