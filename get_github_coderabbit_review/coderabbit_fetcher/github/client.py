@@ -18,6 +18,7 @@ from ..exceptions import (
     CodeRabbitFetcherError,
     GitHubAuthenticationError,
     InvalidPRUrlError,
+    NetworkError,
 )
 
 console = Console()
@@ -89,7 +90,7 @@ class GitHubClient:
         except subprocess.TimeoutExpired as e:
             raise GitHubAuthenticationError("Authentication check timed out") from e
         except Exception as e:
-            raise GitHubAuthenticationError(f"Authentication check failed: {e}")
+            raise GitHubAuthenticationError(f"Authentication check failed: {e}") from e
 
     def validate(self) -> Dict[str, Any]:
         """Validate GitHub CLI availability and authentication.
@@ -400,7 +401,7 @@ class GitHubClient:
         except subprocess.TimeoutExpired as e:
             raise GitHubAuthenticationError("Authentication check timed out") from e
         except Exception as e:
-            raise GitHubAuthenticationError(f"Authentication check failed: {e}")
+            raise GitHubAuthenticationError(f"Authentication check failed: {e}") from e
 
     def validate(self) -> Dict[str, Any]:
         """Validate GitHub CLI availability and authentication.
