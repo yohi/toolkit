@@ -1,32 +1,15 @@
 """Machine learning module for CodeRabbit fetcher."""
 
 from .comment_classifier import (
-    MLCommentClassifier,
-    CommentFeatures,
     ClassificationModel,
+    CommentFeatures,
+    MLCommentClassifier,
+    ModelMetrics,
     TrainingData,
-    ModelMetrics
 )
-
-from .feature_extractor import (
-    FeatureExtractor,
-    TextFeatures,
-    ContextFeatures,
-    CommentFeatureSet
-)
-
-from .model_trainer import (
-    ModelTrainer,
-    TrainingConfig,
-    ValidationResult,
-    ModelEvaluator
-)
-
-from .ensemble_classifier import (
-    EnsembleClassifier,
-    WeightedVoting,
-    StackingClassifier
-)
+from .ensemble_classifier import EnsembleClassifier, StackingClassifier, WeightedVoting
+from .feature_extractor import CommentFeatureSet, ContextFeatures, FeatureExtractor, TextFeatures
+from .model_trainer import ModelEvaluator, ModelTrainer, TrainingConfig, ValidationResult
 
 __all__ = [
     # Main Classifier
@@ -35,21 +18,18 @@ __all__ = [
     "ClassificationModel",
     "TrainingData",
     "ModelMetrics",
-
     # Feature Extraction
     "FeatureExtractor",
     "TextFeatures",
     "ContextFeatures",
     "CommentFeatureSet",
-
     # Model Training
     "ModelTrainer",
     "TrainingConfig",
     "ValidationResult",
     "ModelEvaluator",
-
     # Ensemble Methods
     "EnsembleClassifier",
     "WeightedVoting",
-    "StackingClassifier"
+    "StackingClassifier",
 ]

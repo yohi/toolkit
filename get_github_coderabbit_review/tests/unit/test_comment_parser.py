@@ -1,11 +1,10 @@
 """Tests for CommentParser class."""
 
 import unittest
-from unittest.mock import Mock, patch
 
-from coderabbit_fetcher.processors.comment_parser import CommentParser
 from coderabbit_fetcher.models import ActionableComment, AIAgentPrompt
 from coderabbit_fetcher.models.review_comment import NitpickComment, OutsideDiffComment
+from coderabbit_fetcher.processors.comment_parser import CommentParser
 
 
 class TestCommentParser(unittest.TestCase):
@@ -113,8 +112,8 @@ Analyze the following code for security vulnerabilities:
 
         file_info = self.parser._extract_file_info(content)
 
-        self.assertEqual(file_info['path'], 'file.py')
-        self.assertEqual(file_info['line'], 42)
+        self.assertEqual(file_info["path"], "file.py")
+        self.assertEqual(file_info["line"], 42)
 
     def test_extract_file_info_with_range(self):
         """Test file information extraction with line range."""
@@ -122,12 +121,14 @@ Analyze the following code for security vulnerabilities:
 
         file_info = self.parser._extract_file_info(content)
 
-        self.assertEqual(file_info['path'], 'config.yaml')
-        self.assertEqual(file_info['line_range'], '10-20')
+        self.assertEqual(file_info["path"], "config.yaml")
+        self.assertEqual(file_info["line_range"], "10-20")
 
     def test_extract_description_basic(self):
         """Test description extraction."""
-        content = "**This is important** - Consider refactoring this method\nAdditional details here"
+        content = (
+            "**This is important** - Consider refactoring this method\nAdditional details here"
+        )
 
         description = self.parser._extract_description(content)
 
@@ -157,7 +158,7 @@ class Factory:
 
         self.assertIsNotNone(comment)
         self.assertIsInstance(comment, ActionableComment)
-        self.assertEqual(comment.file_path, 'file.py')
+        self.assertEqual(comment.file_path, "file.py")
         self.assertEqual(comment.line_number, 42)
 
     def test_create_actionable_comment_no_description(self):
@@ -176,7 +177,7 @@ class Factory:
 
         self.assertIsNotNone(comment)
         self.assertIsInstance(comment, NitpickComment)
-        self.assertEqual(comment.file_path, 'file.py')
+        self.assertEqual(comment.file_path, "file.py")
         self.assertEqual(comment.line_number, 10)
 
     def test_create_outside_diff_comment_success(self):
@@ -187,8 +188,8 @@ class Factory:
 
         self.assertIsNotNone(comment)
         self.assertIsInstance(comment, OutsideDiffComment)
-        self.assertEqual(comment.file_path, 'config.py')
-        self.assertEqual(comment.line_range, '1-5')
+        self.assertEqual(comment.file_path, "config.py")
+        self.assertEqual(comment.line_range, "1-5")
 
     def test_create_ai_agent_prompt_success(self):
         """Test successful AI agent prompt creation."""
@@ -278,5 +279,5 @@ Test prompt content
         self.assertEqual(len(prompts), 1)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

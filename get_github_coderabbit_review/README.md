@@ -229,7 +229,7 @@ crf https://github.com/owner/repo/pull/123 --output-file instructions.xml
 ### 📝 Other Formats
 
 - **Markdown**: Rich formatting with headers, code blocks, and organization
-- **JSON**: Structured data for programmatic processing  
+- **JSON**: Structured data for programmatic processing
 - **Plain Text**: Simple, readable format for basic use cases
 
 ## 🎭 Persona Files

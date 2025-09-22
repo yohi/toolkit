@@ -1,19 +1,19 @@
 """Tests for code quality utilities."""
 
-import unittest
-from unittest.mock import Mock, patch
 import time
+import unittest
+from unittest.mock import patch
 
 from coderabbit_fetcher.utils.code_quality import (
     CodeQualityAnalyzer,
-    QualityGate,
-    extract_method,
-    readable_code_formatter,
     CodeStyleChecker,
+    QualityGate,
     complexity_reducer,
-    validate_input_types,
+    extract_method,
+    performance_monitor,
+    readable_code_formatter,
     safe_execute,
-    performance_monitor
+    validate_input_types,
 )
 
 
@@ -30,10 +30,10 @@ def simple_function():
 
         result = CodeQualityAnalyzer.calculate_complexity_score(content)
 
-        self.assertEqual(result['line_count'], 3)
-        self.assertEqual(result['complexity_count'], 0)
-        self.assertEqual(result['complexity_level'], 'low')
-        self.assertGreater(result['maintainability_score'], 90)
+        self.assertEqual(result["line_count"], 3)
+        self.assertEqual(result["complexity_count"], 0)
+        self.assertEqual(result["complexity_level"], "low")
+        self.assertGreater(result["maintainability_score"], 90)
 
     def test_calculate_complexity_score_complex(self):
         """Test complexity calculation for complex code."""
@@ -56,15 +56,15 @@ def complex_function(x, y):
 
         result = CodeQualityAnalyzer.calculate_complexity_score(content)
 
-        self.assertGreater(result['complexity_count'], 5)
-        self.assertEqual(result['complexity_level'], 'high')
-        self.assertLess(result['maintainability_score'], 50)
+        self.assertGreater(result["complexity_count"], 5)
+        self.assertEqual(result["complexity_level"], "high")
+        self.assertLess(result["maintainability_score"], 50)
 
     def test_suggest_refactoring_long_function(self):
         """Test refactoring suggestions for long functions."""
         # Create content with 60 lines
         lines = [f"    line_{i} = {i}" for i in range(60)]
-        content = f"def long_function():\n" + "\n".join(lines)
+        content = "def long_function():\n" + "\n".join(lines)
 
         suggestions = CodeQualityAnalyzer.suggest_refactoring(content, "long_function")
 
@@ -128,10 +128,10 @@ def simple_function():
 
         result = self.quality_gate.check_quality(content, "simple_function")
 
-        self.assertTrue(result['passes_quality_gate'])
-        self.assertGreater(result['quality_score'], 80)
-        self.assertTrue(result['gates_passed']['complexity'])
-        self.assertTrue(result['gates_passed']['length'])
+        self.assertTrue(result["passes_quality_gate"])
+        self.assertGreater(result["quality_score"], 80)
+        self.assertTrue(result["gates_passed"]["complexity"])
+        self.assertTrue(result["gates_passed"]["length"])
 
     def test_check_quality_fails_complexity(self):
         """Test quality check that fails complexity gate."""
@@ -148,18 +148,18 @@ def complex_function():
 
         result = self.quality_gate.check_quality(content, "complex_function")
 
-        self.assertFalse(result['gates_passed']['complexity'])
-        self.assertLess(result['quality_score'], 80)
+        self.assertFalse(result["gates_passed"]["complexity"])
+        self.assertLess(result["quality_score"], 80)
 
     def test_check_quality_fails_length(self):
         """Test quality check that fails length gate."""
         # Create content with 30 lines
         lines = [f"    line_{i} = {i}" for i in range(30)]
-        content = f"def long_function():\n" + "\n".join(lines)
+        content = "def long_function():\n" + "\n".join(lines)
 
         result = self.quality_gate.check_quality(content, "long_function")
 
-        self.assertFalse(result['gates_passed']['length'])
+        self.assertFalse(result["gates_passed"]["length"])
 
 
 class TestExtractMethod(unittest.TestCase):
@@ -181,8 +181,8 @@ def large_function():
 
         result = extract_method(large_function, "extracted_method")
 
-        self.assertIn("def extracted_method", result['extracted'])
-        self.assertIn("self.extracted_method()", result['original'])
+        self.assertIn("def extracted_method", result["extracted"])
+        self.assertIn("self.extracted_method()", result["original"])
 
     def test_extract_method_small_function(self):
         """Test method extraction on small function."""
@@ -190,8 +190,8 @@ def large_function():
 
         result = extract_method(small_function, "extracted_method")
 
-        self.assertEqual(result['extracted'], '')
-        self.assertEqual(result['original'], small_function)
+        self.assertEqual(result["extracted"], "")
+        self.assertEqual(result["original"], small_function)
 
 
 class TestReadableCodeFormatter(unittest.TestCase):
@@ -317,7 +317,7 @@ class TestDecorators(unittest.TestCase):
             return a + b + c + d
 
         # Should work normally but log warning
-        with patch('coderabbit_fetcher.utils.code_quality.logger') as mock_logger:
+        with patch("coderabbit_fetcher.utils.code_quality.logger") as mock_logger:
             result = test_function(1, 2, 3, 4)
 
             self.assertEqual(result, 10)
@@ -345,7 +345,7 @@ class TestDecorators(unittest.TestCase):
         def failing_function():
             raise ValueError("Test error")
 
-        with patch('coderabbit_fetcher.utils.code_quality.logger') as mock_logger:
+        with patch("coderabbit_fetcher.utils.code_quality.logger") as mock_logger:
             result = failing_function()
 
             self.assertEqual(result, "error")
@@ -359,7 +359,7 @@ class TestDecorators(unittest.TestCase):
             time.sleep(0.2)
             return "done"
 
-        with patch('coderabbit_fetcher.utils.code_quality.logger') as mock_logger:
+        with patch("coderabbit_fetcher.utils.code_quality.logger") as mock_logger:
             result = slow_function()
 
             self.assertEqual(result, "done")
@@ -372,12 +372,12 @@ class TestDecorators(unittest.TestCase):
         def fast_function():
             return "done"
 
-        with patch('coderabbit_fetcher.utils.code_quality.logger') as mock_logger:
+        with patch("coderabbit_fetcher.utils.code_quality.logger") as mock_logger:
             result = fast_function()
 
             self.assertEqual(result, "done")
             mock_logger.warning.assert_not_called()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

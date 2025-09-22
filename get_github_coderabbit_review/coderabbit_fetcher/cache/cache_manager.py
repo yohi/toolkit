@@ -1,15 +1,13 @@
 """Cache management system for CodeRabbit fetcher."""
 
-import logging
 import hashlib
-import json
-import pickle
-from abc import ABC, abstractmethod
-from typing import Any, Optional, Dict, Union, List
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+import logging
 import threading
 import time
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+from typing import Any, Dict, Optional, Union
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class CacheKey:
     """Cache key structure."""
+
     namespace: str
     identifier: str
     version: str = "1.0"
@@ -34,6 +33,7 @@ class CacheKey:
 @dataclass
 class CacheEntry:
     """Cache entry structure."""
+
     key: CacheKey
     value: Any
     created_at: datetime = field(default_factory=datetime.now)
@@ -56,19 +56,20 @@ class CacheEntry:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            'key': self.key.to_string(),
-            'value': self.value,
-            'created_at': self.created_at.isoformat(),
-            'expires_at': self.expires_at.isoformat() if self.expires_at else None,
-            'access_count': self.access_count,
-            'last_accessed': self.last_accessed.isoformat(),
-            'metadata': self.metadata
+            "key": self.key.to_string(),
+            "value": self.value,
+            "created_at": self.created_at.isoformat(),
+            "expires_at": self.expires_at.isoformat() if self.expires_at else None,
+            "access_count": self.access_count,
+            "last_accessed": self.last_accessed.isoformat(),
+            "metadata": self.metadata,
         }
 
 
 @dataclass
 class CacheConfig:
     """Cache configuration."""
+
     default_ttl_seconds: int = 3600  # 1 hour
     max_entries: int = 1000
     cleanup_interval_seconds: int = 300  # 5 minutes
@@ -80,6 +81,7 @@ class CacheConfig:
 
 class CacheError(Exception):
     """Cache-related error."""
+
     pass
 
 
@@ -129,18 +131,14 @@ class CacheManager:
         self.config = config or CacheConfig()
         self.providers: Dict[str, CacheProvider] = {}
         self.default_provider: Optional[str] = None
-        self.stats = {
-            'hits': 0,
-            'misses': 0,
-            'sets': 0,
-            'deletes': 0,
-            'errors': 0
-        }
+        self.stats = {"hits": 0, "misses": 0, "sets": 0, "deletes": 0, "errors": 0}
         self._lock = threading.RLock()
         self._cleanup_thread: Optional[threading.Thread] = None
         self._running = False
 
-    def register_provider(self, name: str, provider: CacheProvider, is_default: bool = False) -> None:
+    def register_provider(
+        self, name: str, provider: CacheProvider, is_default: bool = False
+    ) -> None:
         """Register a cache provider.
 
         Args:
@@ -189,10 +187,7 @@ class CacheManager:
                 logger.error(f"Error cleaning up provider {provider_name}: {e}")
 
     def get(
-        self,
-        key: Union[CacheKey, str],
-        provider_name: Optional[str] = None,
-        default: Any = None
+        self, key: Union[CacheKey, str], provider_name: Optional[str] = None, default: Any = None
     ) -> Any:
         """Get value from cache.
 
@@ -214,28 +209,28 @@ class CacheManager:
 
             if entry is None:
                 with self._lock:
-                    self.stats['misses'] += 1
+                    self.stats["misses"] += 1
                 logger.debug(f"Cache miss for key: {key.to_string()}")
                 return default
 
             if entry.is_expired():
                 provider.delete(key)
                 with self._lock:
-                    self.stats['misses'] += 1
+                    self.stats["misses"] += 1
                 logger.debug(f"Cache expired for key: {key.to_string()}")
                 return default
 
             entry.touch()
             provider.set(entry)  # Update access info
             with self._lock:
-                self.stats['hits'] += 1
+                self.stats["hits"] += 1
             logger.debug(f"Cache hit for key: {key.to_string()}")
 
             return entry.value
 
         except Exception:
             with self._lock:
-                self.stats['errors'] += 1
+                self.stats["errors"] += 1
             logger.exception(f"Error getting cache key {key}")
             return default
 
@@ -245,7 +240,7 @@ class CacheManager:
         value: Any,
         ttl_seconds: Optional[int] = None,
         provider_name: Optional[str] = None,
-        metadata: Optional[Dict[str, Any]] = None
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """Set value in cache.
 
@@ -268,24 +263,19 @@ class CacheManager:
             ttl = ttl_seconds or self.config.default_ttl_seconds
             expires_at = datetime.now() + timedelta(seconds=ttl) if ttl > 0 else None
 
-            entry = CacheEntry(
-                key=key,
-                value=value,
-                expires_at=expires_at,
-                metadata=metadata or {}
-            )
+            entry = CacheEntry(key=key, value=value, expires_at=expires_at, metadata=metadata or {})
 
             success = provider.set(entry)
             if success:
                 with self._lock:
-                    self.stats['sets'] += 1
+                    self.stats["sets"] += 1
                 logger.debug(f"Cache set for key: {key.to_string()}")
 
             return success
 
         except Exception:
             with self._lock:
-                self.stats['errors'] += 1
+                self.stats["errors"] += 1
             logger.exception("Error setting cache key")
             return False
 
@@ -308,14 +298,14 @@ class CacheManager:
 
             if success:
                 with self._lock:
-                    self.stats['deletes'] += 1
+                    self.stats["deletes"] += 1
                 logger.debug(f"Cache delete for key: {key.to_string()}")
 
             return success
 
         except Exception:
             with self._lock:
-                self.stats['errors'] += 1
+                self.stats["errors"] += 1
             logger.exception("Error deleting cache key")
             return False
 
@@ -373,11 +363,11 @@ class CacheManager:
         stats = self.stats.copy()
 
         # Calculate hit rate
-        total_requests = stats['hits'] + stats['misses']
+        total_requests = stats["hits"] + stats["misses"]
         if total_requests > 0:
-            stats['hit_rate'] = stats['hits'] / total_requests
+            stats["hit_rate"] = stats["hits"] / total_requests
         else:
-            stats['hit_rate'] = 0.0
+            stats["hit_rate"] = 0.0
 
         # Get provider stats
         provider_stats = {}
@@ -386,13 +376,13 @@ class CacheManager:
                 provider_stats[name] = provider.get_stats()
             except Exception as e:
                 logger.error(f"Error getting stats from provider {name}: {e}")
-                provider_stats[name] = {'error': str(e)}
+                provider_stats[name] = {"error": str(e)}
 
-        stats['providers'] = provider_stats
-        stats['config'] = {
-            'default_ttl_seconds': self.config.default_ttl_seconds,
-            'max_entries': self.config.max_entries,
-            'eviction_policy': self.config.eviction_policy
+        stats["providers"] = provider_stats
+        stats["config"] = {
+            "default_ttl_seconds": self.config.default_ttl_seconds,
+            "max_entries": self.config.max_entries,
+            "eviction_policy": self.config.eviction_policy,
         }
 
         return stats
@@ -428,7 +418,7 @@ class CacheManager:
         Returns:
             CacheKey instance
         """
-        parts = key_string.split(':', 2)
+        parts = key_string.split(":", 2)
         if len(parts) == 1:
             return CacheKey(namespace=self.config.namespace_prefix, identifier=parts[0])
         elif len(parts) == 2:
@@ -441,7 +431,7 @@ def cache_result(
     cache_manager: CacheManager,
     key_template: str,
     ttl_seconds: Optional[int] = None,
-    namespace: str = "function_cache"
+    namespace: str = "function_cache",
 ):
     """Decorator to cache function results.
 
@@ -454,10 +444,12 @@ def cache_result(
     Returns:
         Decorated function
     """
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             # Generate cache key
             import inspect
+
             sig = inspect.signature(func)
             bound_args = sig.bind(*args, **kwargs)
             bound_args.apply_defaults()
@@ -478,4 +470,5 @@ def cache_result(
             return result
 
         return wrapper
+
     return decorator

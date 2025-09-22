@@ -1,12 +1,12 @@
 """Thread processing and context analysis for CodeRabbit comments."""
 
 import re
-from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime, timezone
 from collections import defaultdict
+from datetime import datetime, timezone
+from typing import Any, Dict, List
 
-from ..models import ThreadContext
 from ..exceptions import CommentParsingError
+from ..models import ThreadContext
 
 
 class ThreadProcessor:
@@ -57,7 +57,8 @@ class ThreadProcessor:
 
             # Extract CodeRabbit comments only
             coderabbit_comments = [
-                c for c in sorted_comments
+                c
+                for c in sorted_comments
                 if c.get("user", {}).get("login") == self.coderabbit_author
             ]
 
@@ -75,7 +76,7 @@ class ThreadProcessor:
                 is_resolved=is_resolved,
                 context_summary=context_summary,
                 ai_summary=ai_summary,
-                chronological_comments=sorted_comments
+                chronological_comments=sorted_comments,
             )
 
         except Exception as e:
@@ -106,7 +107,9 @@ class ThreadProcessor:
 
         return thread_contexts
 
-    def _sort_comments_chronologically(self, comments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    def _sort_comments_chronologically(
+        self, comments: List[Dict[str, Any]]
+    ) -> List[Dict[str, Any]]:
         """Sort comments in chronological order.
 
         Args:
@@ -115,24 +118,24 @@ class ThreadProcessor:
         Returns:
             Comments sorted by creation time
         """
+
         def parse_datetime(dt_string: str) -> datetime:
             """Parse datetime string with fallback handling."""
             try:
                 # Try parsing ISO format with Z suffix
-                if dt_string.endswith('Z'):
-                    return datetime.fromisoformat(dt_string[:-1] + '+00:00')
+                if dt_string.endswith("Z"):
+                    return datetime.fromisoformat(dt_string[:-1] + "+00:00")
                 else:
                     return datetime.fromisoformat(dt_string)
             except (ValueError, TypeError):
                 # Fallback to current time if parsing fails
                 return datetime.now(timezone.utc)
 
-        return sorted(
-            comments,
-            key=lambda c: parse_datetime(c.get("created_at", ""))
-        )
+        return sorted(comments, key=lambda c: parse_datetime(c.get("created_at", "")))
 
-    def _group_comments_into_threads(self, comments: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
+    def _group_comments_into_threads(
+        self, comments: List[Dict[str, Any]]
+    ) -> List[List[Dict[str, Any]]]:
         """Group comments into threads based on reply relationships.
 
         Args:
@@ -234,7 +237,7 @@ class ThreadProcessor:
             username = user.get("login", "unknown")
             participants.add(username)
 
-        return sorted(list(participants))
+        return sorted(participants)
 
     def _determine_resolution_status(self, comments: List[Dict[str, Any]]) -> bool:
         """Determine if a thread is resolved based on resolved markers.
@@ -261,7 +264,7 @@ class ThreadProcessor:
                     r"✅.*resolved",
                     r"resolved.*✅",
                     r"issue.*fixed",
-                    r"implemented.*suggestion"
+                    r"implemented.*suggestion",
                 ]
 
                 for pattern in resolution_patterns:
@@ -285,8 +288,7 @@ class ThreadProcessor:
         root_comment = comments[0]
         user_count = len(set(c.get("user", {}).get("login") for c in comments))
         coderabbit_count = sum(
-            1 for c in comments
-            if c.get("user", {}).get("login") == self.coderabbit_author
+            1 for c in comments if c.get("user", {}).get("login") == self.coderabbit_author
         )
 
         # Extract key topics from CodeRabbit comments
@@ -298,7 +300,9 @@ class ThreadProcessor:
         if len(comments) == 1:
             summary_parts.append("Single comment thread")
         else:
-            summary_parts.append(f"Thread with {len(comments)} comments from {user_count} participants")
+            summary_parts.append(
+                f"Thread with {len(comments)} comments from {user_count} participants"
+            )
 
         # CodeRabbit involvement
         if coderabbit_count > 0:
@@ -350,7 +354,7 @@ class ThreadProcessor:
                     if re.search(pattern, body):
                         topics.add(topic)
 
-        return sorted(list(topics))
+        return sorted(topics)
 
     def _generate_ai_summary(self, comments: List[Dict[str, Any]], context_summary: str) -> str:
         """Generate AI-friendly structured summary following Claude 4 best practices.
@@ -367,8 +371,7 @@ class ThreadProcessor:
 
         root_comment = comments[0]
         coderabbit_comments = [
-            c for c in comments
-            if c.get("user", {}).get("login") == self.coderabbit_author
+            c for c in comments if c.get("user", {}).get("login") == self.coderabbit_author
         ]
 
         # Structure following Claude 4 best practices
@@ -377,13 +380,19 @@ class ThreadProcessor:
         # 1. Context (clear and specific)
         ai_summary_parts.append("## Thread Context")
         ai_summary_parts.append(f"- **File**: {root_comment.get('path', 'Unknown')}")
-        ai_summary_parts.append(f"- **Line**: {self._extract_line_context(root_comment) or 'Unknown'}")
-        ai_summary_parts.append(f"- **Participants**: {len(set(c.get('user', {}).get('login') for c in comments))}")
+        ai_summary_parts.append(
+            f"- **Line**: {self._extract_line_context(root_comment) or 'Unknown'}"
+        )
+        ai_summary_parts.append(
+            f"- **Participants**: {len(set(c.get('user', {}).get('login') for c in comments))}"
+        )
         ai_summary_parts.append(f"- **Total Comments**: {len(comments)}")
         ai_summary_parts.append(f"- **CodeRabbit Comments**: {len(coderabbit_comments)}")
 
         # 2. Resolution Status (clear outcome)
-        resolution_status = "✅ Resolved" if self._determine_resolution_status(comments) else "⏳ Open"
+        resolution_status = (
+            "✅ Resolved" if self._determine_resolution_status(comments) else "⏳ Open"
+        )
         ai_summary_parts.append(f"- **Status**: {resolution_status}")
 
         # 3. Key Issues/Topics (actionable information)
@@ -394,16 +403,18 @@ class ThreadProcessor:
                 body = comment.get("body", "")
 
                 # Extract first meaningful line as summary
-                lines = body.split('\n')
+                lines = body.split("\n")
                 summary_line = None
 
                 for line in lines:
                     clean_line = line.strip()
-                    if (clean_line and
-                        not clean_line.startswith('_') and
-                        not clean_line.startswith('<') and
-                        not clean_line.startswith('```') and
-                        len(clean_line) > 10):
+                    if (
+                        clean_line
+                        and not clean_line.startswith("_")
+                        and not clean_line.startswith("<")
+                        and not clean_line.startswith("```")
+                        and len(clean_line) > 10
+                    ):
                         summary_line = clean_line[:200]
                         break
 
@@ -468,11 +479,7 @@ class ThreadProcessor:
         Returns:
             Dictionary with complexity metrics
         """
-        complexity = {
-            "score": 0,
-            "factors": [],
-            "priority": "low"
-        }
+        complexity = {"score": 0, "factors": [], "priority": "low"}
 
         # Factor 1: Number of participants
         if len(thread_context.participants) > 2:
@@ -496,7 +503,7 @@ class ThreadProcessor:
 
         # Factor 5: File type importance (heuristic)
         file_context = thread_context.file_context.lower()
-        if any(ext in file_context for ext in ['.py', '.js', '.ts', '.java', '.cpp']):
+        if any(ext in file_context for ext in [".py", ".js", ".ts", ".java", ".cpp"]):
             complexity["score"] += 1
             complexity["factors"].append("source code file")
 

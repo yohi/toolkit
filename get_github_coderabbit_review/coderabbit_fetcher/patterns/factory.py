@@ -2,14 +2,15 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, Type, Union, List
 from enum import Enum
+from typing import Any, Dict, List, Optional, Type, Union
 
 logger = logging.getLogger(__name__)
 
 
 class ComponentType(Enum):
     """Enumeration of component types."""
+
     PROCESSOR = "processor"
     FORMATTER = "formatter"
     ANALYZER = "analyzer"
@@ -18,6 +19,7 @@ class ComponentType(Enum):
 
 class ComponentCreationError(Exception):
     """Exception raised when component creation fails."""
+
     pass
 
 
@@ -62,11 +64,14 @@ class ProcessorFactory(ComponentFactory):
         """Register default processor types."""
         try:
             from ..processors import ReviewProcessor, SummaryProcessor, ThreadProcessor
-            self._processor_registry.update({
-                'review': ReviewProcessor,
-                'summary': SummaryProcessor,
-                'thread': ThreadProcessor,
-            })
+
+            self._processor_registry.update(
+                {
+                    "review": ReviewProcessor,
+                    "summary": SummaryProcessor,
+                    "thread": ThreadProcessor,
+                }
+            )
         except ImportError as e:
             logger.warning(f"Could not import some processors: {e}")
 
@@ -83,8 +88,8 @@ class ProcessorFactory(ComponentFactory):
         processor_class = self._processor_registry[component_type]
 
         try:
-            if component_type == 'thread':
-                resolved_marker = config.get('resolved_marker', '🔒 CODERABBIT_RESOLVED 🔒')
+            if component_type == "thread":
+                resolved_marker = config.get("resolved_marker", "🔒 CODERABBIT_RESOLVED 🔒")
                 return processor_class(resolved_marker)
             else:
                 return processor_class()
@@ -114,16 +119,22 @@ class FormatterFactory(ComponentFactory):
         """Register default formatter types."""
         try:
             from ..formatters import (
-                MarkdownFormatter, JSONFormatter, PlainTextFormatter,
-                LLMInstructionFormatter, AIAgentPromptFormatter
+                AIAgentPromptFormatter,
+                JSONFormatter,
+                LLMInstructionFormatter,
+                MarkdownFormatter,
+                PlainTextFormatter,
             )
-            self._formatter_registry.update({
-                'markdown': MarkdownFormatter,
-                'json': JSONFormatter,
-                'plain': PlainTextFormatter,
-                'llm-instruction': LLMInstructionFormatter,
-                'ai-agent-prompt': AIAgentPromptFormatter,
-            })
+
+            self._formatter_registry.update(
+                {
+                    "markdown": MarkdownFormatter,
+                    "json": JSONFormatter,
+                    "plain": PlainTextFormatter,
+                    "llm-instruction": LLMInstructionFormatter,
+                    "ai-agent-prompt": AIAgentPromptFormatter,
+                }
+            )
         except ImportError as e:
             logger.warning(f"Could not import some formatters: {e}")
 
@@ -140,10 +151,10 @@ class FormatterFactory(ComponentFactory):
         formatter_class = self._formatter_registry[component_type]
 
         try:
-            if component_type == 'markdown':
+            if component_type == "markdown":
                 return formatter_class(
-                    include_metadata=config.get('include_metadata', True),
-                    include_toc=config.get('include_toc', True)
+                    include_metadata=config.get("include_metadata", True),
+                    include_toc=config.get("include_toc", True),
                 )
             else:
                 return formatter_class()
@@ -173,11 +184,14 @@ class AnalyzerFactory(ComponentFactory):
         """Register default analyzer types."""
         try:
             from ..analyzers import CommentClassifier, MetadataEnhancer, ResolutionDetector
-            self._analyzer_registry.update({
-                'classifier': CommentClassifier,
-                'metadata_enhancer': MetadataEnhancer,
-                'resolution_detector': ResolutionDetector,
-            })
+
+            self._analyzer_registry.update(
+                {
+                    "classifier": CommentClassifier,
+                    "metadata_enhancer": MetadataEnhancer,
+                    "resolution_detector": ResolutionDetector,
+                }
+            )
         except ImportError as e:
             logger.warning(f"Could not import some analyzers: {e}")
 
@@ -194,7 +208,7 @@ class AnalyzerFactory(ComponentFactory):
         analyzer_class = self._analyzer_registry[component_type]
 
         try:
-            if component_type == 'classifier':
+            if component_type == "classifier":
                 return analyzer_class(config=config)
             else:
                 return analyzer_class()
@@ -223,15 +237,17 @@ class UtilityFactory(ComponentFactory):
     def _register_default_utilities(self):
         """Register default utility types."""
         try:
+            from ..utils.code_quality import QualityGate
             from ..utils.memory_manager import MemoryManager
             from ..utils.streaming_processor import CommentStreamProcessor
-            from ..utils.code_quality import QualityGate
 
-            self._utility_registry.update({
-                'memory_manager': MemoryManager,
-                'stream_processor': CommentStreamProcessor,
-                'quality_gate': QualityGate,
-            })
+            self._utility_registry.update(
+                {
+                    "memory_manager": MemoryManager,
+                    "stream_processor": CommentStreamProcessor,
+                    "quality_gate": QualityGate,
+                }
+            )
         except ImportError as e:
             logger.warning(f"Could not import some utilities: {e}")
 
@@ -248,16 +264,16 @@ class UtilityFactory(ComponentFactory):
         utility_class = self._utility_registry[component_type]
 
         try:
-            if component_type == 'memory_manager':
-                max_memory_mb = config.get('max_memory_mb', 300)
+            if component_type == "memory_manager":
+                max_memory_mb = config.get("max_memory_mb", 300)
                 return utility_class(max_memory_mb=max_memory_mb)
-            elif component_type == 'stream_processor':
-                max_workers = config.get('max_workers', 3)
-                batch_size = config.get('batch_size', 25)
+            elif component_type == "stream_processor":
+                max_workers = config.get("max_workers", 3)
+                batch_size = config.get("batch_size", 25)
                 return utility_class(max_workers=max_workers, batch_size=batch_size)
-            elif component_type == 'quality_gate':
-                max_complexity = config.get('max_complexity', 10)
-                max_lines = config.get('max_lines', 50)
+            elif component_type == "quality_gate":
+                max_complexity = config.get("max_complexity", 10)
+                max_lines = config.get("max_lines", 50)
                 return utility_class(max_complexity=max_complexity, max_lines=max_lines)
             else:
                 return utility_class()
@@ -291,7 +307,7 @@ class ComponentFactoryManager:
         self,
         component_category: Union[ComponentType, str],
         component_type: str,
-        config: Optional[Dict[str, Any]] = None
+        config: Optional[Dict[str, Any]] = None,
     ) -> Any:
         """Create a component using the appropriate factory."""
         # Convert string to ComponentType if needed
@@ -319,7 +335,9 @@ class ComponentFactoryManager:
             result[category.value] = factory.get_supported_types()
         return result
 
-    def register_factory(self, component_category: ComponentType, factory: ComponentFactory) -> None:
+    def register_factory(
+        self, component_category: ComponentType, factory: ComponentFactory
+    ) -> None:
         """Register a new factory for a component category."""
         self._factories[component_category] = factory
         logger.info(f"Registered factory for category: {component_category}")
@@ -332,7 +350,7 @@ factory_manager = ComponentFactoryManager()
 def create_component(
     component_category: Union[ComponentType, str],
     component_type: str,
-    config: Optional[Dict[str, Any]] = None
+    config: Optional[Dict[str, Any]] = None,
 ) -> Any:
     """Convenience function to create components using the global factory manager."""
     return factory_manager.create_component(component_category, component_type, config)

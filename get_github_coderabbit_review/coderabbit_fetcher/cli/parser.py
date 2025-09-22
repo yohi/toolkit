@@ -9,14 +9,12 @@ import json
 import re
 from pathlib import Path
 from typing import Optional
-from urllib.parse import urlparse
 
 from rich.console import Console
 
-from ..exceptions import InvalidPRUrlError, GitHubAuthenticationError
-from ..github.client import GitHubClient
-from ..github.comment_poster import CommentPoster
 from ..analyzer import CommentAnalyzer
+from ..exceptions import InvalidPRUrlError
+from ..github.client import GitHubClient
 
 console = Console()
 
@@ -24,9 +22,7 @@ console = Console()
 class ArgumentParser:
     """Handles argument parsing and main execution orchestration."""
 
-    PR_URL_PATTERN = re.compile(
-        r"^https://github\.com/([^/]+)/([^/]+)/pull/(\d+)$"
-    )
+    PR_URL_PATTERN = re.compile(r"^https://github\.com/([^/]+)/([^/]+)/pull/(\d+)$")
 
     def __init__(self) -> None:
         """Initialize the argument parser."""
@@ -80,11 +76,13 @@ class ArgumentParser:
         # Validate persona file if provided
         if persona_file and not persona_file.exists():
             from ..exceptions import PersonaFileError
+
             raise PersonaFileError(f"Persona file not found: {persona_file}")
 
         # Validate resolved marker
         if not resolved_marker.strip():
             from ..exceptions import CodeRabbitFetcherError
+
             raise CodeRabbitFetcherError("Resolved marker cannot be empty")
 
     def parse_and_execute(
@@ -126,6 +124,7 @@ class ArgumentParser:
         # Check GitHub CLI authentication
         if not self.github_client.check_authentication():
             from ..exceptions import GitHubAuthenticationError
+
             raise GitHubAuthenticationError(
                 "GitHub CLI is not authenticated. Please run 'gh auth login' first."
             )
@@ -137,8 +136,10 @@ class ArgumentParser:
         comments_data = self.github_client.fetch_pr_comments(pr_url)
 
         if verbose:
-            console.print(f"✅ [green]Successfully fetched PR data[/green]")
-            console.print(f"📊 [blue]Found {len(comments_data.get('comments', []))} comments[/blue]")
+            console.print("✅ [green]Successfully fetched PR data[/green]")
+            console.print(
+                f"📊 [blue]Found {len(comments_data.get('comments', []))} comments[/blue]"
+            )
 
         # Analyze comments using CommentAnalyzer
         if verbose:
@@ -151,11 +152,13 @@ class ArgumentParser:
         analyzed_comments = self.comment_analyzer.analyze_comments(comments_data)
 
         if verbose:
-            console.print(f"📊 [green]Analysis complete:[/green]")
+            console.print("📊 [green]Analysis complete:[/green]")
             console.print(f"   - Total comments: {analyzed_comments.metadata.total_comments}")
             console.print(f"   - Summary comments: {len(analyzed_comments.summary_comments)}")
             console.print(f"   - Review comments: {len(analyzed_comments.review_comments)}")
-            console.print(f"   - Actionable items: {analyzed_comments.metadata.actionable_comments}")
+            console.print(
+                f"   - Actionable items: {analyzed_comments.metadata.actionable_comments}"
+            )
             console.print(f"   - Resolved comments: {analyzed_comments.metadata.resolved_comments}")
 
         # Prepare output data
@@ -166,16 +169,20 @@ class ArgumentParser:
                 "repo": repo,
                 "pr_number": pr_number,
                 "resolved_marker": resolved_marker,
-                "analysis_timestamp": analyzed_comments.metadata.processed_at.isoformat()
+                "analysis_timestamp": analyzed_comments.metadata.processed_at.isoformat(),
             },
             "raw_data": comments_data,
             "analysis": {
                 "total_comments": analyzed_comments.metadata.total_comments,
                 "resolved_count": analyzed_comments.metadata.resolved_comments,
-                "summary_comments": [comment.model_dump() for comment in analyzed_comments.summary_comments],
-                "review_comments": [comment.model_dump() for comment in analyzed_comments.review_comments],
-                "metadata": analyzed_comments.metadata.model_dump()
-            }
+                "summary_comments": [
+                    comment.model_dump() for comment in analyzed_comments.summary_comments
+                ],
+                "review_comments": [
+                    comment.model_dump() for comment in analyzed_comments.review_comments
+                ],
+                "metadata": analyzed_comments.metadata.model_dump(),
+            },
         }
 
         # Output the analyzed data
@@ -183,8 +190,7 @@ class ArgumentParser:
             if verbose:
                 console.print(f"💾 [blue]Writing analyzed data to {output_file}...[/blue]")
             output_file.write_text(
-                json.dumps(output_data, indent=2, ensure_ascii=False),
-                encoding="utf-8"
+                json.dumps(output_data, indent=2, ensure_ascii=False), encoding="utf-8"
             )
         else:
             console.print(json.dumps(output_data, indent=2, ensure_ascii=False))
@@ -195,6 +201,7 @@ class ArgumentParser:
                 console.print("📤 [blue]Posting resolution request...[/blue]")
 
             from ..github.comment_poster import CommentPoster
+
             poster = CommentPoster(self.github_client)
             success = poster.post_resolution_request(pr_url, resolved_marker)
 

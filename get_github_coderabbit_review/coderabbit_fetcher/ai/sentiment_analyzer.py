@@ -1,22 +1,23 @@
 """Sentiment analysis for CodeRabbit comments."""
 
-import logging
 import asyncio
-from typing import Dict, List, Optional, Any, Tuple
+import json
+import logging
+import re
 from dataclasses import dataclass, field
 from enum import Enum
-import json
-import re
+from typing import Any, Dict, List, Optional, Tuple
 
+from ..patterns.observer import EventType, publish_event
 from .llm_client import LLMClient, get_llm_client
 from .prompt_templates import SentimentPrompt
-from ..patterns.observer import publish_event, EventType
 
 logger = logging.getLogger(__name__)
 
 
 class SentimentLabel(Enum):
     """Sentiment label enumeration."""
+
     VERY_NEGATIVE = "very_negative"
     NEGATIVE = "negative"
     NEUTRAL = "neutral"
@@ -26,6 +27,7 @@ class SentimentLabel(Enum):
 
 class ToneType(Enum):
     """Tone type enumeration."""
+
     PROFESSIONAL = "professional"
     CASUAL = "casual"
     CRITICAL = "critical"
@@ -38,24 +40,25 @@ class ToneType(Enum):
 @dataclass
 class EmotionAnalysis:
     """Emotion analysis result."""
-    frustration: float = 0.0      # 0.0 to 1.0
-    satisfaction: float = 0.0     # 0.0 to 1.0
-    concern: float = 0.0          # 0.0 to 1.0
-    approval: float = 0.0         # 0.0 to 1.0
-    confusion: float = 0.0        # 0.0 to 1.0
-    enthusiasm: float = 0.0       # 0.0 to 1.0
-    impatience: float = 0.0       # 0.0 to 1.0
+
+    frustration: float = 0.0  # 0.0 to 1.0
+    satisfaction: float = 0.0  # 0.0 to 1.0
+    concern: float = 0.0  # 0.0 to 1.0
+    approval: float = 0.0  # 0.0 to 1.0
+    confusion: float = 0.0  # 0.0 to 1.0
+    enthusiasm: float = 0.0  # 0.0 to 1.0
+    impatience: float = 0.0  # 0.0 to 1.0
 
     def get_dominant_emotion(self) -> Tuple[str, float]:
         """Get the dominant emotion and its score."""
         emotions = {
-            'frustration': self.frustration,
-            'satisfaction': self.satisfaction,
-            'concern': self.concern,
-            'approval': self.approval,
-            'confusion': self.confusion,
-            'enthusiasm': self.enthusiasm,
-            'impatience': self.impatience
+            "frustration": self.frustration,
+            "satisfaction": self.satisfaction,
+            "concern": self.concern,
+            "approval": self.approval,
+            "confusion": self.confusion,
+            "enthusiasm": self.enthusiasm,
+            "impatience": self.impatience,
         }
 
         dominant = max(emotions.items(), key=lambda x: x[1])
@@ -64,27 +67,28 @@ class EmotionAnalysis:
     def to_dict(self) -> Dict[str, float]:
         """Convert to dictionary."""
         return {
-            'frustration': self.frustration,
-            'satisfaction': self.satisfaction,
-            'concern': self.concern,
-            'approval': self.approval,
-            'confusion': self.confusion,
-            'enthusiasm': self.enthusiasm,
-            'impatience': self.impatience
+            "frustration": self.frustration,
+            "satisfaction": self.satisfaction,
+            "concern": self.concern,
+            "approval": self.approval,
+            "confusion": self.confusion,
+            "enthusiasm": self.enthusiasm,
+            "impatience": self.impatience,
         }
 
 
 @dataclass
 class SentimentScore:
     """Sentiment analysis result."""
-    sentiment_score: float        # -1.0 to 1.0 (negative to positive)
+
+    sentiment_score: float  # -1.0 to 1.0 (negative to positive)
     sentiment_label: SentimentLabel
-    confidence: float            # 0.0 to 1.0
+    confidence: float  # 0.0 to 1.0
     emotions: EmotionAnalysis = field(default_factory=EmotionAnalysis)
     tone: ToneType = ToneType.NEUTRAL
     constructiveness: float = 0.5  # 0.0 to 1.0
-    politeness: float = 0.5       # 0.0 to 1.0
-    clarity: float = 0.5          # 0.0 to 1.0
+    politeness: float = 0.5  # 0.0 to 1.0
+    clarity: float = 0.5  # 0.0 to 1.0
     reasoning: str = ""
     keywords: List[str] = field(default_factory=list)
     metadata: Dict[str, Any] = field(default_factory=dict)
@@ -108,28 +112,24 @@ class SentimentScore:
     def get_overall_quality(self) -> float:
         """Get overall communication quality score."""
         # Combine constructiveness, politeness, and clarity
-        quality_score = (
-            self.constructiveness * 0.4 +
-            self.politeness * 0.3 +
-            self.clarity * 0.3
-        )
+        quality_score = self.constructiveness * 0.4 + self.politeness * 0.3 + self.clarity * 0.3
         return round(quality_score, 2)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
-            'sentiment_score': self.sentiment_score,
-            'sentiment_label': self.sentiment_label.value,
-            'confidence': self.confidence,
-            'emotions': self.emotions.to_dict(),
-            'tone': self.tone.value,
-            'constructiveness': self.constructiveness,
-            'politeness': self.politeness,
-            'clarity': self.clarity,
-            'reasoning': self.reasoning,
-            'keywords': self.keywords,
-            'overall_quality': self.get_overall_quality(),
-            'metadata': self.metadata
+            "sentiment_score": self.sentiment_score,
+            "sentiment_label": self.sentiment_label.value,
+            "confidence": self.confidence,
+            "emotions": self.emotions.to_dict(),
+            "tone": self.tone.value,
+            "constructiveness": self.constructiveness,
+            "politeness": self.politeness,
+            "clarity": self.clarity,
+            "reasoning": self.reasoning,
+            "keywords": self.keywords,
+            "overall_quality": self.get_overall_quality(),
+            "metadata": self.metadata,
         }
 
 
@@ -140,7 +140,7 @@ class SentimentAnalyzer:
         self,
         llm_client: Optional[LLMClient] = None,
         fallback_enabled: bool = True,
-        cache_enabled: bool = True
+        cache_enabled: bool = True,
     ):
         """Initialize sentiment analyzer.
 
@@ -161,75 +161,73 @@ class SentimentAnalyzer:
 
         # Statistics
         self.stats = {
-            'analyses_performed': 0,
-            'ai_analyses': 0,
-            'fallback_analyses': 0,
-            'average_sentiment': 0.0,
-            'average_constructiveness': 0.0,
-            'sentiment_distribution': {},
-            'tone_distribution': {},
-            'emotion_totals': EmotionAnalysis().to_dict()
+            "analyses_performed": 0,
+            "ai_analyses": 0,
+            "fallback_analyses": 0,
+            "average_sentiment": 0.0,
+            "average_constructiveness": 0.0,
+            "sentiment_distribution": {},
+            "tone_distribution": {},
+            "emotion_totals": EmotionAnalysis().to_dict(),
         }
 
     def _init_sentiment_patterns(self) -> None:
         """Initialize sentiment analysis patterns."""
         # Positive patterns
         self.positive_patterns = [
-            r'(?i)\b(great|excellent|good|nice|well done|perfect|awesome|fantastic|brilliant)\b',
-            r'(?i)\b(love|like|appreciate|thanks|thank you|impressed|solid)\b',
-            r'(?i)\b(clean|elegant|efficient|smart|clever|neat|beautiful)\b'
+            r"(?i)\b(great|excellent|good|nice|well done|perfect|awesome|fantastic|brilliant)\b",
+            r"(?i)\b(love|like|appreciate|thanks|thank you|impressed|solid)\b",
+            r"(?i)\b(clean|elegant|efficient|smart|clever|neat|beautiful)\b",
         ]
 
         # Negative patterns
         self.negative_patterns = [
-            r'(?i)\b(bad|terrible|awful|horrible|wrong|broken|failed|error)\b',
-            r'(?i)\b(hate|dislike|disappointed|frustrated|confused|annoyed)\b',
-            r'(?i)\b(messy|ugly|inefficient|slow|bloated|convoluted)\b'
+            r"(?i)\b(bad|terrible|awful|horrible|wrong|broken|failed|error)\b",
+            r"(?i)\b(hate|dislike|disappointed|frustrated|confused|annoyed)\b",
+            r"(?i)\b(messy|ugly|inefficient|slow|bloated|convoluted)\b",
         ]
 
         # Constructive patterns
         self.constructive_patterns = [
-            r'(?i)\b(suggest|recommend|consider|perhaps|maybe|could|might)\b',
-            r'(?i)\b(improve|optimize|refactor|enhance|better|alternative)\b',
-            r'(?i)\bwould be (better|good|nice|helpful)\b'
+            r"(?i)\b(suggest|recommend|consider|perhaps|maybe|could|might)\b",
+            r"(?i)\b(improve|optimize|refactor|enhance|better|alternative)\b",
+            r"(?i)\bwould be (better|good|nice|helpful)\b",
         ]
 
         # Critical patterns (potentially destructive)
         self.critical_patterns = [
-            r'(?i)\b(must|should|need to|have to|required|mandatory)\b',
-            r'(?i)\b(always|never|every time|completely|totally|absolutely)\b',
-            r'(?i)\b(obviously|clearly|simple|just|simply|merely)\b'
+            r"(?i)\b(must|should|need to|have to|required|mandatory)\b",
+            r"(?i)\b(always|never|every time|completely|totally|absolutely)\b",
+            r"(?i)\b(obviously|clearly|simple|just|simply|merely)\b",
         ]
 
         # Emotion patterns
         self.emotion_patterns = {
-            'frustration': [
-                r'(?i)\b(frustrated|annoyed|irritated|tired|sick of)\b',
-                r'(?i)\bwhy (would|do|did|is|are)\b',
-                r'(?i)\b(again|still|yet another|keep)\b'
+            "frustration": [
+                r"(?i)\b(frustrated|annoyed|irritated|tired|sick of)\b",
+                r"(?i)\bwhy (would|do|did|is|are)\b",
+                r"(?i)\b(again|still|yet another|keep)\b",
             ],
-            'concern': [
-                r'(?i)\b(worried|concerned|afraid|scared|risky|dangerous)\b',
-                r'(?i)\b(problem|issue|trouble|difficult|challenging)\b'
+            "concern": [
+                r"(?i)\b(worried|concerned|afraid|scared|risky|dangerous)\b",
+                r"(?i)\b(problem|issue|trouble|difficult|challenging)\b",
             ],
-            'approval': [
-                r'(?i)\b(approve|agree|correct|right|yes|exactly)\b',
-                r'(?i)\b(looks good|sounds good|makes sense)\b'
+            "approval": [
+                r"(?i)\b(approve|agree|correct|right|yes|exactly)\b",
+                r"(?i)\b(looks good|sounds good|makes sense)\b",
             ],
-            'confusion': [
-                r'(?i)\b(confused|unclear|unsure|not sure|don\'t understand)\b',
-                r'(?i)\b(what|why|how|when|where)\b.*\?'
+            "confusion": [
+                r"(?i)\b(confused|unclear|unsure|not sure|don\'t understand)\b",
+                r"(?i)\b(what|why|how|when|where)\b.*\?",
             ],
-            'enthusiasm': [
-                r'(?i)\b(excited|enthusiastic|eager|looking forward)\b',
-                r'(?i)!+\s*$'  # Exclamation marks at end
-            ]
+            "enthusiasm": [
+                r"(?i)\b(excited|enthusiastic|eager|looking forward)\b",
+                r"(?i)!+\s*$",  # Exclamation marks at end
+            ],
         }
 
     async def analyze_sentiment_async(
-        self,
-        text: str,
-        context: Optional[Dict[str, Any]] = None
+        self, text: str, context: Optional[Dict[str, Any]] = None
     ) -> SentimentScore:
         """Analyze sentiment asynchronously.
 
@@ -247,14 +245,14 @@ class SentimentAnalyzer:
             if self.llm_client:
                 result = await self._analyze_with_ai(text, context)
                 if result:
-                    self.stats['ai_analyses'] += 1
+                    self.stats["ai_analyses"] += 1
                     self._update_stats(result)
                     return result
 
             # Fallback to rule-based analysis
             if self.fallback_enabled:
                 result = self._analyze_with_rules(text, context)
-                self.stats['fallback_analyses'] += 1
+                self.stats["fallback_analyses"] += 1
                 self._update_stats(result)
                 return result
 
@@ -263,7 +261,7 @@ class SentimentAnalyzer:
                 sentiment_score=0.0,
                 sentiment_label=SentimentLabel.NEUTRAL,
                 confidence=0.1,
-                reasoning="No analysis method available"
+                reasoning="No analysis method available",
             )
             self._update_stats(result)
             return result
@@ -276,13 +274,11 @@ class SentimentAnalyzer:
                 sentiment_score=0.0,
                 sentiment_label=SentimentLabel.NEUTRAL,
                 confidence=0.0,
-                reasoning=f"Analysis error: {e}"
+                reasoning=f"Analysis error: {e}",
             )
 
     def analyze_sentiment(
-        self,
-        text: str,
-        context: Optional[Dict[str, Any]] = None
+        self, text: str, context: Optional[Dict[str, Any]] = None
     ) -> SentimentScore:
         """Analyze sentiment synchronously.
 
@@ -296,6 +292,7 @@ class SentimentAnalyzer:
         try:
             asyncio.get_running_loop()
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
                 fut = ex.submit(asyncio.run, self.analyze_sentiment_async(text, context))
                 return fut.result()
@@ -303,8 +300,7 @@ class SentimentAnalyzer:
             return asyncio.run(self.analyze_sentiment_async(text, context))
 
     async def analyze_batch_async(
-        self,
-        texts: List[Tuple[str, Optional[Dict[str, Any]]]]
+        self, texts: List[Tuple[str, Optional[Dict[str, Any]]]]
     ) -> List[SentimentScore]:
         """Analyze multiple texts asynchronously.
 
@@ -320,10 +316,7 @@ class SentimentAnalyzer:
         logger.info(f"Analyzing sentiment for {len(texts)} texts")
 
         # Process concurrently
-        tasks = [
-            self.analyze_sentiment_async(text, context)
-            for text, context in texts
-        ]
+        tasks = [self.analyze_sentiment_async(text, context) for text, context in texts]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
@@ -332,21 +325,21 @@ class SentimentAnalyzer:
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 logger.error(f"Error analyzing text {i}: {result}")
-                final_results.append(SentimentScore(
-                    sentiment_score=0.0,
-                    sentiment_label=SentimentLabel.NEUTRAL,
-                    confidence=0.0,
-                    reasoning=f"Error: {result}"
-                ))
+                final_results.append(
+                    SentimentScore(
+                        sentiment_score=0.0,
+                        sentiment_label=SentimentLabel.NEUTRAL,
+                        confidence=0.0,
+                        reasoning=f"Error: {result}",
+                    )
+                )
             else:
                 final_results.append(result)
 
         return final_results
 
     async def _analyze_with_ai(
-        self,
-        text: str,
-        context: Optional[Dict[str, Any]] = None
+        self, text: str, context: Optional[Dict[str, Any]] = None
     ) -> Optional[SentimentScore]:
         """Analyze sentiment using AI/LLM."""
         if not self.llm_client:
@@ -354,19 +347,13 @@ class SentimentAnalyzer:
 
         try:
             # Generate sentiment analysis prompt
-            prompt = self.prompt_template.create_prompt(
-                text=text,
-                context=context or {}
-            )
+            prompt = self.prompt_template.create_prompt(text=text, context=context or {})
 
             system_prompt = self.prompt_template.get_system_prompt()
 
             # Get LLM response
             response = await self.llm_client.generate_async(
-                prompt=prompt,
-                system_prompt=system_prompt,
-                temperature=0.1,
-                max_tokens=400
+                prompt=prompt, system_prompt=system_prompt, temperature=0.1, max_tokens=400
             )
 
             # Parse response
@@ -377,12 +364,12 @@ class SentimentAnalyzer:
                 EventType.PROCESSING_COMPLETED,
                 source="SentimentAnalyzer",
                 data={
-                    'method': 'ai',
-                    'sentiment_score': result.sentiment_score,
-                    'sentiment_label': result.sentiment_label.value,
-                    'confidence': result.confidence,
-                    'response_time_ms': response.response_time_ms
-                }
+                    "method": "ai",
+                    "sentiment_score": result.sentiment_score,
+                    "sentiment_label": result.sentiment_label.value,
+                    "confidence": result.confidence,
+                    "response_time_ms": response.response_time_ms,
+                },
             )
 
             return result
@@ -394,46 +381,42 @@ class SentimentAnalyzer:
             publish_event(
                 EventType.PROCESSING_FAILED,
                 source="SentimentAnalyzer",
-                data={'error': str(e), 'method': 'ai'},
-                severity="error"
+                data={"error": str(e), "method": "ai"},
+                severity="error",
             )
 
             return None
 
-    def _parse_ai_response(
-        self,
-        response,
-        text: str
-    ) -> SentimentScore:
+    def _parse_ai_response(self, response, text: str) -> SentimentScore:
         """Parse AI response into sentiment score."""
         try:
             # Try to parse as JSON
-            if response.content.strip().startswith('{'):
+            if response.content.strip().startswith("{"):
                 data = json.loads(response.content)
 
                 # Parse emotions
-                emotions_data = data.get('emotions', {})
+                emotions_data = data.get("emotions", {})
                 emotions = EmotionAnalysis(
-                    frustration=emotions_data.get('frustration', 0.0),
-                    satisfaction=emotions_data.get('satisfaction', 0.0),
-                    concern=emotions_data.get('concern', 0.0),
-                    approval=emotions_data.get('approval', 0.0),
-                    confusion=emotions_data.get('confusion', 0.0),
-                    enthusiasm=emotions_data.get('enthusiasm', 0.0),
-                    impatience=emotions_data.get('impatience', 0.0)
+                    frustration=emotions_data.get("frustration", 0.0),
+                    satisfaction=emotions_data.get("satisfaction", 0.0),
+                    concern=emotions_data.get("concern", 0.0),
+                    approval=emotions_data.get("approval", 0.0),
+                    confusion=emotions_data.get("confusion", 0.0),
+                    enthusiasm=emotions_data.get("enthusiasm", 0.0),
+                    impatience=emotions_data.get("impatience", 0.0),
                 )
 
                 return SentimentScore(
-                    sentiment_score=float(data.get('sentiment_score', 0.0)),
-                    sentiment_label=SentimentLabel(data.get('sentiment_label', 'neutral')),
-                    confidence=float(data.get('confidence', 0.5)),
+                    sentiment_score=float(data.get("sentiment_score", 0.0)),
+                    sentiment_label=SentimentLabel(data.get("sentiment_label", "neutral")),
+                    confidence=float(data.get("confidence", 0.5)),
                     emotions=emotions,
-                    tone=ToneType(data.get('tone', 'neutral')),
-                    constructiveness=float(data.get('constructiveness', 0.5)),
-                    politeness=float(data.get('politeness', 0.5)),
-                    clarity=float(data.get('clarity', 0.5)),
-                    reasoning=data.get('reasoning', ''),
-                    keywords=data.get('keywords', [])
+                    tone=ToneType(data.get("tone", "neutral")),
+                    constructiveness=float(data.get("constructiveness", 0.5)),
+                    politeness=float(data.get("politeness", 0.5)),
+                    clarity=float(data.get("clarity", 0.5)),
+                    reasoning=data.get("reasoning", ""),
+                    keywords=data.get("keywords", []),
                 )
 
             # Fallback to text parsing
@@ -449,7 +432,7 @@ class SentimentAnalyzer:
         """Parse text response from AI."""
         # Extract sentiment score
         sentiment_score = 0.0
-        score_match = re.search(r'sentiment.*?(-?\d+\.\d+)', text, re.IGNORECASE)
+        score_match = re.search(r"sentiment.*?(-?\d+\.\d+)", text, re.IGNORECASE)
         if score_match:
             sentiment_score = float(score_match.group(1))
 
@@ -467,7 +450,7 @@ class SentimentAnalyzer:
 
         # Extract confidence
         confidence = 0.5
-        confidence_match = re.search(r'confidence.*?(\d+\.\d+)', text, re.IGNORECASE)
+        confidence_match = re.search(r"confidence.*?(\d+\.\d+)", text, re.IGNORECASE)
         if confidence_match:
             confidence = float(confidence_match.group(1))
 
@@ -475,13 +458,11 @@ class SentimentAnalyzer:
             sentiment_score=sentiment_score,
             sentiment_label=sentiment_label,
             confidence=confidence,
-            reasoning=text[:200] + "..." if len(text) > 200 else text
+            reasoning=text[:200] + "..." if len(text) > 200 else text,
         )
 
     def _analyze_with_rules(
-        self,
-        text: str,
-        context: Optional[Dict[str, Any]] = None
+        self, text: str, context: Optional[Dict[str, Any]] = None
     ) -> SentimentScore:
         """Analyze sentiment using rule-based approach."""
         text_lower = text.lower()
@@ -491,16 +472,18 @@ class SentimentAnalyzer:
         negative_count = sum(1 for pattern in self.negative_patterns if re.search(pattern, text))
 
         # Base sentiment score
-        sentiment_score = (positive_count - negative_count) / max(positive_count + negative_count, 1)
+        sentiment_score = (positive_count - negative_count) / max(
+            positive_count + negative_count, 1
+        )
 
         # Adjust for text length and intensity
         if len(text.split()) < 5:  # Very short text
             sentiment_score *= 0.7
 
         # Check for exclamation marks (intensity)
-        exclamation_count = text.count('!')
+        exclamation_count = text.count("!")
         if exclamation_count > 0:
-            sentiment_score *= (1 + exclamation_count * 0.1)
+            sentiment_score *= 1 + exclamation_count * 0.1
 
         # Determine sentiment label
         if sentiment_score > 0.6:
@@ -515,7 +498,9 @@ class SentimentAnalyzer:
             sentiment_label = SentimentLabel.NEUTRAL
 
         # Analyze constructiveness
-        constructive_count = sum(1 for pattern in self.constructive_patterns if re.search(pattern, text))
+        constructive_count = sum(
+            1 for pattern in self.constructive_patterns if re.search(pattern, text)
+        )
         critical_count = sum(1 for pattern in self.critical_patterns if re.search(pattern, text))
 
         constructiveness = max(0.1, min(0.9, 0.5 + (constructive_count - critical_count) * 0.2))
@@ -539,7 +524,7 @@ class SentimentAnalyzer:
             tone = ToneType.FRUSTRATED
 
         # Calculate politeness (simple heuristic)
-        polite_words = ['please', 'thanks', 'thank you', 'appreciate', 'kindly']
+        polite_words = ["please", "thanks", "thank you", "appreciate", "kindly"]
         politeness = 0.5
         for word in polite_words:
             if word in text_lower:
@@ -548,7 +533,7 @@ class SentimentAnalyzer:
 
         # Calculate clarity (inverse of complexity)
         word_count = len(text.split())
-        sentence_count = text.count('.') + text.count('!') + text.count('?') + 1
+        sentence_count = text.count(".") + text.count("!") + text.count("?") + 1
         avg_words_per_sentence = word_count / sentence_count
         clarity = max(0.1, min(1.0, 1.0 - (avg_words_per_sentence - 10) * 0.05))
 
@@ -562,7 +547,7 @@ class SentimentAnalyzer:
             politeness=round(politeness, 2),
             clarity=round(clarity, 2),
             reasoning="Rule-based analysis",
-            keywords=self._extract_sentiment_keywords(text)
+            keywords=self._extract_sentiment_keywords(text),
         )
 
     def _extract_sentiment_keywords(self, text: str) -> List[str]:
@@ -588,33 +573,31 @@ class SentimentAnalyzer:
 
     def _update_stats(self, result: SentimentScore) -> None:
         """Update analysis statistics."""
-        self.stats['analyses_performed'] += 1
+        self.stats["analyses_performed"] += 1
 
         # Update averages
-        total_analyses = self.stats['analyses_performed']
-        self.stats['average_sentiment'] = (
-            (self.stats['average_sentiment'] * (total_analyses - 1) + result.sentiment_score) / total_analyses
-        )
-        self.stats['average_constructiveness'] = (
-            (self.stats['average_constructiveness'] * (total_analyses - 1) + result.constructiveness) / total_analyses
-        )
+        total_analyses = self.stats["analyses_performed"]
+        self.stats["average_sentiment"] = (
+            self.stats["average_sentiment"] * (total_analyses - 1) + result.sentiment_score
+        ) / total_analyses
+        self.stats["average_constructiveness"] = (
+            self.stats["average_constructiveness"] * (total_analyses - 1) + result.constructiveness
+        ) / total_analyses
 
         # Update distributions
         sentiment_label = result.sentiment_label.value
-        self.stats['sentiment_distribution'][sentiment_label] = (
-            self.stats['sentiment_distribution'].get(sentiment_label, 0) + 1
+        self.stats["sentiment_distribution"][sentiment_label] = (
+            self.stats["sentiment_distribution"].get(sentiment_label, 0) + 1
         )
 
         tone = result.tone.value
-        self.stats['tone_distribution'][tone] = (
-            self.stats['tone_distribution'].get(tone, 0) + 1
-        )
+        self.stats["tone_distribution"][tone] = self.stats["tone_distribution"].get(tone, 0) + 1
 
         # Update emotion totals
         emotions_dict = result.emotions.to_dict()
         for emotion, score in emotions_dict.items():
-            self.stats['emotion_totals'][emotion] = (
-                self.stats['emotion_totals'].get(emotion, 0.0) + score
+            self.stats["emotion_totals"][emotion] = (
+                self.stats["emotion_totals"].get(emotion, 0.0) + score
             )
 
     def get_stats(self) -> Dict[str, Any]:
@@ -622,12 +605,14 @@ class SentimentAnalyzer:
         stats = self.stats.copy()
 
         # Calculate percentages
-        if stats['analyses_performed'] > 0:
-            stats['ai_percentage'] = (stats['ai_analyses'] / stats['analyses_performed']) * 100
-            stats['fallback_percentage'] = (stats['fallback_analyses'] / stats['analyses_performed']) * 100
+        if stats["analyses_performed"] > 0:
+            stats["ai_percentage"] = (stats["ai_analyses"] / stats["analyses_performed"]) * 100
+            stats["fallback_percentage"] = (
+                stats["fallback_analyses"] / stats["analyses_performed"]
+            ) * 100
         else:
-            stats['ai_percentage'] = 0.0
-            stats['fallback_percentage'] = 0.0
+            stats["ai_percentage"] = 0.0
+            stats["fallback_percentage"] = 0.0
 
         return stats
 
@@ -657,25 +642,25 @@ class SentimentAnalyzer:
             sentiment_counts[result.sentiment_label.value] = (
                 sentiment_counts.get(result.sentiment_label.value, 0) + 1
             )
-            tone_counts[result.tone.value] = (
-                tone_counts.get(result.tone.value, 0) + 1
-            )
+            tone_counts[result.tone.value] = tone_counts.get(result.tone.value, 0) + 1
 
         # Calculate team health indicators
         positive_ratio = sum(1 for r in results if r.is_positive()) / len(results)
         constructive_ratio = sum(1 for r in results if r.is_constructive()) / len(results)
 
         return {
-            'total_comments': len(results),
-            'overall_sentiment': round(avg_sentiment, 2),
-            'constructiveness': round(avg_constructiveness, 2),
-            'politeness': round(avg_politeness, 2),
-            'clarity': round(avg_clarity, 2),
-            'positive_ratio': round(positive_ratio, 2),
-            'constructive_ratio': round(constructive_ratio, 2),
-            'sentiment_distribution': sentiment_counts,
-            'tone_distribution': tone_counts,
-            'team_health_score': round((avg_sentiment + avg_constructiveness + avg_politeness) / 3, 2)
+            "total_comments": len(results),
+            "overall_sentiment": round(avg_sentiment, 2),
+            "constructiveness": round(avg_constructiveness, 2),
+            "politeness": round(avg_politeness, 2),
+            "clarity": round(avg_clarity, 2),
+            "positive_ratio": round(positive_ratio, 2),
+            "constructive_ratio": round(constructive_ratio, 2),
+            "sentiment_distribution": sentiment_counts,
+            "tone_distribution": tone_counts,
+            "team_health_score": round(
+                (avg_sentiment + avg_constructiveness + avg_politeness) / 3, 2
+            ),
         }
 
 
@@ -696,8 +681,7 @@ def set_sentiment_analyzer(analyzer: SentimentAnalyzer) -> None:
 
 
 async def analyze_sentiment(
-    text: str,
-    context: Optional[Dict[str, Any]] = None
+    text: str, context: Optional[Dict[str, Any]] = None
 ) -> Optional[SentimentScore]:
     """Analyze sentiment using global analyzer.
 

@@ -11,7 +11,7 @@ DEFAULT_CORE_PRINCIPLES = [
     "Always consider security and performance implications",
     "Follow industry best practices and standards",
     "Provide specific, implementable solutions",
-    "Clearly explain the impact scope of changes"
+    "Clearly explain the impact scope of changes",
 ]
 
 DEFAULT_ANALYSIS_METHODOLOGY = [
@@ -19,7 +19,7 @@ DEFAULT_ANALYSIS_METHODOLOGY = [
     "**Impact Assessment**: Analyze how the fix affects other parts of the system",
     "**Solution Evaluation**: Compare multiple approaches",
     "**Implementation Strategy**: Develop specific modification steps",
-    "**Verification Method**: Propose testing and review policies"
+    "**Verification Method**: Propose testing and review policies",
 ]
 
 # Progress tracking configuration
@@ -31,19 +31,19 @@ DEFAULT_PROGRESS_STEPS = [
     "Fetching PR data from GitHub",
     "Analyzing CodeRabbit comments",
     "Formatting output",
-    "Writing results"
+    "Writing results",
 ]
 
 # Output format configuration
-SUPPORTED_OUTPUT_FORMATS = ['markdown', 'json', 'plain', 'llm-instruction', 'ai-agent-prompt']
+SUPPORTED_OUTPUT_FORMATS = ["markdown", "json", "plain", "llm-instruction", "ai-agent-prompt"]
 
 # Logging configuration for quiet mode
 QUIET_MODE_LOG_MODULES = [
-    'coderabbit_fetcher.orchestrator',
-    'coderabbit_fetcher.github_client',
-    'coderabbit_fetcher.comment_analyzer',
-    'coderabbit_fetcher.formatters.markdown_formatter',
-    'coderabbit_fetcher.formatters.ai_agent_prompt_formatter'
+    "coderabbit_fetcher.orchestrator",
+    "coderabbit_fetcher.github_client",
+    "coderabbit_fetcher.comment_analyzer",
+    "coderabbit_fetcher.formatters.markdown_formatter",
+    "coderabbit_fetcher.formatters.ai_agent_prompt_formatter",
 ]
 
 # Performance configuration

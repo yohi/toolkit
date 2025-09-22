@@ -1,10 +1,8 @@
 """Persona file fixtures for testing."""
 
-from typing import Dict, List
-import tempfile
 import os
-from pathlib import Path
-
+import tempfile
+from typing import Dict, List
 
 # Sample persona file contents
 PERSONA_FILE_CONTENT = {
@@ -36,7 +34,6 @@ PERSONA_FILE_CONTENT = {
 3. Code maintainability
 4. Documentation clarity
 5. Testing coverage""",
-
     "senior_architect": """You are a Senior Software Architect with 15+ years of experience.
 
 ## Architecture Expertise
@@ -67,7 +64,6 @@ PERSONA_FILE_CONTENT = {
 - Consider operational and deployment aspects
 - Validate security and compliance requirements
 - Provide strategic technical guidance""",
-
     "security_expert": """You are a Cybersecurity Expert specializing in application security.
 
 ## Security Expertise
@@ -106,7 +102,6 @@ PERSONA_FILE_CONTENT = {
 - Reference security standards and best practices
 - Prioritize vulnerabilities by severity
 - Educate on secure development practices""",
-
     "japanese_reviewer": """あなたは経験豊富な日本人ソフトウェア開発者です。
 
 ## 専門分野
@@ -140,9 +135,7 @@ PERSONA_FILE_CONTENT = {
 - 自然な日本語での説明
 - 技術用語の適切な使用
 - 文化的配慮を含めたコメント""",
-
     "minimal": """Experienced developer focused on code quality.""",
-
     "detailed_with_examples": """You are a Senior Full-Stack Developer with expertise in modern web technologies.
 
 ## Technical Background
@@ -209,10 +202,8 @@ cursor.execute(query, (user_id,))
 
 This prevents SQL injection attacks by properly escaping user input.
 ```""",
-
     "empty": "",
-
-    "invalid_encoding": "This file contains invalid characters: \x00\x01\x02"
+    "invalid_encoding": "This file contains invalid characters: \x00\x01\x02",
 }
 
 # Sample persona files for testing
@@ -220,33 +211,33 @@ SAMPLE_PERSONA_FILES = {
     "valid_default": {
         "content": PERSONA_FILE_CONTENT["default"],
         "filename": "default_persona.txt",
-        "encoding": "utf-8"
+        "encoding": "utf-8",
     },
     "valid_architect": {
         "content": PERSONA_FILE_CONTENT["senior_architect"],
         "filename": "senior_architect.md",
-        "encoding": "utf-8"
+        "encoding": "utf-8",
     },
     "valid_security": {
         "content": PERSONA_FILE_CONTENT["security_expert"],
         "filename": "security_expert.txt",
-        "encoding": "utf-8"
+        "encoding": "utf-8",
     },
     "valid_japanese": {
         "content": PERSONA_FILE_CONTENT["japanese_reviewer"],
         "filename": "japanese_reviewer.txt",
-        "encoding": "utf-8"
+        "encoding": "utf-8",
     },
     "minimal_valid": {
         "content": PERSONA_FILE_CONTENT["minimal"],
         "filename": "minimal.txt",
-        "encoding": "utf-8"
+        "encoding": "utf-8",
     },
     "detailed_examples": {
         "content": PERSONA_FILE_CONTENT["detailed_with_examples"],
         "filename": "detailed_persona.md",
-        "encoding": "utf-8"
-    }
+        "encoding": "utf-8",
+    },
 }
 
 # Invalid persona files for error testing
@@ -254,28 +245,28 @@ INVALID_PERSONA_FILES = {
     "empty_file": {
         "content": PERSONA_FILE_CONTENT["empty"],
         "filename": "empty.txt",
-        "encoding": "utf-8"
+        "encoding": "utf-8",
     },
     "invalid_encoding": {
         "content": PERSONA_FILE_CONTENT["invalid_encoding"],
         "filename": "invalid.txt",
-        "encoding": "latin-1"  # Will cause encoding issues
+        "encoding": "latin-1",  # Will cause encoding issues
     },
     "binary_file": {
         "content": b"\x00\x01\x02\x03\x04\x05",  # Binary content
         "filename": "binary.bin",
-        "encoding": None  # Binary mode
+        "encoding": None,  # Binary mode
     },
     "very_large": {
         "content": "A" * (15 * 1024 * 1024),  # 15MB file (exceeds typical limits)
         "filename": "large.txt",
-        "encoding": "utf-8"
+        "encoding": "utf-8",
     },
     "special_characters": {
         "content": "File with émojis 🚀🔥💻 and special chars: <>&\"'",
         "filename": "special_chars.txt",
-        "encoding": "utf-8"
-    }
+        "encoding": "utf-8",
+    },
 }
 
 
@@ -302,11 +293,11 @@ class PersonaFileManager:
 
         if file_info.get("encoding") is None:
             # Binary mode
-            with open(file_path, 'wb') as f:
+            with open(file_path, "wb") as f:
                 f.write(file_info["content"])
         else:
             # Text mode
-            with open(file_path, 'w', encoding=file_info["encoding"]) as f:
+            with open(file_path, "w", encoding=file_info["encoding"]) as f:
                 f.write(file_info["content"])
 
         self._temp_files.append(file_path)
@@ -348,7 +339,7 @@ class PersonaFileManager:
 
         file_path = os.path.join(self._temp_dir, "readonly.txt")
 
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, "w", encoding="utf-8") as f:
             f.write(content)
 
         # Make file read-only
@@ -403,53 +394,54 @@ PERSONA_VALIDATION_CASES = {
         {
             "name": "Standard developer persona",
             "content": PERSONA_FILE_CONTENT["default"],
-            "expected_valid": True
+            "expected_valid": True,
         },
         {
             "name": "Minimal persona",
             "content": PERSONA_FILE_CONTENT["minimal"],
-            "expected_valid": True
+            "expected_valid": True,
         },
         {
             "name": "Japanese content",
             "content": PERSONA_FILE_CONTENT["japanese_reviewer"],
-            "expected_valid": True
-        }
+            "expected_valid": True,
+        },
     ],
     "edge_cases": [
         {
             "name": "Empty content",
             "content": "",
             "expected_valid": True,  # Empty is valid but may warn
-            "expected_warnings": True
+            "expected_warnings": True,
         },
         {
             "name": "Very long content",
             "content": "Very long persona content. " * 1000,
-            "expected_valid": True
+            "expected_valid": True,
         },
         {
             "name": "Special characters",
             "content": "Persona with émojis 🚀 and special chars: <>&\"'",
-            "expected_valid": True
-        }
+            "expected_valid": True,
+        },
     ],
     "invalid_cases": [
         {
             "name": "Binary content",
             "content": b"\x00\x01\x02\x03",
             "expected_valid": False,
-            "expected_error": "binary content"
+            "expected_error": "binary content",
         },
         {
             "name": "Invalid encoding",
             "content": "Content with invalid encoding",
             "encoding": "invalid-encoding",
             "expected_valid": False,
-            "expected_error": "encoding"
-        }
-    ]
+            "expected_error": "encoding",
+        },
+    ],
 }
+
 
 # Helper functions for test setup
 def get_sample_persona_content(persona_type: str = "default") -> str:
@@ -477,7 +469,7 @@ def create_temporary_persona_file(content: str, filename: str = "test_persona.tx
     temp_dir = tempfile.mkdtemp(prefix="persona_test_")
     file_path = os.path.join(temp_dir, filename)
 
-    with open(file_path, 'w', encoding='utf-8') as f:
+    with open(file_path, "w", encoding="utf-8") as f:
         f.write(content)
 
     return file_path

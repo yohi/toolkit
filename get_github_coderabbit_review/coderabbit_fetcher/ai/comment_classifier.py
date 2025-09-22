@@ -1,24 +1,24 @@
 """AI-powered comment classifier for CodeRabbit fetcher."""
 
-import logging
 import asyncio
+import json
+import logging
+import re
 import threading
-from typing import Dict, List, Optional, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
-import json
-import re
+from typing import Any, Dict, List, Optional, Tuple
 
+from ..patterns.observer import EventType, publish_event
 from .llm_client import LLMClient, LLMResponse, get_llm_client
 from .prompt_templates import ClassificationPrompt
-from ..models import ActionableComment
-from ..patterns.observer import publish_event, EventType
 
 logger = logging.getLogger(__name__)
 
 
 class CommentCategory(Enum):
     """Comment category enumeration."""
+
     SECURITY_CRITICAL = "security_critical"
     PERFORMANCE_ISSUE = "performance_issue"
     BUG_POTENTIAL = "bug_potential"
@@ -35,16 +35,18 @@ class CommentCategory(Enum):
 
 class PriorityLevel(Enum):
     """Priority level enumeration."""
+
     CRITICAL = 5  # Security vulnerabilities, data loss risks
-    HIGH = 4      # Performance issues, potential bugs
-    MEDIUM = 3    # Code quality, architecture concerns
-    LOW = 2       # Style, documentation
-    INFO = 1      # Positive feedback, questions
+    HIGH = 4  # Performance issues, potential bugs
+    MEDIUM = 3  # Code quality, architecture concerns
+    LOW = 2  # Style, documentation
+    INFO = 1  # Positive feedback, questions
 
 
 @dataclass
 class ClassificationResult:
     """Comment classification result."""
+
     category: CommentCategory
     priority: PriorityLevel
     confidence: float  # 0.0 to 1.0
@@ -59,16 +61,16 @@ class ClassificationResult:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
-            'category': self.category.value,
-            'priority': self.priority.value,
-            'confidence': self.confidence,
-            'reasoning': self.reasoning,
-            'keywords': self.keywords,
-            'sentiment_score': self.sentiment_score,
-            'actionable': self.actionable,
-            'estimated_effort_hours': self.estimated_effort_hours,
-            'related_categories': [cat.value for cat in self.related_categories],
-            'metadata': self.metadata
+            "category": self.category.value,
+            "priority": self.priority.value,
+            "confidence": self.confidence,
+            "reasoning": self.reasoning,
+            "keywords": self.keywords,
+            "sentiment_score": self.sentiment_score,
+            "actionable": self.actionable,
+            "estimated_effort_hours": self.estimated_effort_hours,
+            "related_categories": [cat.value for cat in self.related_categories],
+            "metadata": self.metadata,
         }
 
 
@@ -79,7 +81,7 @@ class AICommentClassifier:
         self,
         llm_client: Optional[LLMClient] = None,
         fallback_enabled: bool = True,
-        batch_size: int = 5
+        batch_size: int = 5,
     ):
         """Initialize AI comment classifier.
 
@@ -97,36 +99,34 @@ class AICommentClassifier:
 
         # Rule-based patterns for fallback
         self.security_patterns = [
-            r'(?i)\b(security|vulnerability|exploit|attack|injection|xss|csrf|auth|password|secret|token)\b',
-            r'(?i)\b(unsafe|dangerous|risk|threat|malicious)\b'
+            r"(?i)\b(security|vulnerability|exploit|attack|injection|xss|csrf|auth|password|secret|token)\b",
+            r"(?i)\b(unsafe|dangerous|risk|threat|malicious)\b",
         ]
 
         self.performance_patterns = [
-            r'(?i)\b(performance|slow|optimization|bottleneck|memory|cpu|cache|efficiency)\b',
-            r'(?i)\b(n\+1|query|database|algorithm|complexity|timeout)\b'
+            r"(?i)\b(performance|slow|optimization|bottleneck|memory|cpu|cache|efficiency)\b",
+            r"(?i)\b(n\+1|query|database|algorithm|complexity|timeout)\b",
         ]
 
         self.bug_patterns = [
-            r'(?i)\b(bug|error|exception|crash|failure|broken|incorrect|wrong)\b',
-            r'(?i)\b(null|undefined|missing|invalid|edge case)\b'
+            r"(?i)\b(bug|error|exception|crash|failure|broken|incorrect|wrong)\b",
+            r"(?i)\b(null|undefined|missing|invalid|edge case)\b",
         ]
 
         # Statistics
         self._stats_lock = threading.Lock()
         self.stats = {
-            'comments_classified': 0,
-            'ai_classifications': 0,
-            'fallback_classifications': 0,
-            'batch_classifications': 0,
-            'average_confidence': 0.0,
-            'category_distribution': {},
-            'priority_distribution': {}
+            "comments_classified": 0,
+            "ai_classifications": 0,
+            "fallback_classifications": 0,
+            "batch_classifications": 0,
+            "average_confidence": 0.0,
+            "category_distribution": {},
+            "priority_distribution": {},
         }
 
     async def classify_comment_async(
-        self,
-        comment_text: str,
-        context: Optional[Dict[str, Any]] = None
+        self, comment_text: str, context: Optional[Dict[str, Any]] = None
     ) -> ClassificationResult:
         """Classify a single comment asynchronously.
 
@@ -145,7 +145,7 @@ class AICommentClassifier:
                 result = await self._classify_with_ai(comment_text, context)
                 if result:
                     with self._stats_lock:
-                        self.stats['ai_classifications'] += 1
+                        self.stats["ai_classifications"] += 1
                     self._update_stats(result)
                     return result
 
@@ -153,7 +153,7 @@ class AICommentClassifier:
             if self.fallback_enabled:
                 result = self._classify_with_rules(comment_text, context)
                 with self._stats_lock:
-                    self.stats['fallback_classifications'] += 1
+                    self.stats["fallback_classifications"] += 1
                 self._update_stats(result)
                 return result
 
@@ -162,7 +162,7 @@ class AICommentClassifier:
                 category=CommentCategory.UNKNOWN,
                 priority=PriorityLevel.MEDIUM,
                 confidence=0.1,
-                reasoning="No classification method available"
+                reasoning="No classification method available",
             )
             self._update_stats(result)
             return result
@@ -175,13 +175,11 @@ class AICommentClassifier:
                 category=CommentCategory.UNKNOWN,
                 priority=PriorityLevel.MEDIUM,
                 confidence=0.0,
-                reasoning=f"Classification error: {e}"
+                reasoning=f"Classification error: {e}",
             )
 
     def classify_comment(
-        self,
-        comment_text: str,
-        context: Optional[Dict[str, Any]] = None
+        self, comment_text: str, context: Optional[Dict[str, Any]] = None
     ) -> ClassificationResult:
         """Classify a single comment synchronously.
 
@@ -195,6 +193,7 @@ class AICommentClassifier:
         try:
             asyncio.get_running_loop()
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
                 fut = ex.submit(asyncio.run, self.classify_comment_async(comment_text, context))
                 return fut.result()
@@ -202,8 +201,7 @@ class AICommentClassifier:
             return asyncio.run(self.classify_comment_async(comment_text, context))
 
     async def classify_comments_batch_async(
-        self,
-        comments: List[Tuple[str, Optional[Dict[str, Any]]]]
+        self, comments: List[Tuple[str, Optional[Dict[str, Any]]]]
     ) -> List[ClassificationResult]:
         """Classify multiple comments in batches.
 
@@ -222,7 +220,7 @@ class AICommentClassifier:
 
         # Process in batches
         for i in range(0, len(comments), self.batch_size):
-            batch = comments[i:i + self.batch_size]
+            batch = comments[i : i + self.batch_size]
 
             try:
                 # Try batch AI classification
@@ -231,7 +229,7 @@ class AICommentClassifier:
                     if batch_results:
                         results.extend(batch_results)
                         with self._stats_lock:
-                            self.stats['batch_classifications'] += 1
+                            self.stats["batch_classifications"] += 1
                         continue
 
                 # Fallback to individual classification
@@ -249,20 +247,20 @@ class AICommentClassifier:
                         results.append(result)
                     except Exception as individual_error:
                         logger.error(f"Individual classification error: {individual_error}")
-                        results.append(ClassificationResult(
-                            category=CommentCategory.UNKNOWN,
-                            priority=PriorityLevel.MEDIUM,
-                            confidence=0.0,
-                            reasoning=f"Error: {individual_error}"
-                        ))
+                        results.append(
+                            ClassificationResult(
+                                category=CommentCategory.UNKNOWN,
+                                priority=PriorityLevel.MEDIUM,
+                                confidence=0.0,
+                                reasoning=f"Error: {individual_error}",
+                            )
+                        )
 
         logger.info(f"Classified {len(results)} comments")
         return results
 
     async def _classify_with_ai(
-        self,
-        comment_text: str,
-        context: Optional[Dict[str, Any]] = None
+        self, comment_text: str, context: Optional[Dict[str, Any]] = None
     ) -> Optional[ClassificationResult]:
         """Classify comment using AI/LLM."""
         if not self.llm_client:
@@ -271,8 +269,7 @@ class AICommentClassifier:
         try:
             # Generate classification prompt
             prompt = self.prompt_template.create_classification_prompt(
-                comment_text=comment_text,
-                context=context or {}
+                comment_text=comment_text, context=context or {}
             )
 
             system_prompt = self.prompt_template.get_system_prompt()
@@ -282,7 +279,7 @@ class AICommentClassifier:
                 prompt=prompt,
                 system_prompt=system_prompt,
                 temperature=0.1,  # Low temperature for consistent classification
-                max_tokens=500
+                max_tokens=500,
             )
 
             # Parse response
@@ -293,12 +290,12 @@ class AICommentClassifier:
                 EventType.PROCESSING_COMPLETED,
                 source="AICommentClassifier",
                 data={
-                    'method': 'ai',
-                    'category': result.category.value,
-                    'priority': result.priority.value,
-                    'confidence': result.confidence,
-                    'response_time_ms': response.response_time_ms
-                }
+                    "method": "ai",
+                    "category": result.category.value,
+                    "priority": result.priority.value,
+                    "confidence": result.confidence,
+                    "response_time_ms": response.response_time_ms,
+                },
             )
 
             return result
@@ -310,15 +307,14 @@ class AICommentClassifier:
             publish_event(
                 EventType.PROCESSING_FAILED,
                 source="AICommentClassifier",
-                data={'error': str(e), 'method': 'ai'},
-                severity="error"
+                data={"error": str(e), "method": "ai"},
+                severity="error",
             )
 
             return None
 
     async def _classify_batch_with_ai(
-        self,
-        comments: List[Tuple[str, Optional[Dict[str, Any]]]]
+        self, comments: List[Tuple[str, Optional[Dict[str, Any]]]]
     ) -> Optional[List[ClassificationResult]]:
         """Classify multiple comments with AI in a single request."""
         if not self.llm_client or len(comments) > self.batch_size:
@@ -334,7 +330,7 @@ class AICommentClassifier:
                 prompt=prompt,
                 system_prompt=system_prompt,
                 temperature=0.1,
-                max_tokens=1500  # More tokens for batch processing
+                max_tokens=1500,  # More tokens for batch processing
             )
 
             # Parse batch response
@@ -346,29 +342,25 @@ class AICommentClassifier:
             logger.error(f"Batch AI classification error: {e}")
             return None
 
-    def _parse_ai_response(
-        self,
-        response: LLMResponse,
-        comment_text: str
-    ) -> ClassificationResult:
+    def _parse_ai_response(self, response: LLMResponse, comment_text: str) -> ClassificationResult:
         """Parse AI response into classification result."""
         try:
             # Try to parse as JSON first
-            if response.content.strip().startswith('{'):
+            if response.content.strip().startswith("{"):
                 data = json.loads(response.content)
 
                 return ClassificationResult(
-                    category=CommentCategory(data.get('category', 'unknown')),
-                    priority=PriorityLevel(data.get('priority', 3)),
-                    confidence=float(data.get('confidence', 0.5)),
-                    reasoning=data.get('reasoning', ''),
-                    keywords=data.get('keywords', []),
-                    sentiment_score=data.get('sentiment_score'),
-                    actionable=data.get('actionable', True),
-                    estimated_effort_hours=data.get('estimated_effort_hours'),
+                    category=CommentCategory(data.get("category", "unknown")),
+                    priority=PriorityLevel(data.get("priority", 3)),
+                    confidence=float(data.get("confidence", 0.5)),
+                    reasoning=data.get("reasoning", ""),
+                    keywords=data.get("keywords", []),
+                    sentiment_score=data.get("sentiment_score"),
+                    actionable=data.get("actionable", True),
+                    estimated_effort_hours=data.get("estimated_effort_hours"),
                     related_categories=[
-                        CommentCategory(cat) for cat in data.get('related_categories', [])
-                    ]
+                        CommentCategory(cat) for cat in data.get("related_categories", [])
+                    ],
                 )
 
             # Fallback to text parsing
@@ -381,28 +373,26 @@ class AICommentClassifier:
             return self._classify_with_rules(comment_text)
 
     def _parse_batch_ai_response(
-        self,
-        response: LLMResponse,
-        comments: List[Tuple[str, Optional[Dict[str, Any]]]]
+        self, response: LLMResponse, comments: List[Tuple[str, Optional[Dict[str, Any]]]]
     ) -> List[ClassificationResult]:
         """Parse batch AI response."""
         try:
             # Try to parse as JSON array
-            if response.content.strip().startswith('['):
+            if response.content.strip().startswith("["):
                 data_list = json.loads(response.content)
 
                 results = []
                 for i, data in enumerate(data_list):
                     if i < len(comments):
                         result = ClassificationResult(
-                            category=CommentCategory(data.get('category', 'unknown')),
-                            priority=PriorityLevel(data.get('priority', 3)),
-                            confidence=float(data.get('confidence', 0.5)),
-                            reasoning=data.get('reasoning', ''),
-                            keywords=data.get('keywords', []),
-                            sentiment_score=data.get('sentiment_score'),
-                            actionable=data.get('actionable', True),
-                            estimated_effort_hours=data.get('estimated_effort_hours')
+                            category=CommentCategory(data.get("category", "unknown")),
+                            priority=PriorityLevel(data.get("priority", 3)),
+                            confidence=float(data.get("confidence", 0.5)),
+                            reasoning=data.get("reasoning", ""),
+                            keywords=data.get("keywords", []),
+                            sentiment_score=data.get("sentiment_score"),
+                            actionable=data.get("actionable", True),
+                            estimated_effort_hours=data.get("estimated_effort_hours"),
                         )
                         results.append(result)
 
@@ -426,34 +416,32 @@ class AICommentClassifier:
 
         # Extract priority
         priority = PriorityLevel.MEDIUM
-        if any(word in text.lower() for word in ['critical', 'urgent', 'severe']):
+        if any(word in text.lower() for word in ["critical", "urgent", "severe"]):
             priority = PriorityLevel.CRITICAL
-        elif any(word in text.lower() for word in ['high', 'important']):
+        elif any(word in text.lower() for word in ["high", "important"]):
             priority = PriorityLevel.HIGH
-        elif any(word in text.lower() for word in ['low', 'minor', 'nitpick']):
+        elif any(word in text.lower() for word in ["low", "minor", "nitpick"]):
             priority = PriorityLevel.LOW
 
         # Extract confidence (look for percentages or confidence words)
         confidence = 0.5
-        confidence_match = re.search(r'(\d+(?:\.\d+)?)\s*%', text)
+        confidence_match = re.search(r"(\d+(?:\.\d+)?)\s*%", text)
         if confidence_match:
             confidence = float(confidence_match.group(1)) / 100
-        elif 'high confidence' in text.lower():
+        elif "high confidence" in text.lower():
             confidence = 0.8
-        elif 'low confidence' in text.lower():
+        elif "low confidence" in text.lower():
             confidence = 0.3
 
         return ClassificationResult(
             category=category,
             priority=priority,
             confidence=confidence,
-            reasoning=text[:200] + "..." if len(text) > 200 else text
+            reasoning=text[:200] + "..." if len(text) > 200 else text,
         )
 
     def _classify_with_rules(
-        self,
-        comment_text: str,
-        context: Optional[Dict[str, Any]] = None
+        self, comment_text: str, context: Optional[Dict[str, Any]] = None
     ) -> ClassificationResult:
         """Classify comment using rule-based approach."""
         text_lower = comment_text.lower()
@@ -466,7 +454,7 @@ class AICommentClassifier:
                     priority=PriorityLevel.CRITICAL,
                     confidence=0.7,
                     reasoning="Matched security-related keywords",
-                    keywords=self._extract_keywords(comment_text, pattern)
+                    keywords=self._extract_keywords(comment_text, pattern),
                 )
 
         # Check performance patterns
@@ -477,7 +465,7 @@ class AICommentClassifier:
                     priority=PriorityLevel.HIGH,
                     confidence=0.6,
                     reasoning="Matched performance-related keywords",
-                    keywords=self._extract_keywords(comment_text, pattern)
+                    keywords=self._extract_keywords(comment_text, pattern),
                 )
 
         # Check bug patterns
@@ -488,25 +476,27 @@ class AICommentClassifier:
                     priority=PriorityLevel.HIGH,
                     confidence=0.6,
                     reasoning="Matched bug-related keywords",
-                    keywords=self._extract_keywords(comment_text, pattern)
+                    keywords=self._extract_keywords(comment_text, pattern),
                 )
 
         # Check for positive feedback
-        if any(word in text_lower for word in ['good', 'great', 'excellent', 'nice', 'well done']):
+        if any(word in text_lower for word in ["good", "great", "excellent", "nice", "well done"]):
             return ClassificationResult(
                 category=CommentCategory.POSITIVE_FEEDBACK,
                 priority=PriorityLevel.INFO,
                 confidence=0.5,
-                reasoning="Contains positive feedback"
+                reasoning="Contains positive feedback",
             )
 
         # Check for questions
-        if '?' in comment_text or any(word in text_lower for word in ['why', 'how', 'what', 'when', 'where']):
+        if "?" in comment_text or any(
+            word in text_lower for word in ["why", "how", "what", "when", "where"]
+        ):
             return ClassificationResult(
                 category=CommentCategory.QUESTION,
                 priority=PriorityLevel.LOW,
                 confidence=0.5,
-                reasoning="Contains question"
+                reasoning="Contains question",
             )
 
         # Default to code quality
@@ -514,7 +504,7 @@ class AICommentClassifier:
             category=CommentCategory.CODE_QUALITY,
             priority=PriorityLevel.MEDIUM,
             confidence=0.3,
-            reasoning="Default classification based on rules"
+            reasoning="Default classification based on rules",
         )
 
     def _extract_keywords(self, text: str, pattern: str) -> List[str]:
@@ -525,25 +515,25 @@ class AICommentClassifier:
     def _update_stats(self, result: ClassificationResult) -> None:
         """Update classification statistics."""
         with self._stats_lock:
-            self.stats['comments_classified'] += 1
+            self.stats["comments_classified"] += 1
 
             # Update confidence average
             total_confidence = (
-                self.stats['average_confidence'] * (self.stats['comments_classified'] - 1) +
-                result.confidence
-            ) / self.stats['comments_classified']
-            self.stats['average_confidence'] = total_confidence
+                self.stats["average_confidence"] * (self.stats["comments_classified"] - 1)
+                + result.confidence
+            ) / self.stats["comments_classified"]
+            self.stats["average_confidence"] = total_confidence
 
             # Update category distribution
             category = result.category.value
-            self.stats['category_distribution'][category] = (
-                self.stats['category_distribution'].get(category, 0) + 1
+            self.stats["category_distribution"][category] = (
+                self.stats["category_distribution"].get(category, 0) + 1
             )
 
             # Update priority distribution
             priority = result.priority.value
-            self.stats['priority_distribution'][priority] = (
-                self.stats['priority_distribution'].get(priority, 0) + 1
+            self.stats["priority_distribution"][priority] = (
+                self.stats["priority_distribution"].get(priority, 0) + 1
             )
 
     def get_stats(self) -> Dict[str, Any]:
@@ -552,12 +542,16 @@ class AICommentClassifier:
             stats = self.stats.copy()
 
         # Calculate percentages
-        if stats['comments_classified'] > 0:
-            stats['ai_percentage'] = (stats['ai_classifications'] / stats['comments_classified']) * 100
-            stats['fallback_percentage'] = (stats['fallback_classifications'] / stats['comments_classified']) * 100
+        if stats["comments_classified"] > 0:
+            stats["ai_percentage"] = (
+                stats["ai_classifications"] / stats["comments_classified"]
+            ) * 100
+            stats["fallback_percentage"] = (
+                stats["fallback_classifications"] / stats["comments_classified"]
+            ) * 100
         else:
-            stats['ai_percentage'] = 0.0
-            stats['fallback_percentage'] = 0.0
+            stats["ai_percentage"] = 0.0
+            stats["fallback_percentage"] = 0.0
 
         return stats
 
@@ -579,8 +573,7 @@ def set_comment_classifier(classifier: AICommentClassifier) -> None:
 
 
 async def classify_comment(
-    comment_text: str,
-    context: Optional[Dict[str, Any]] = None
+    comment_text: str, context: Optional[Dict[str, Any]] = None
 ) -> Optional[ClassificationResult]:
     """Classify comment using global classifier.
 

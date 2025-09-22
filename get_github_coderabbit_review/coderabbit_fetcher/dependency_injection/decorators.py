@@ -1,14 +1,15 @@
 """Dependency injection decorators."""
 
-import logging
 import functools
 import inspect
-from typing import Type, TypeVar, Optional, Any, Callable, Dict, List
-from .container import DIContainer, get_container, ServiceScope
+import logging
+from typing import Any, Callable, Optional, Type, TypeVar
+
+from .container import DIContainer, ServiceScope, get_container
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def injectable(cls: Type[T]) -> Type[T]:
@@ -24,7 +25,7 @@ def injectable(cls: Type[T]) -> Type[T]:
         Decorated class
     """
     # Add injectable marker
-    setattr(cls, '_di_injectable', True)
+    cls._di_injectable = True
 
     # Store original constructor
     original_init = cls.__init__
@@ -39,7 +40,7 @@ def injectable(cls: Type[T]) -> Type[T]:
 
         # Auto-inject dependencies for parameters without provided values
         for param_name, param in sig.parameters.items():
-            if param_name == 'self':
+            if param_name == "self":
                 continue
 
             # Skip if value already provided
@@ -60,7 +61,9 @@ def injectable(cls: Type[T]) -> Type[T]:
                 if param.default != param.empty:
                     continue
                 else:
-                    logger.warning(f"Failed to inject {param.annotation.__name__} into {cls.__name__}: {e}")
+                    logger.warning(
+                        f"Failed to inject {param.annotation.__name__} into {cls.__name__}: {e}"
+                    )
 
         # Call original constructor
         original_init(self, *args, **kwargs)
@@ -81,6 +84,7 @@ def inject(**dependencies: Type) -> Callable:
     Returns:
         Decorated function
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs):
@@ -94,18 +98,21 @@ def inject(**dependencies: Type) -> Callable:
                         kwargs[param_name] = dependency
                         logger.debug(f"Injected {param_type.__name__} as {param_name}")
                     except Exception as e:
-                        logger.warning(f"Failed to inject {param_type.__name__} as {param_name}: {e}")
+                        logger.warning(
+                            f"Failed to inject {param_type.__name__} as {param_name}: {e}"
+                        )
 
             return func(*args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
 def service(
     interface: Optional[Type] = None,
     scope: ServiceScope = ServiceScope.TRANSIENT,
-    container: Optional[DIContainer] = None
+    container: Optional[DIContainer] = None,
 ) -> Callable[[Type[T]], Type[T]]:
     """Register a class as a service.
 
@@ -117,6 +124,7 @@ def service(
     Returns:
         Class decorator
     """
+
     def decorator(cls: Type[T]) -> Type[T]:
         # Get container
         target_container = container or get_container()
@@ -134,18 +142,19 @@ def service(
                 binding.as_transient()
 
         # Mark as injectable
-        if not hasattr(cls, '_di_injectable'):
+        if not hasattr(cls, "_di_injectable"):
             cls = injectable(cls)
 
-        logger.info(f"Registered service {cls.__name__} as {service_type.__name__} with scope {scope.value}")
+        logger.info(
+            f"Registered service {cls.__name__} as {service_type.__name__} with scope {scope.value}"
+        )
         return cls
 
     return decorator
 
 
 def singleton(
-    interface: Optional[Type] = None,
-    container: Optional[DIContainer] = None
+    interface: Optional[Type] = None, container: Optional[DIContainer] = None
 ) -> Callable[[Type[T]], Type[T]]:
     """Register a class as a singleton service.
 
@@ -160,8 +169,7 @@ def singleton(
 
 
 def transient(
-    interface: Optional[Type] = None,
-    container: Optional[DIContainer] = None
+    interface: Optional[Type] = None, container: Optional[DIContainer] = None
 ) -> Callable[[Type[T]], Type[T]]:
     """Register a class as a transient service.
 
@@ -176,8 +184,7 @@ def transient(
 
 
 def scoped(
-    interface: Optional[Type] = None,
-    container: Optional[DIContainer] = None
+    interface: Optional[Type] = None, container: Optional[DIContainer] = None
 ) -> Callable[[Type[T]], Type[T]]:
     """Register a class as a scoped service.
 
@@ -200,6 +207,7 @@ def auto_wire(func: Callable) -> Callable:
     Returns:
         Auto-wired function
     """
+
     @functools.wraps(func)
     def wrapper(*args, **kwargs):
         container = get_container()
@@ -229,7 +237,9 @@ def auto_wire(func: Callable) -> Callable:
                 if param.default != param.empty:
                     continue
                 else:
-                    logger.warning(f"Failed to auto-wire {param.annotation.__name__} as {param_name}: {e}")
+                    logger.warning(
+                        f"Failed to auto-wire {param.annotation.__name__} as {param_name}: {e}"
+                    )
 
         return func(*args, **kwargs)
 
@@ -239,7 +249,7 @@ def auto_wire(func: Callable) -> Callable:
 def factory(
     service_type: Type[T],
     scope: ServiceScope = ServiceScope.TRANSIENT,
-    container: Optional[DIContainer] = None
+    container: Optional[DIContainer] = None,
 ) -> Callable[[Callable], Callable]:
     """Register a function as a service factory.
 
@@ -251,6 +261,7 @@ def factory(
     Returns:
         Factory decorator
     """
+
     def decorator(factory_func: Callable) -> Callable:
         target_container = container or get_container()
 
@@ -278,6 +289,7 @@ def configure_services(container: Optional[DIContainer] = None) -> Callable:
     Returns:
         Configuration decorator
     """
+
     def decorator(config_func: Callable[[DIContainer], None]) -> Callable:
         target_container = container or get_container()
 
@@ -299,6 +311,7 @@ def lazy_inject(service_type: Type[T]) -> Callable:
     Returns:
         Lazy injection wrapper
     """
+
     class LazyService:
         def __init__(self):
             self._service: Optional[T] = None
@@ -341,7 +354,7 @@ class Inject:
             return self
 
         # Check if already injected
-        attr_name = f'_injected_{self.name}'
+        attr_name = f"_injected_{self.name}"
         if hasattr(instance, attr_name):
             return getattr(instance, attr_name)
 
@@ -362,7 +375,7 @@ class Inject:
 
     def __set__(self, instance: Any, value: T) -> None:
         """Set injected service (override)."""
-        attr_name = f'_injected_{self.name}'
+        attr_name = f"_injected_{self.name}"
         setattr(instance, attr_name, value)
 
 

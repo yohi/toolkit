@@ -1,27 +1,9 @@
 """Caching module for CodeRabbit fetcher."""
 
-from .cache_manager import (
-    CacheManager,
-    CacheKey,
-    CacheEntry,
-    CacheConfig,
-    CacheError
-)
-
-from .redis_cache import (
-    RedisCache,
-    RedisConfig
-)
-
-from .memory_cache import (
-    MemoryCache,
-    MemoryCacheConfig
-)
-
-from .file_cache import (
-    FileCache,
-    FileCacheConfig
-)
+from .cache_manager import CacheConfig, CacheEntry, CacheError, CacheKey, CacheManager
+from .file_cache import FileCache, FileCacheConfig
+from .memory_cache import MemoryCache, MemoryCacheConfig
+from .redis_cache import RedisCache, RedisConfig
 
 __all__ = [
     "CacheManager",
@@ -34,5 +16,5 @@ __all__ = [
     "MemoryCache",
     "MemoryCacheConfig",
     "FileCache",
-    "FileCacheConfig"
+    "FileCacheConfig",
 ]

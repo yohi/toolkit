@@ -1,11 +1,11 @@
 """CI/CD integration module for CodeRabbit fetcher."""
 
 from .github_actions import (
+    ActionRunner,
     GitHubActionsIntegration,
-    WorkflowConfig,
     JobConfig,
     StepConfig,
-    ActionRunner
+    WorkflowConfig,
 )
 
 __all__ = [

@@ -1,15 +1,14 @@
 """Event bus implementation for CodeRabbit fetcher."""
 
 import asyncio
-import logging
-from typing import Dict, List, Callable, Any, Optional, Union, Type
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-import functools
 import inspect
+import logging
 import threading
 import time
+from abc import ABC, abstractmethod
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
+from typing import Any, Callable, Dict, List, Union
 
 from ..patterns.observer import Event, EventType
 
@@ -114,6 +113,7 @@ class EventMiddleware(ABC):
 @dataclass
 class HandlerRegistration:
     """Handler registration information."""
+
     handler: Union[EventHandler, AsyncEventHandler, Callable]
     event_types: List[EventType]
     priority: int = 0
@@ -180,8 +180,7 @@ class LoggingMiddleware(EventMiddleware):
     def before_handle(self, event: Event) -> Event:
         """Log event before handling."""
         self.logger.log(
-            self.log_level,
-            f"Processing event: {event.event_type.value} from {event.source}"
+            self.log_level, f"Processing event: {event.event_type.value} from {event.source}"
         )
         return event
 
@@ -189,15 +188,14 @@ class LoggingMiddleware(EventMiddleware):
         """Log result after handling."""
         self.logger.log(
             self.log_level,
-            f"Completed event: {event.event_type.value} (result: {type(result).__name__})"
+            f"Completed event: {event.event_type.value} (result: {type(result).__name__})",
         )
         return result
 
     def on_error(self, event: Event, error: Exception) -> None:
         """Log errors."""
         self.logger.error(
-            f"Error processing event {event.event_type.value}: {error}",
-            exc_info=True
+            f"Error processing event {event.event_type.value}: {error}", exc_info=True
         )
 
 
@@ -222,8 +220,8 @@ class TimingMiddleware(EventMiddleware):
             del self._start_times[event_id]
 
             # Add timing info to event metadata
-            if hasattr(event, 'data'):
-                event.data['processing_time_ms'] = duration * 1000
+            if hasattr(event, "data"):
+                event.data["processing_time_ms"] = duration * 1000
 
             logger.debug(f"Event {event.event_type.value} processed in {duration:.3f}s")
 
@@ -253,10 +251,10 @@ class EventBus:
 
         # Statistics
         self.stats = {
-            'events_processed': 0,
-            'events_failed': 0,
-            'total_processing_time': 0.0,
-            'handlers_registered': 0
+            "events_processed": 0,
+            "events_failed": 0,
+            "total_processing_time": 0.0,
+            "handlers_registered": 0,
         }
 
         # Add default middleware
@@ -267,7 +265,7 @@ class EventBus:
         handler: Union[EventHandler, AsyncEventHandler, Callable],
         event_types: List[EventType],
         priority: int = 0,
-        is_async: bool = None
+        is_async: bool = None,
     ) -> None:
         """Register event handler.
 
@@ -297,10 +295,7 @@ class EventBus:
                     handler = FunctionEventHandler(handler, event_types)
 
             registration = HandlerRegistration(
-                handler=handler,
-                event_types=event_types,
-                priority=priority,
-                is_async=is_async
+                handler=handler, event_types=event_types, priority=priority, is_async=is_async
             )
 
             self._handlers.append(registration)
@@ -308,7 +303,7 @@ class EventBus:
             # Sort by priority (higher priority first)
             self._handlers.sort(key=lambda r: r.priority, reverse=True)
 
-            self.stats['handlers_registered'] += 1
+            self.stats["handlers_registered"] += 1
             logger.debug(f"Registered handler for {len(event_types)} event types")
 
     def add_middleware(self, middleware: EventMiddleware) -> None:
@@ -345,7 +340,8 @@ class EventBus:
 
                 # Find matching handlers
                 matching_handlers = [
-                    reg for reg in self._handlers
+                    reg
+                    for reg in self._handlers
                     if any(
                         reg.handler.can_handle(event_type)
                         for event_type in [processed_event.event_type]
@@ -358,9 +354,7 @@ class EventBus:
                         if registration.is_async:
                             # Run async handler in thread pool
                             future = self._executor.submit(
-                                self._run_async_handler,
-                                registration.handler,
-                                processed_event
+                                self._run_async_handler, registration.handler, processed_event
                             )
                             result = future.result(timeout=30)  # 30 second timeout
                         else:
@@ -385,17 +379,17 @@ class EventBus:
                                 logger.error(f"Middleware on_error error: {middleware_error}")
 
                         logger.error(f"Handler error for {event.event_type.value}: {e}")
-                        self.stats['events_failed'] += 1
+                        self.stats["events_failed"] += 1
 
-                self.stats['events_processed'] += 1
+                self.stats["events_processed"] += 1
                 processing_time = time.time() - start_time
-                self.stats['total_processing_time'] += processing_time
+                self.stats["total_processing_time"] += processing_time
 
                 return results
 
             except Exception as e:
                 logger.error(f"Event bus error: {e}")
-                self.stats['events_failed'] += 1
+                self.stats["events_failed"] += 1
                 return []
 
     async def publish_async(self, event: Event) -> List[Any]:
@@ -421,7 +415,8 @@ class EventBus:
 
             # Find matching handlers
             matching_handlers = [
-                reg for reg in self._handlers
+                reg
+                for reg in self._handlers
                 if any(
                     reg.handler.can_handle(event_type)
                     for event_type in [processed_event.event_type]
@@ -432,17 +427,13 @@ class EventBus:
             handler_tasks = []
             for registration in matching_handlers:
                 if registration.is_async:
-                    task = asyncio.create_task(
-                        registration.handler.handle_async(processed_event)
-                    )
+                    task = asyncio.create_task(registration.handler.handle_async(processed_event))
                     handler_tasks.append(task)
                 else:
                     # Run sync handler in thread pool
                     loop = asyncio.get_event_loop()
                     task = loop.run_in_executor(
-                        self._executor,
-                        registration.handler.handle,
-                        processed_event
+                        self._executor, registration.handler.handle, processed_event
                     )
                     handler_tasks.append(task)
 
@@ -461,7 +452,7 @@ class EventBus:
                                 logger.error(f"Middleware on_error error: {middleware_error}")
 
                         logger.error(f"Async handler error for {event.event_type.value}: {result}")
-                        self.stats['events_failed'] += 1
+                        self.stats["events_failed"] += 1
                     else:
                         # Apply middleware - after
                         for middleware in self._middleware:
@@ -472,15 +463,15 @@ class EventBus:
 
                         results.append(result)
 
-            self.stats['events_processed'] += 1
+            self.stats["events_processed"] += 1
             processing_time = time.time() - start_time
-            self.stats['total_processing_time'] += processing_time
+            self.stats["total_processing_time"] += processing_time
 
             return results
 
         except Exception as e:
             logger.error(f"Async event bus error: {e}")
-            self.stats['events_failed'] += 1
+            self.stats["events_failed"] += 1
             return []
 
     def _run_async_handler(self, handler: AsyncEventHandler, event: Event) -> Any:
@@ -501,15 +492,19 @@ class EventBus:
         stats = self.stats.copy()
 
         # Calculate additional metrics
-        if stats['events_processed'] > 0:
-            stats['average_processing_time'] = stats['total_processing_time'] / stats['events_processed']
-            stats['success_rate'] = (stats['events_processed'] - stats['events_failed']) / stats['events_processed']
+        if stats["events_processed"] > 0:
+            stats["average_processing_time"] = (
+                stats["total_processing_time"] / stats["events_processed"]
+            )
+            stats["success_rate"] = (stats["events_processed"] - stats["events_failed"]) / stats[
+                "events_processed"
+            ]
         else:
-            stats['average_processing_time'] = 0.0
-            stats['success_rate'] = 0.0
+            stats["average_processing_time"] = 0.0
+            stats["success_rate"] = 0.0
 
-        stats['registered_handlers'] = len(self._handlers)
-        stats['middleware_count'] = len(self._middleware)
+        stats["registered_handlers"] = len(self._handlers)
+        stats["middleware_count"] = len(self._middleware)
 
         return stats
 
@@ -558,6 +553,7 @@ def event_handler(*event_types: EventType, priority: int = 0):
     Returns:
         Decorator function
     """
+
     def decorator(func: Callable[[Event], Any]) -> Callable:
         event_bus = get_event_bus()
         event_bus.register_handler(func, list(event_types), priority=priority, is_async=False)
@@ -576,6 +572,7 @@ def async_event_handler(*event_types: EventType, priority: int = 0):
     Returns:
         Decorator function
     """
+
     def decorator(func: Callable[[Event], Any]) -> Callable:
         event_bus = get_event_bus()
         event_bus.register_handler(func, list(event_types), priority=priority, is_async=True)

@@ -2,9 +2,10 @@
 
 import gc
 import logging
-import psutil
-from typing import Iterator, List, Any, Optional, Dict
 from dataclasses import dataclass
+from typing import Any, Dict, Iterator, List, Optional
+
+import psutil
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MemoryStats:
     """Memory usage statistics."""
+
     used_mb: float
     available_mb: float
     percent_used: float
@@ -46,7 +48,7 @@ class MemoryManager:
                 used_mb=system_memory.used / 1024 / 1024,
                 available_mb=system_memory.available / 1024 / 1024,
                 percent_used=system_memory.percent,
-                process_mb=memory_info.rss / 1024 / 1024
+                process_mb=memory_info.rss / 1024 / 1024,
             )
         except Exception as e:
             logger.warning(f"Failed to get memory stats: {e}")
@@ -61,13 +63,13 @@ class MemoryManager:
         stats = self.get_memory_stats()
 
         if stats.process_mb >= self.critical_threshold:
-            return 'critical'
+            return "critical"
         elif stats.process_mb >= self.warning_threshold:
-            return 'high'
+            return "high"
         elif stats.process_mb >= self.max_memory_mb * 0.6:
-            return 'medium'
+            return "medium"
         else:
-            return 'low'
+            return "low"
 
     def optimize_memory(self, force: bool = False) -> bool:
         """Optimize memory usage by forcing garbage collection.
@@ -80,7 +82,7 @@ class MemoryManager:
         """
         pressure = self.check_memory_pressure()
 
-        if force or pressure in ['high', 'critical']:
+        if force or pressure in ["high", "critical"]:
             logger.debug(f"Optimizing memory (pressure: {pressure})")
 
             # Force garbage collection
@@ -91,7 +93,9 @@ class MemoryManager:
 
         return False
 
-    def stream_large_list(self, large_list: List[Any], batch_size: int = 100) -> Iterator[List[Any]]:
+    def stream_large_list(
+        self, large_list: List[Any], batch_size: int = 100
+    ) -> Iterator[List[Any]]:
         """Stream large list in batches to reduce memory usage.
 
         Args:
@@ -105,11 +109,11 @@ class MemoryManager:
         logger.debug(f"Streaming {total_items} items in batches of {batch_size}")
 
         for i in range(0, total_items, batch_size):
-            batch = large_list[i:i + batch_size]
+            batch = large_list[i : i + batch_size]
 
             # Check memory pressure before yielding batch
             pressure = self.check_memory_pressure()
-            if pressure == 'critical':
+            if pressure == "critical":
                 logger.warning("Critical memory pressure detected, forcing optimization")
                 self.optimize_memory(force=True)
 
@@ -131,7 +135,7 @@ class MemoryManager:
             List of processed results
         """
         results = []
-        batch_size = kwargs.get('batch_size', 100)
+        batch_size = kwargs.get("batch_size", 100)
 
         # Adjust batch size based on available memory
         stats = self.get_memory_stats()
@@ -176,7 +180,9 @@ class StreamingProcessor:
         """
         self.memory_manager = memory_manager or MemoryManager()
 
-    def stream_comments(self, comments: List[Dict[str, Any]], batch_size: int = 50) -> Iterator[List[Dict[str, Any]]]:
+    def stream_comments(
+        self, comments: List[Dict[str, Any]], batch_size: int = 50
+    ) -> Iterator[List[Dict[str, Any]]]:
         """Stream comments in memory-efficient batches.
 
         Args:
@@ -188,7 +194,9 @@ class StreamingProcessor:
         """
         return self.memory_manager.stream_large_list(comments, batch_size)
 
-    def process_comments_streaming(self, comments: List[Dict[str, Any]], processor_func) -> List[Any]:
+    def process_comments_streaming(
+        self, comments: List[Dict[str, Any]], processor_func
+    ) -> List[Any]:
         """Process comments using streaming approach.
 
         Args:
@@ -227,7 +235,9 @@ class StreamingProcessor:
                 logger.error(f"Error processing comment batch: {e}")
                 continue
 
-        logger.info(f"Streaming processing completed: {len(results)} results from {processed_count} comments")
+        logger.info(
+            f"Streaming processing completed: {len(results)} results from {processed_count} comments"
+        )
         return results
 
     def chunk_large_content(self, content: str, max_chunk_size: int = 10000) -> List[str]:
@@ -245,7 +255,7 @@ class StreamingProcessor:
 
         chunks = []
         for i in range(0, len(content), max_chunk_size):
-            chunk = content[i:i + max_chunk_size]
+            chunk = content[i : i + max_chunk_size]
             chunks.append(chunk)
 
         logger.debug(f"Chunked content into {len(chunks)} pieces")
@@ -261,6 +271,7 @@ def memory_efficient_processing(func):
     Returns:
         Decorated function with memory optimization
     """
+
     def wrapper(*args, **kwargs):
         memory_manager = MemoryManager()
 

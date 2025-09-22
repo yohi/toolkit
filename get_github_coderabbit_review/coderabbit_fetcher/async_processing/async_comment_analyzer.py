@@ -2,13 +2,13 @@
 
 import asyncio
 import logging
-from typing import Dict, List, Any, Optional
-from concurrent.futures import ThreadPoolExecutor
 import time
+from concurrent.futures import ThreadPoolExecutor
+from typing import Any, Dict, List, Optional
 
-from ..models import AnalyzedComments
 from ..comment_analyzer import CommentAnalyzer
-from ..patterns.observer import publish_event, EventType
+from ..models import AnalyzedComments
+from ..patterns.observer import EventType, publish_event
 
 logger = logging.getLogger(__name__)
 
@@ -27,10 +27,7 @@ class AsyncCommentAnalyzer:
         self.sync_analyzer = CommentAnalyzer()
 
     async def analyze_comments_async(
-        self,
-        comments: List[Dict[str, Any]],
-        batch_size: int = 20,
-        session_id: Optional[str] = None
+        self, comments: List[Dict[str, Any]], batch_size: int = 20, session_id: Optional[str] = None
     ) -> AnalyzedComments:
         """Analyze comments asynchronously with batching.
 
@@ -53,11 +50,11 @@ class AsyncCommentAnalyzer:
                 EventType.PROGRESS_UPDATE,
                 source="AsyncCommentAnalyzer",
                 data={
-                    'phase': 'comment_analysis_started',
-                    'total_comments': total_comments,
-                    'batch_size': batch_size
+                    "phase": "comment_analysis_started",
+                    "total_comments": total_comments,
+                    "batch_size": batch_size,
                 },
-                session_id=session_id
+                session_id=session_id,
             )
 
         try:
@@ -66,7 +63,7 @@ class AsyncCommentAnalyzer:
                     summary_comments=[],
                     review_comments=[],
                     unresolved_threads=[],
-                    metadata={'total_comments': 0, 'processing_time': 0}
+                    metadata={"total_comments": 0, "processing_time": 0},
                 )
 
             # Filter CodeRabbit comments first
@@ -79,35 +76,32 @@ class AsyncCommentAnalyzer:
                     review_comments=[],
                     unresolved_threads=[],
                     metadata={
-                        'total_comments': total_comments,
-                        'coderabbit_comments': 0,
-                        'processing_time': time.time() - start_time
-                    }
+                        "total_comments": total_comments,
+                        "coderabbit_comments": 0,
+                        "processing_time": time.time() - start_time,
+                    },
                 )
 
             # Process comments in parallel batches
             analyzed_results = await self._process_comments_in_batches(
-                coderabbit_comments,
-                batch_size,
-                session_id
+                coderabbit_comments, batch_size, session_id
             )
 
             # Combine results
-            final_result = await self._combine_analysis_results(
-                analyzed_results,
-                session_id
-            )
+            final_result = await self._combine_analysis_results(analyzed_results, session_id)
 
             processing_time = time.time() - start_time
 
             # Update metadata
-            final_result.metadata.update({
-                'total_comments': total_comments,
-                'coderabbit_comments': len(coderabbit_comments),
-                'processing_time': processing_time,
-                'async_processing': True,
-                'batch_count': len(analyzed_results)
-            })
+            final_result.metadata.update(
+                {
+                    "total_comments": total_comments,
+                    "coderabbit_comments": len(coderabbit_comments),
+                    "processing_time": processing_time,
+                    "async_processing": True,
+                    "batch_count": len(analyzed_results),
+                }
+            )
 
             # Publish completion event
             if session_id:
@@ -115,11 +109,11 @@ class AsyncCommentAnalyzer:
                     EventType.PROGRESS_UPDATE,
                     source="AsyncCommentAnalyzer",
                     data={
-                        'phase': 'comment_analysis_completed',
-                        'processing_time': processing_time,
-                        'total_analyzed': len(coderabbit_comments)
+                        "phase": "comment_analysis_completed",
+                        "processing_time": processing_time,
+                        "total_analyzed": len(coderabbit_comments),
                     },
-                    session_id=session_id
+                    session_id=session_id,
                 )
 
             logger.info(f"Async comment analysis completed in {processing_time:.2f}s")
@@ -131,20 +125,16 @@ class AsyncCommentAnalyzer:
                 publish_event(
                     EventType.PROCESSING_FAILED,
                     source="AsyncCommentAnalyzer",
-                    data={
-                        'phase': 'comment_analysis_failed',
-                        'error': str(e)
-                    },
+                    data={"phase": "comment_analysis_failed", "error": str(e)},
                     severity="error",
-                    session_id=session_id
+                    session_id=session_id,
                 )
 
             logger.error(f"Error in async comment analysis: {e}")
             raise
 
     async def _filter_coderabbit_comments_async(
-        self,
-        comments: List[Dict[str, Any]]
+        self, comments: List[Dict[str, Any]]
     ) -> List[Dict[str, Any]]:
         """Filter CodeRabbit comments asynchronously.
 
@@ -154,26 +144,24 @@ class AsyncCommentAnalyzer:
         Returns:
             List of CodeRabbit comments
         """
+
         def filter_coderabbit(comment_batch):
             """Filter function to run in thread pool."""
             filtered = []
             for comment in comment_batch:
-                user = comment.get('user', {})
-                login = user.get('login', '').lower()
-                if 'coderabbit' in login:
+                user = comment.get("user", {})
+                login = user.get("login", "").lower()
+                if "coderabbit" in login:
                     filtered.append(comment)
             return filtered
 
         # Process in chunks to avoid blocking
         chunk_size = 100
-        chunks = [comments[i:i + chunk_size] for i in range(0, len(comments), chunk_size)]
+        chunks = [comments[i : i + chunk_size] for i in range(0, len(comments), chunk_size)]
 
         # Run filtering in thread pool
         loop = asyncio.get_running_loop()
-        tasks = [
-            loop.run_in_executor(self.executor, filter_coderabbit, chunk)
-            for chunk in chunks
-        ]
+        tasks = [loop.run_in_executor(self.executor, filter_coderabbit, chunk) for chunk in chunks]
 
         results = await asyncio.gather(*tasks)
 
@@ -182,14 +170,13 @@ class AsyncCommentAnalyzer:
         for chunk_results in results:
             coderabbit_comments.extend(chunk_results)
 
-        logger.info(f"Filtered {len(coderabbit_comments)} CodeRabbit comments from {len(comments)} total")
+        logger.info(
+            f"Filtered {len(coderabbit_comments)} CodeRabbit comments from {len(comments)} total"
+        )
         return coderabbit_comments
 
     async def _process_comments_in_batches(
-        self,
-        comments: List[Dict[str, Any]],
-        batch_size: int,
-        session_id: Optional[str] = None
+        self, comments: List[Dict[str, Any]], batch_size: int, session_id: Optional[str] = None
     ) -> List[AnalyzedComments]:
         """Process comments in parallel batches.
 
@@ -202,7 +189,7 @@ class AsyncCommentAnalyzer:
             List of analysis results from each batch
         """
         # Create batches
-        batches = [comments[i:i + batch_size] for i in range(0, len(comments), batch_size)]
+        batches = [comments[i : i + batch_size] for i in range(0, len(comments), batch_size)]
         total_batches = len(batches)
 
         logger.info(f"Processing {len(comments)} comments in {total_batches} batches")
@@ -217,9 +204,11 @@ class AsyncCommentAnalyzer:
         # Execute all batch tasks (bounded)
         try:
             results = await asyncio.gather(
-                *[asyncio.create_task(run_batch(i, batch), name=f"batch_{i + 1}")
-                  for i, batch in enumerate(batches)],
-                return_exceptions=True
+                *[
+                    asyncio.create_task(run_batch(i, batch), name=f"batch_{i + 1}")
+                    for i, batch in enumerate(batches)
+                ],
+                return_exceptions=True,
             )
 
             # Filter out exceptions and log errors
@@ -230,7 +219,9 @@ class AsyncCommentAnalyzer:
                 else:
                     valid_results.append(result)
 
-            logger.info(f"Successfully processed {len(valid_results)} out of {total_batches} batches")
+            logger.info(
+                f"Successfully processed {len(valid_results)} out of {total_batches} batches"
+            )
             return valid_results
 
         except Exception as e:
@@ -242,7 +233,7 @@ class AsyncCommentAnalyzer:
         batch: List[Dict[str, Any]],
         batch_number: int,
         total_batches: int,
-        session_id: Optional[str] = None
+        session_id: Optional[str] = None,
     ) -> AnalyzedComments:
         """Process a single batch of comments.
 
@@ -263,12 +254,12 @@ class AsyncCommentAnalyzer:
                 EventType.PROGRESS_UPDATE,
                 source="AsyncCommentAnalyzer",
                 data={
-                    'phase': 'batch_processing',
-                    'batch_number': batch_number,
-                    'total_batches': total_batches,
-                    'batch_size': len(batch)
+                    "phase": "batch_processing",
+                    "batch_number": batch_number,
+                    "total_batches": total_batches,
+                    "batch_size": len(batch),
                 },
-                session_id=session_id
+                session_id=session_id,
             )
 
         try:
@@ -277,16 +268,14 @@ class AsyncCommentAnalyzer:
 
             # Create a synthetic PR data structure for the batch
             pr_data = {
-                'comments': batch,
-                'reviews': [],  # Reviews are typically in the comments already
-                'files': []
+                "comments": batch,
+                "reviews": [],  # Reviews are typically in the comments already
+                "files": [],
             }
 
             # Execute sync analysis in thread pool
             result = await loop.run_in_executor(
-                self.executor,
-                self.sync_analyzer.analyze_comments,
-                pr_data
+                self.executor, self.sync_analyzer.analyze_comments, pr_data
             )
 
             logger.debug(f"Batch {batch_number} completed successfully")
@@ -299,13 +288,11 @@ class AsyncCommentAnalyzer:
                 summary_comments=[],
                 review_comments=[],
                 unresolved_threads=[],
-                metadata={'batch_error': str(e), 'batch_number': batch_number}
+                metadata={"batch_error": str(e), "batch_number": batch_number},
             )
 
     async def _combine_analysis_results(
-        self,
-        results: List[AnalyzedComments],
-        session_id: Optional[str] = None
+        self, results: List[AnalyzedComments], session_id: Optional[str] = None
     ) -> AnalyzedComments:
         """Combine multiple analysis results into a single result.
 
@@ -321,7 +308,7 @@ class AsyncCommentAnalyzer:
                 summary_comments=[],
                 review_comments=[],
                 unresolved_threads=[],
-                metadata={'error': 'No valid results to combine'}
+                metadata={"error": "No valid results to combine"},
             )
 
         logger.info(f"Combining {len(results)} analysis results")
@@ -331,14 +318,11 @@ class AsyncCommentAnalyzer:
             publish_event(
                 EventType.PROGRESS_UPDATE,
                 source="AsyncCommentAnalyzer",
-                data={
-                    'phase': 'combining_results',
-                    'result_count': len(results)
-                },
-                session_id=session_id
+                data={"phase": "combining_results", "result_count": len(results)},
+                session_id=session_id,
             )
 
-        # Run combination in thread pool to avoid blocking
+            # Run combination in thread pool to avoid blocking
             loop = asyncio.get_running_loop()
 
         def combine_sync():
@@ -358,7 +342,9 @@ class AsyncCommentAnalyzer:
                 for key, value in result.metadata.items():
                     if key in combined_metadata:
                         # Handle numeric values by summing
-                        if isinstance(value, (int, float)) and isinstance(combined_metadata[key], (int, float)):
+                        if isinstance(value, (int, float)) and isinstance(
+                            combined_metadata[key], (int, float)
+                        ):
                             combined_metadata[key] += value
                         # Handle lists by extending
                         elif isinstance(value, list) and isinstance(combined_metadata[key], list):
@@ -368,16 +354,16 @@ class AsyncCommentAnalyzer:
                         combined_metadata[key] = value
 
             # Add combination metadata
-            combined_metadata['combined_from_batches'] = len(results)
-            combined_metadata['total_summary_comments'] = len(combined_summary_comments)
-            combined_metadata['total_review_comments'] = len(combined_review_comments)
-            combined_metadata['total_unresolved_threads'] = len(combined_unresolved_threads)
+            combined_metadata["combined_from_batches"] = len(results)
+            combined_metadata["total_summary_comments"] = len(combined_summary_comments)
+            combined_metadata["total_review_comments"] = len(combined_review_comments)
+            combined_metadata["total_unresolved_threads"] = len(combined_unresolved_threads)
 
             return AnalyzedComments(
                 summary_comments=combined_summary_comments,
                 review_comments=combined_review_comments,
                 unresolved_threads=combined_unresolved_threads,
-                metadata=combined_metadata
+                metadata=combined_metadata,
             )
 
         # Execute combination in thread pool

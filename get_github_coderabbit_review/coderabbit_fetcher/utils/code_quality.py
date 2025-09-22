@@ -2,9 +2,9 @@
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Callable
-from functools import wraps
 import time
+from functools import wraps
+from typing import Any, Callable, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -19,6 +19,7 @@ def complexity_reducer(max_lines: int = 50, max_params: int = 5):
     Returns:
         Decorated function with complexity validation
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -33,6 +34,7 @@ def complexity_reducer(max_lines: int = 50, max_params: int = 5):
             return func(*args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
@@ -45,6 +47,7 @@ def validate_input_types(**type_hints):
     Returns:
         Decorated function with type validation
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -61,6 +64,7 @@ def validate_input_types(**type_hints):
             return func(*args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
@@ -74,6 +78,7 @@ def safe_execute(default_return=None, log_errors: bool = True):
     Returns:
         Decorated function with error handling
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -85,6 +90,7 @@ def safe_execute(default_return=None, log_errors: bool = True):
                 return default_return
 
         return wrapper
+
     return decorator
 
 
@@ -101,30 +107,41 @@ class CodeQualityAnalyzer:
         Returns:
             Dictionary with complexity metrics
         """
-        lines = content.split('\n')
+        lines = content.split("\n")
         non_empty_lines = [line for line in lines if line.strip()]
 
         # Count cyclomatic complexity indicators
         complexity_keywords = [
-            'if', 'elif', 'else', 'for', 'while', 'try', 'except',
-            'and', 'or', 'lambda', 'with'
+            "if",
+            "elif",
+            "else",
+            "for",
+            "while",
+            "try",
+            "except",
+            "and",
+            "or",
+            "lambda",
+            "with",
         ]
 
         complexity_count = 0
         for line in non_empty_lines:
             line_lower = line.lower().strip()
             for keyword in complexity_keywords:
-                if f' {keyword} ' in f' {line_lower} ':
+                if f" {keyword} " in f" {line_lower} ":
                     complexity_count += 1
 
         # Calculate maintainability index (simplified)
         maintainability_score = max(0, 100 - complexity_count * 5 - len(non_empty_lines) * 0.5)
 
         return {
-            'line_count': len(non_empty_lines),
-            'complexity_count': complexity_count,
-            'maintainability_score': maintainability_score,
-            'complexity_level': 'low' if complexity_count < 5 else 'medium' if complexity_count < 10 else 'high'
+            "line_count": len(non_empty_lines),
+            "complexity_count": complexity_count,
+            "maintainability_score": maintainability_score,
+            "complexity_level": (
+                "low" if complexity_count < 5 else "medium" if complexity_count < 10 else "high"
+            ),
         }
 
     @staticmethod
@@ -139,7 +156,7 @@ class CodeQualityAnalyzer:
             List of refactoring suggestions
         """
         suggestions = []
-        lines = content.split('\n')
+        lines = content.split("\n")
         non_empty_lines = [line for line in lines if line.strip()]
 
         # Long function suggestion
@@ -165,7 +182,7 @@ class CodeQualityAnalyzer:
         # Duplicate code patterns
         line_patterns = {}
         for line in non_empty_lines:
-            clean_line = re.sub(r'\s+', ' ', line.strip())
+            clean_line = re.sub(r"\s+", " ", line.strip())
             if len(clean_line) > 20:  # Only check substantial lines
                 if clean_line in line_patterns:
                     line_patterns[clean_line] += 1
@@ -175,13 +192,13 @@ class CodeQualityAnalyzer:
         duplicates = {line: count for line, count in line_patterns.items() if count > 2}
         if duplicates:
             suggestions.append(
-                f"Duplicate code patterns detected. Consider extracting common logic."
+                "Duplicate code patterns detected. Consider extracting common logic."
             )
 
         # Too many parameters (for function definitions)
-        param_matches = re.findall(r'def\s+\w+\s*\(([^)]*)\)', content)
+        param_matches = re.findall(r"def\s+\w+\s*\(([^)]*)\)", content)
         for params in param_matches:
-            param_count = len([p.strip() for p in params.split(',') if p.strip()])
+            param_count = len([p.strip() for p in params.split(",") if p.strip()])
             if param_count > 5:
                 suggestions.append(
                     f"Function has {param_count} parameters. "
@@ -219,8 +236,8 @@ class QualityGate:
         suggestions = analyzer.suggest_refactoring(content, function_name)
 
         # Check quality gates
-        passes_complexity = metrics['complexity_count'] <= self.max_complexity
-        passes_length = metrics['line_count'] <= self.max_lines
+        passes_complexity = metrics["complexity_count"] <= self.max_complexity
+        passes_length = metrics["line_count"] <= self.max_lines
 
         quality_score = 100
         if not passes_complexity:
@@ -233,15 +250,15 @@ class QualityGate:
         quality_score = max(0, quality_score)
 
         return {
-            'passes_quality_gate': passes_complexity and passes_length and len(suggestions) <= 2,
-            'quality_score': quality_score,
-            'metrics': metrics,
-            'suggestions': suggestions,
-            'gates_passed': {
-                'complexity': passes_complexity,
-                'length': passes_length,
-                'suggestions': len(suggestions) <= 2
-            }
+            "passes_quality_gate": passes_complexity and passes_length and len(suggestions) <= 2,
+            "quality_score": quality_score,
+            "metrics": metrics,
+            "suggestions": suggestions,
+            "gates_passed": {
+                "complexity": passes_complexity,
+                "length": passes_length,
+                "suggestions": len(suggestions) <= 2,
+            },
         }
 
 
@@ -255,12 +272,12 @@ def extract_method(large_function_content: str, method_name: str) -> Dict[str, s
     Returns:
         Dictionary with original and extracted method content
     """
-    lines = large_function_content.split('\n')
+    lines = large_function_content.split("\n")
 
     # Simple heuristic: extract middle section
     total_lines = len(lines)
     if total_lines <= 10:
-        return {'original': large_function_content, 'extracted': ''}
+        return {"original": large_function_content, "extracted": ""}
 
     # Extract middle third as a new method
     start_idx = total_lines // 3
@@ -273,16 +290,13 @@ def extract_method(large_function_content: str, method_name: str) -> Dict[str, s
     extracted_method += '    """Extracted method for improved readability."""\n'
 
     for line in extracted_lines:
-        extracted_method += '    ' + line + '\n'
+        extracted_method += "    " + line + "\n"
 
     # Modify original function
-    remaining_lines = lines[:start_idx] + [f'    self.{method_name}()'] + lines[end_idx:]
-    modified_original = '\n'.join(remaining_lines)
+    remaining_lines = lines[:start_idx] + [f"    self.{method_name}()"] + lines[end_idx:]
+    modified_original = "\n".join(remaining_lines)
 
-    return {
-        'original': modified_original,
-        'extracted': extracted_method
-    }
+    return {"original": modified_original, "extracted": extracted_method}
 
 
 def performance_monitor(log_slow_operations: bool = True, threshold_seconds: float = 1.0):
@@ -295,6 +309,7 @@ def performance_monitor(log_slow_operations: bool = True, threshold_seconds: flo
     Returns:
         Decorated function with performance monitoring
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -311,6 +326,7 @@ def performance_monitor(log_slow_operations: bool = True, threshold_seconds: flo
             return result
 
         return wrapper
+
     return decorator
 
 
@@ -323,20 +339,20 @@ def readable_code_formatter(content: str) -> str:
     Returns:
         Formatted code content
     """
-    lines = content.split('\n')
+    lines = content.split("\n")
     formatted_lines = []
 
     for line in lines:
         # Remove excessive whitespace
-        clean_line = re.sub(r' +', ' ', line.rstrip())
+        clean_line = re.sub(r" +", " ", line.rstrip())
 
         # Add spacing around operators for readability
-        clean_line = re.sub(r'([=!<>]+)', r' \1 ', clean_line)
-        clean_line = re.sub(r' +', ' ', clean_line)  # Clean up multiple spaces
+        clean_line = re.sub(r"([=!<>]+)", r" \1 ", clean_line)
+        clean_line = re.sub(r" +", " ", clean_line)  # Clean up multiple spaces
 
         formatted_lines.append(clean_line)
 
-    return '\n'.join(formatted_lines)
+    return "\n".join(formatted_lines)
 
 
 class CodeStyleChecker:
@@ -355,21 +371,21 @@ class CodeStyleChecker:
         violations = []
 
         # Check function names (should be snake_case)
-        function_names = re.findall(r'def\s+([a-zA-Z_][a-zA-Z0-9_]*)', content)
+        function_names = re.findall(r"def\s+([a-zA-Z_][a-zA-Z0-9_]*)", content)
         for name in function_names:
-            if not re.match(r'^[a-z_][a-z0-9_]*$', name):
+            if not re.match(r"^[a-z_][a-z0-9_]*$", name):
                 violations.append(f"Function '{name}' should use snake_case")
 
         # Check class names (should be PascalCase)
-        class_names = re.findall(r'class\s+([a-zA-Z_][a-zA-Z0-9_]*)', content)
+        class_names = re.findall(r"class\s+([a-zA-Z_][a-zA-Z0-9_]*)", content)
         for name in class_names:
-            if not re.match(r'^[A-Z][a-zA-Z0-9]*$', name):
+            if not re.match(r"^[A-Z][a-zA-Z0-9]*$", name):
                 violations.append(f"Class '{name}' should use PascalCase")
 
         # Check constants (should be UPPER_CASE)
-        constant_assignments = re.findall(r'^([A-Z_][A-Z0-9_]*)\s*=', content, re.MULTILINE)
+        constant_assignments = re.findall(r"^([A-Z_][A-Z0-9_]*)\s*=", content, re.MULTILINE)
         for name in constant_assignments:
-            if not re.match(r'^[A-Z_][A-Z0-9_]*$', name):
+            if not re.match(r"^[A-Z_][A-Z0-9_]*$", name):
                 violations.append(f"Constant '{name}' should use UPPER_CASE")
 
         return violations
@@ -387,13 +403,13 @@ class CodeStyleChecker:
         issues = []
 
         # Check for docstrings on functions
-        functions = re.findall(r'def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\):', content)
+        functions = re.findall(r"def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\([^)]*\):", content)
         for func_name in functions:
             if not re.search(rf'def\s+{func_name}.*?:\s*"""', content, re.DOTALL):
                 issues.append(f"Function '{func_name}' missing docstring")
 
         # Check for docstrings on classes
-        classes = re.findall(r'class\s+([a-zA-Z_][a-zA-Z0-9_]*)', content)
+        classes = re.findall(r"class\s+([a-zA-Z_][a-zA-Z0-9_]*)", content)
         for class_name in classes:
             if not re.search(rf'class\s+{class_name}.*?:\s*"""', content, re.DOTALL):
                 issues.append(f"Class '{class_name}' missing docstring")

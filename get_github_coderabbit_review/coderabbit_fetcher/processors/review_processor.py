@@ -1,6 +1,7 @@
 """Review comment processor for extracting actionable comments and specialized sections."""
 
 from __future__ import annotations
+
 import logging
 import re
 from typing import Any, Dict, List, Optional
@@ -8,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from ..exceptions import CommentParsingError
 from ..models.actionable_comment import ActionableComment
 from ..models.ai_agent_prompt import AIAgentPrompt
-from ..models.review_comment import ReviewComment, BasicReviewComment, NitpickComment, OutsideDiffComment
+from ..models.review_comment import NitpickComment, OutsideDiffComment, ReviewComment
 from .comment_parser import CommentParser
 from .content_analyzer import ContentAnalyzer
 from .output_formatter import OutputFormatter
@@ -311,7 +312,7 @@ class ReviewProcessor:
             description = body
 
             # Try to extract the title (usually after _⚠️ Potential issue_ etc.)
-            for i, line in enumerate(lines):
+            for _i, line in enumerate(lines):
                 if line.startswith("**") and line.endswith("**") and len(line) > 4:
                     title = line.strip("*").strip()
                     # Rest of the content as description
@@ -1677,7 +1678,6 @@ class ReviewProcessor:
             "Configuration used",
             "Review profile",
             "Knowledge Base",
-            "+",
             "+end",
             "zsh/functions/aws.zsh",
             "zsh/functions/cursor.zsh",
@@ -1992,7 +1992,7 @@ class ReviewProcessor:
                 }
 
         # Generate priority adjustments based on context
-        for thread_id, mapping in relationships["thread_comment_mapping"].items():
+        for _thread_id, mapping in relationships["thread_comment_mapping"].items():
             thread = mapping["thread"]
             comments = mapping["related_comments"]
 

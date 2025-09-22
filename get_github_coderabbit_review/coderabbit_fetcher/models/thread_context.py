@@ -3,14 +3,15 @@ Thread context data model.
 """
 
 from datetime import datetime
-from typing import Dict, List, Any, Optional
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 from .base import BaseCodeRabbitModel
 
 
 class ResolutionStatus(str, Enum):
     """Status of comment thread resolution."""
+
     UNRESOLVED = "unresolved"
     RESOLVED = "resolved"
     DISMISSED = "dismissed"
@@ -83,13 +84,12 @@ class ThreadContext(BaseCodeRabbitModel):
         summary_parts = [
             f"Thread with {total_comments} comment(s)",
             f"Started by {main_author}",
-            f"Status: {self.resolution_status.value if hasattr(self.resolution_status, 'value') else str(self.resolution_status)}"
+            f"Status: {self.resolution_status.value if hasattr(self.resolution_status, 'value') else str(self.resolution_status)}",
         ]
 
         if self.replies:
             reply_authors = set(
-                reply.get("user", {}).get("login", "unknown")
-                for reply in self.replies
+                reply.get("user", {}).get("login", "unknown") for reply in self.replies
             )
             summary_parts.append(f"Contributors: {', '.join(reply_authors)}")
 
@@ -104,10 +104,7 @@ class ThreadContext(BaseCodeRabbitModel):
         all_comments = [self.main_comment] + self.replies
 
         # Sort by created_at timestamp
-        return sorted(
-            all_comments,
-            key=lambda comment: comment.get("created_at", "")
-        )
+        return sorted(all_comments, key=lambda comment: comment.get("created_at", ""))
 
     @property
     def participant_count(self) -> int:
@@ -117,10 +114,7 @@ class ThreadContext(BaseCodeRabbitModel):
             Number of unique users who commented
         """
         authors = {self.main_comment.get("user", {}).get("login")}
-        authors.update(
-            reply.get("user", {}).get("login")
-            for reply in self.replies
-        )
+        authors.update(reply.get("user", {}).get("login") for reply in self.replies)
         # Remove None values
         authors.discard(None)
         return len(authors)

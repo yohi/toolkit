@@ -30,7 +30,7 @@ Usage:
 """
 
 import importlib.metadata
-from typing import Dict, Any
+from typing import Any, Dict
 
 try:
     __version__ = importlib.metadata.version("coderabbit-comment-fetcher")
@@ -39,7 +39,9 @@ except importlib.metadata.PackageNotFoundError:
     __version__ = "1.0.0-dev"
 
 __title__ = "CodeRabbit Comment Fetcher"
-__description__ = "Professional tool to fetch, analyze, and format CodeRabbit comments from GitHub Pull Requests"
+__description__ = (
+    "Professional tool to fetch, analyze, and format CodeRabbit comments from GitHub Pull Requests"
+)
 __author__ = "CodeRabbit Fetcher Team"
 __email__ = "coderabbit-fetcher@example.com"
 __license__ = "MIT"
@@ -65,8 +67,8 @@ def get_version_info() -> Dict[str, str]:
     Returns:
         Dictionary containing version details
     """
-    import sys
     import platform
+    import sys
 
     return {
         "version": __version__,
@@ -108,20 +110,23 @@ DEFAULT_CONFIG = {
     "supported_output_formats": ["markdown", "json", "plain"],
 }
 
-# Export key components for programmatic usage
-from .orchestrator import CodeRabbitOrchestrator, ExecutionConfig
-from .github_client import GitHubClient
-from .comment_analyzer import CommentAnalyzer
-from .exceptions import CodeRabbitFetcherError
-
 # Version check
-import sys
+import sys  # noqa: E402
+
+from .comment_analyzer import CommentAnalyzer  # noqa: E402
+from .exceptions import CodeRabbitFetcherError  # noqa: E402
+from .github_client import GitHubClient  # noqa: E402
+
+# Export key components for programmatic usage
+from .orchestrator import CodeRabbitOrchestrator, ExecutionConfig  # noqa: E402
+
 if sys.version_info < (3, 13):
     import warnings
+
     warnings.warn(
         f"CodeRabbit Comment Fetcher requires Python 3.13+, "
         f"but you're using Python {sys.version_info.major}.{sys.version_info.minor}. "
         f"Some features may not work correctly.",
         RuntimeWarning,
-        stacklevel=2
+        stacklevel=2,
     )

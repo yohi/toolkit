@@ -2,17 +2,17 @@
 
 import asyncio
 import logging
-from typing import Dict, List, Any, Optional, Callable, Coroutine
-from datetime import datetime
 import time
+from datetime import datetime
+from typing import Any, Dict, Optional
 
-from ..orchestrator import ExecutionConfig
-from ..models import AnalyzedComments
 from ..exceptions import CodeRabbitFetcherError
-from ..patterns.observer import publish_event, EventType
-from .async_github_client import AsyncGitHubClient
-from .async_comment_analyzer import AsyncCommentAnalyzer
+from ..models import AnalyzedComments
+from ..orchestrator import ExecutionConfig
+from ..patterns.observer import EventType, publish_event
 from .async_batch_processor import AsyncBatchProcessor
+from .async_comment_analyzer import AsyncCommentAnalyzer
+from .async_github_client import AsyncGitHubClient
 
 logger = logging.getLogger(__name__)
 
@@ -59,12 +59,12 @@ class AsyncCodeRabbitOrchestrator:
             EventType.PROCESSING_STARTED,
             source="AsyncCodeRabbitOrchestrator",
             data={
-                'session_id': self.session_id,
-                'pr_url': self.config.pr_url,
-                'output_format': self.config.output_format,
-                'phase': 'initialization'
+                "session_id": self.session_id,
+                "pr_url": self.config.pr_url,
+                "output_format": self.config.output_format,
+                "phase": "initialization",
             },
-            session_id=self.session_id
+            session_id=self.session_id,
         )
 
         try:
@@ -80,11 +80,11 @@ class AsyncCodeRabbitOrchestrator:
                 EventType.PROCESSING_COMPLETED,
                 source="AsyncCodeRabbitOrchestrator",
                 data={
-                    'session_id': self.session_id,
-                    'execution_time_seconds': execution_time,
-                    'results_summary': self._get_results_summary(results)
+                    "session_id": self.session_id,
+                    "execution_time_seconds": execution_time,
+                    "results_summary": self._get_results_summary(results),
                 },
-                session_id=self.session_id
+                session_id=self.session_id,
             )
 
             return results
@@ -98,12 +98,12 @@ class AsyncCodeRabbitOrchestrator:
                 EventType.PROCESSING_FAILED,
                 source="AsyncCodeRabbitOrchestrator",
                 data={
-                    'session_id': self.session_id,
-                    'error': str(e),
-                    'error_type': type(e).__name__
+                    "session_id": self.session_id,
+                    "error": str(e),
+                    "error_type": type(e).__name__,
                 },
                 severity="error",
-                session_id=self.session_id
+                session_id=self.session_id,
             )
 
             logger.error(f"Async execution failed: {e}")
@@ -134,11 +134,7 @@ class AsyncCodeRabbitOrchestrator:
 
         # Stage 6: Finalize results
         await self._publish_progress("finalization", 5, 6)
-        results = await self._finalize_results(
-            analyzed_comments,
-            formatted_output,
-            additional_data
-        )
+        results = await self._finalize_results(analyzed_comments, formatted_output, additional_data)
 
         await self._publish_progress("completed", 6, 6)
         return results
@@ -155,45 +151,43 @@ class AsyncCodeRabbitOrchestrator:
         pr_info = await self.github_client.extract_pr_info_async(self.config.pr_url)
 
         return {
-            'pr_info': pr_info,
-            'owner': pr_info['owner'],
-            'repo': pr_info['repo'],
-            'pr_number': pr_info['number']
+            "pr_info": pr_info,
+            "owner": pr_info["owner"],
+            "repo": pr_info["repo"],
+            "pr_number": pr_info["number"],
         }
 
     async def _fetch_github_data_parallel(self, pr_data: Dict[str, Any]) -> Dict[str, Any]:
         """Fetch GitHub data in parallel."""
         logger.info("Fetching GitHub data in parallel...")
 
-        owner = pr_data['owner']
-        repo = pr_data['repo']
-        pr_number = pr_data['pr_number']
+        owner = pr_data["owner"]
+        repo = pr_data["repo"]
+        pr_number = pr_data["pr_number"]
 
         # Create parallel tasks
         tasks = [
             asyncio.create_task(
                 self.github_client.get_pr_comments_async(owner, repo, pr_number),
-                name="fetch_comments"
+                name="fetch_comments",
             ),
             asyncio.create_task(
                 self.github_client.get_pr_reviews_async(owner, repo, pr_number),
-                name="fetch_reviews"
+                name="fetch_reviews",
             ),
             asyncio.create_task(
-                self.github_client.get_pr_files_async(owner, repo, pr_number),
-                name="fetch_files"
+                self.github_client.get_pr_files_async(owner, repo, pr_number), name="fetch_files"
             ),
             asyncio.create_task(
                 self.github_client.get_pr_commits_async(owner, repo, pr_number),
-                name="fetch_commits"
-            )
+                name="fetch_commits",
+            ),
         ]
 
         # Execute tasks concurrently with timeout
         try:
             results = await asyncio.wait_for(
-                asyncio.gather(*tasks, return_exceptions=True),
-                timeout=120  # 2 minutes timeout
+                asyncio.gather(*tasks, return_exceptions=True), timeout=120  # 2 minutes timeout
             )
 
             # Process results
@@ -215,11 +209,11 @@ class AsyncCodeRabbitOrchestrator:
                         commits = []
 
             return {
-                'comments': comments or [],
-                'reviews': reviews or [],
-                'files': files or [],
-                'commits': commits or [],
-                'pr_info': pr_data['pr_info']
+                "comments": comments or [],
+                "reviews": reviews or [],
+                "files": files or [],
+                "commits": commits or [],
+                "pr_info": pr_data["pr_info"],
             }
 
         except asyncio.TimeoutError:
@@ -232,8 +226,8 @@ class AsyncCodeRabbitOrchestrator:
 
         # Combine all comment sources
         all_comments = []
-        all_comments.extend(github_data.get('comments', []))
-        all_comments.extend(github_data.get('reviews', []))
+        all_comments.extend(github_data.get("comments", []))
+        all_comments.extend(github_data.get("reviews", []))
 
         if not all_comments:
             logger.warning("No comments found to analyze")
@@ -241,21 +235,20 @@ class AsyncCodeRabbitOrchestrator:
                 summary_comments=[],
                 review_comments=[],
                 unresolved_threads=[],
-                metadata={'total_comments': 0}
+                metadata={"total_comments": 0},
             )
 
         # Analyze comments using async analyzer
-        return await self.comment_analyzer.analyze_comments_async(
-            all_comments,
-            batch_size=20
-        )
+        return await self.comment_analyzer.analyze_comments_async(all_comments, batch_size=20)
 
-    async def _process_additional_data_parallel(self, github_data: Dict[str, Any]) -> Dict[str, Any]:
+    async def _process_additional_data_parallel(
+        self, github_data: Dict[str, Any]
+    ) -> Dict[str, Any]:
         """Process additional data in parallel."""
         logger.info("Processing additional data...")
 
-        files = github_data.get('files', [])
-        commits = github_data.get('commits', [])
+        files = github_data.get("files", [])
+        commits = github_data.get("commits", [])
 
         # Create parallel processing tasks
         tasks = []
@@ -263,21 +256,19 @@ class AsyncCodeRabbitOrchestrator:
         if files:
             tasks.append(
                 asyncio.create_task(
-                    self.batch_processor.process_files_async(files),
-                    name="process_files"
+                    self.batch_processor.process_files_async(files), name="process_files"
                 )
             )
 
         if commits:
             tasks.append(
                 asyncio.create_task(
-                    self.batch_processor.process_commits_async(commits),
-                    name="process_commits"
+                    self.batch_processor.process_commits_async(commits), name="process_commits"
                 )
             )
 
         if not tasks:
-            return {'file_analysis': {}, 'commit_analysis': {}}
+            return {"file_analysis": {}, "commit_analysis": {}}
 
         # Execute tasks
         try:
@@ -296,14 +287,11 @@ class AsyncCodeRabbitOrchestrator:
                     elif tasks[i].get_name() == "process_commits":
                         commit_analysis = result
 
-            return {
-                'file_analysis': file_analysis,
-                'commit_analysis': commit_analysis
-            }
+            return {"file_analysis": file_analysis, "commit_analysis": commit_analysis}
 
         except Exception as e:
             logger.error(f"Error processing additional data: {e}")
-            return {'file_analysis': {}, 'commit_analysis': {}}
+            return {"file_analysis": {}, "commit_analysis": {}}
 
     async def _format_output_async(self, analyzed_comments: AnalyzedComments) -> str:
         """Format output asynchronously."""
@@ -312,19 +300,16 @@ class AsyncCodeRabbitOrchestrator:
         # Use async formatting if available, otherwise fallback to sync
         try:
             from ..formatters import get_formatter
+
             formatter = get_formatter(self.config.output_format)
 
             # Check if formatter has async support
-            if hasattr(formatter, 'format_async'):
+            if hasattr(formatter, "format_async"):
                 return await formatter.format_async(analyzed_comments)
             else:
                 # Run sync formatter in thread pool
                 loop = asyncio.get_event_loop()
-                return await loop.run_in_executor(
-                    None,
-                    formatter.format,
-                    analyzed_comments
-                )
+                return await loop.run_in_executor(None, formatter.format, analyzed_comments)
 
         except Exception as e:
             logger.error(f"Error formatting output: {e}")
@@ -335,29 +320,29 @@ class AsyncCodeRabbitOrchestrator:
         self,
         analyzed_comments: AnalyzedComments,
         formatted_output: str,
-        additional_data: Dict[str, Any]
+        additional_data: Dict[str, Any],
     ) -> Dict[str, Any]:
         """Finalize execution results."""
 
         execution_time = ((self.end_time or datetime.now()) - self.start_time).total_seconds()
 
         results = {
-            'success': True,
-            'session_id': self.session_id,
-            'execution_time_seconds': execution_time,
-            'output': formatted_output,
-            'analyzed_comments': analyzed_comments,
-            'additional_data': additional_data,
-            'metadata': {
-                'pr_url': self.config.pr_url,
-                'output_format': self.config.output_format,
-                'total_comments': len(analyzed_comments.review_comments),
-                'summary_comments': len(analyzed_comments.summary_comments),
-                'unresolved_threads': len(analyzed_comments.unresolved_threads),
-                'processing_mode': 'async',
-                'start_time': self.start_time.isoformat(),
-                'end_time': (self.end_time or datetime.now()).isoformat()
-            }
+            "success": True,
+            "session_id": self.session_id,
+            "execution_time_seconds": execution_time,
+            "output": formatted_output,
+            "analyzed_comments": analyzed_comments,
+            "additional_data": additional_data,
+            "metadata": {
+                "pr_url": self.config.pr_url,
+                "output_format": self.config.output_format,
+                "total_comments": len(analyzed_comments.review_comments),
+                "summary_comments": len(analyzed_comments.summary_comments),
+                "unresolved_threads": len(analyzed_comments.unresolved_threads),
+                "processing_mode": "async",
+                "start_time": self.start_time.isoformat(),
+                "end_time": (self.end_time or datetime.now()).isoformat(),
+            },
         }
 
         self.results = results
@@ -371,13 +356,13 @@ class AsyncCodeRabbitOrchestrator:
             EventType.PROGRESS_UPDATE,
             source="AsyncCodeRabbitOrchestrator",
             data={
-                'session_id': self.session_id,
-                'phase': phase,
-                'current_step': current,
-                'total_steps': total,
-                'progress_percent': progress_percent
+                "session_id": self.session_id,
+                "phase": phase,
+                "current_step": current,
+                "total_steps": total,
+                "progress_percent": progress_percent,
             },
-            session_id=self.session_id
+            session_id=self.session_id,
         )
 
         logger.debug(f"Progress: {phase} ({current}/{total} - {progress_percent:.1f}%)")
@@ -385,10 +370,10 @@ class AsyncCodeRabbitOrchestrator:
     def _get_results_summary(self, results: Dict[str, Any]) -> Dict[str, Any]:
         """Get summary of results for events."""
         return {
-            'success': results.get('success', False),
-            'execution_time_seconds': results.get('execution_time_seconds', 0),
-            'total_comments': results.get('metadata', {}).get('total_comments', 0),
-            'output_format': self.config.output_format
+            "success": results.get("success", False),
+            "execution_time_seconds": results.get("execution_time_seconds", 0),
+            "total_comments": results.get("metadata", {}).get("total_comments", 0),
+            "output_format": self.config.output_format,
         }
 
     async def cancel_execution(self) -> None:
@@ -405,32 +390,32 @@ class AsyncCodeRabbitOrchestrator:
                 EventType.PROCESSING_FAILED,
                 source="AsyncCodeRabbitOrchestrator",
                 data={
-                    'session_id': self.session_id,
-                    'error': 'Execution cancelled by user',
-                    'error_type': 'CancellationError'
+                    "session_id": self.session_id,
+                    "error": "Execution cancelled by user",
+                    "error_type": "CancellationError",
                 },
                 severity="warning",
-                session_id=self.session_id
+                session_id=self.session_id,
             )
 
     def get_current_status(self) -> Dict[str, Any]:
         """Get current execution status."""
         if not self.start_time:
-            return {'status': 'not_started'}
+            return {"status": "not_started"}
 
         if self.is_running:
             elapsed = (datetime.now() - self.start_time).total_seconds()
             return {
-                'status': 'running',
-                'session_id': self.session_id,
-                'elapsed_seconds': elapsed,
-                'start_time': self.start_time.isoformat()
+                "status": "running",
+                "session_id": self.session_id,
+                "elapsed_seconds": elapsed,
+                "start_time": self.start_time.isoformat(),
             }
 
         return {
-            'status': 'completed' if self.results.get('success') else 'failed',
-            'session_id': self.session_id,
-            'results': self.results
+            "status": "completed" if self.results.get("success") else "failed",
+            "session_id": self.session_id,
+            "results": self.results,
         }
 
 

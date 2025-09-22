@@ -20,7 +20,9 @@ class SimplePR38Test:
 
     def __init__(self):
         self.repo_root = Path(__file__).parent.parent.parent
-        self.expected_file = Path(__file__).parent / "expected" / "expected_pr_38_ai_agent_prompt.md"
+        self.expected_file = (
+            Path(__file__).parent / "expected" / "expected_pr_38_ai_agent_prompt.md"
+        )
         self.mock_helper = PR38MockHelper(self.repo_root)
 
     def run_crf_with_mock(self) -> str:
@@ -78,7 +80,7 @@ class SimplePR38Test:
                         )
 
                     # 出力ファイルの内容を読み込み
-                    with open(temp_file.name, "r", encoding="utf-8") as f:
+                    with open(temp_file.name, encoding="utf-8") as f:
                         return f.read()
 
                 finally:

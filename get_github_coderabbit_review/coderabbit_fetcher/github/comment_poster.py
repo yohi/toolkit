@@ -7,8 +7,8 @@ on pull requests.
 
 from rich.console import Console
 
-from .client import GitHubClient
 from ..exceptions import CodeRabbitFetcherError
+from .client import GitHubClient
 
 console = Console()
 
@@ -72,7 +72,7 @@ class CommentPoster:
 
         except Exception as e:
             console.print(f"❌ [red]Error posting resolution request: {e}[/red]")
-            raise CodeRabbitFetcherError(f"Failed to post resolution request: {e}")
+            raise CodeRabbitFetcherError(f"Failed to post resolution request: {e}") from e
 
     def post_custom_comment(self, pr_url: str, comment: str) -> bool:
         """Post a custom comment to the pull request.

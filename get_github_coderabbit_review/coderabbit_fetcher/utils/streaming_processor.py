@@ -1,12 +1,11 @@
 """Streaming processing utilities for large datasets."""
 
 import logging
-from typing import Iterator, List, Dict, Any, Callable, Optional, Generator
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
-import threading
-import queue
-import time
+from typing import Any, Callable, Dict, Generator, Iterator, List, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +13,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ProcessingStats:
     """Statistics for streaming processing."""
+
     total_items: int
     processed_items: int
     successful_items: int
@@ -52,9 +52,7 @@ class StreamingProcessor:
         self.stats_lock = threading.Lock()
 
     def stream_with_batching(
-        self,
-        items: List[Any],
-        batch_size: Optional[int] = None
+        self, items: List[Any], batch_size: Optional[int] = None
     ) -> Iterator[List[Any]]:
         """Stream items in batches.
 
@@ -71,7 +69,7 @@ class StreamingProcessor:
         logger.debug(f"Streaming {total_items} items in batches of {effective_batch_size}")
 
         for i in range(0, total_items, effective_batch_size):
-            batch = items[i:i + effective_batch_size]
+            batch = items[i : i + effective_batch_size]
             yield batch
 
     def process_streaming(
@@ -80,7 +78,7 @@ class StreamingProcessor:
         processor_func: Callable[[Any], Any],
         batch_size: Optional[int] = None,
         parallel: bool = True,
-        progress_callback: Optional[Callable[[ProcessingStats], None]] = None
+        progress_callback: Optional[Callable[[ProcessingStats], None]] = None,
     ) -> List[Any]:
         """Process items using streaming approach with optional parallelization.
 
@@ -131,7 +129,7 @@ class StreamingProcessor:
                     successful_items=success_count,
                     failed_items=failed_count,
                     start_time=start_time,
-                    current_time=time.time()
+                    current_time=time.time(),
                 )
                 progress_callback(stats)
 
@@ -154,9 +152,7 @@ class StreamingProcessor:
         return results
 
     def _process_batch_sequential(
-        self,
-        batch: List[Any],
-        processor_func: Callable[[Any], Any]
+        self, batch: List[Any], processor_func: Callable[[Any], Any]
     ) -> List[Any]:
         """Process batch sequentially.
 
@@ -180,9 +176,7 @@ class StreamingProcessor:
         return results
 
     def _process_batch_parallel(
-        self,
-        batch: List[Any],
-        processor_func: Callable[[Any], Any]
+        self, batch: List[Any], processor_func: Callable[[Any], Any]
     ) -> List[Any]:
         """Process batch in parallel using ThreadPoolExecutor.
 
@@ -198,8 +192,7 @@ class StreamingProcessor:
         with ThreadPoolExecutor(max_workers=min(self.max_workers, len(batch))) as executor:
             # Submit all tasks
             future_to_index = {
-                executor.submit(processor_func, item): idx
-                for idx, item in enumerate(batch)
+                executor.submit(processor_func, item): idx for idx, item in enumerate(batch)
             }
 
             # Collect results maintaining order
@@ -215,10 +208,7 @@ class StreamingProcessor:
         return results
 
     def stream_and_filter(
-        self,
-        items: List[Any],
-        filter_func: Callable[[Any], bool],
-        batch_size: Optional[int] = None
+        self, items: List[Any], filter_func: Callable[[Any], bool], batch_size: Optional[int] = None
     ) -> Generator[Any, None, None]:
         """Stream items and apply filtering.
 
@@ -244,7 +234,7 @@ class StreamingProcessor:
         items: List[Any],
         transform_func: Callable[[Any], Any],
         batch_size: Optional[int] = None,
-        parallel: bool = True
+        parallel: bool = True,
     ) -> Generator[Any, None, None]:
         """Stream items and apply transformation.
 
@@ -304,7 +294,9 @@ class StreamingProcessor:
         # Clamp to reasonable bounds
         recommended_batch_size = min(max(recommended_batch_size, 10), 200)
 
-        logger.debug(f"Adaptive batch size: {recommended_batch_size} (target: {target_time_per_batch}s)")
+        logger.debug(
+            f"Adaptive batch size: {recommended_batch_size} (target: {target_time_per_batch}s)"
+        )
         return recommended_batch_size
 
 
@@ -321,9 +313,7 @@ class CommentStreamProcessor(StreamingProcessor):
         super().__init__(max_workers, batch_size)
 
     def stream_coderabbit_comments(
-        self,
-        comments: List[Dict[str, Any]],
-        filter_coderabbit: bool = True
+        self, comments: List[Dict[str, Any]], filter_coderabbit: bool = True
     ) -> Generator[Dict[str, Any], None, None]:
         """Stream CodeRabbit comments with filtering.
 
@@ -334,21 +324,20 @@ class CommentStreamProcessor(StreamingProcessor):
         Yields:
             CodeRabbit comment dictionaries
         """
+
         def is_coderabbit_comment(comment: Dict[str, Any]) -> bool:
             """Check if comment is from CodeRabbit."""
             if not filter_coderabbit:
                 return True
 
-            user = comment.get('user', {})
-            login = user.get('login', '').lower()
-            return 'coderabbit' in login
+            user = comment.get("user", {})
+            login = user.get("login", "").lower()
+            return "coderabbit" in login
 
         yield from self.stream_and_filter(comments, is_coderabbit_comment)
 
     def process_comments_by_type(
-        self,
-        comments: List[Dict[str, Any]],
-        processors: Dict[str, Callable[[Dict[str, Any]], Any]]
+        self, comments: List[Dict[str, Any]], processors: Dict[str, Callable[[Dict[str, Any]], Any]]
     ) -> Dict[str, List[Any]]:
         """Process comments by type using different processors.
 
@@ -363,18 +352,18 @@ class CommentStreamProcessor(StreamingProcessor):
 
         def categorize_comment(comment: Dict[str, Any]) -> str:
             """Categorize comment by type."""
-            body = comment.get('body', '').lower()
+            body = comment.get("body", "").lower()
 
-            if 'actionable comments' in body:
-                return 'actionable'
-            elif 'nitpick' in body:
-                return 'nitpick'
-            elif 'outside diff' in body:
-                return 'outside_diff'
-            elif '🤖' in body or 'ai agent' in body:
-                return 'ai_agent'
+            if "actionable comments" in body:
+                return "actionable"
+            elif "nitpick" in body:
+                return "nitpick"
+            elif "outside diff" in body:
+                return "outside_diff"
+            elif "🤖" in body or "ai agent" in body:
+                return "ai_agent"
             else:
-                return 'general'
+                return "general"
 
         # Group comments by type
         comments_by_type = {}
@@ -389,9 +378,7 @@ class CommentStreamProcessor(StreamingProcessor):
             if comment_type in processors:
                 processor_func = processors[comment_type]
                 type_results = self.process_streaming(
-                    type_comments,
-                    processor_func,
-                    parallel=len(type_comments) > 5
+                    type_comments, processor_func, parallel=len(type_comments) > 5
                 )
                 results[comment_type].extend(type_results)
             else:
@@ -409,20 +396,8 @@ class CommentStreamProcessor(StreamingProcessor):
             Dictionary with optimized settings
         """
         if comment_count <= 50:
-            return {
-                'batch_size': 10,
-                'max_workers': 2,
-                'parallel_threshold': 5
-            }
+            return {"batch_size": 10, "max_workers": 2, "parallel_threshold": 5}
         elif comment_count <= 200:
-            return {
-                'batch_size': 25,
-                'max_workers': 3,
-                'parallel_threshold': 10
-            }
+            return {"batch_size": 25, "max_workers": 3, "parallel_threshold": 10}
         else:
-            return {
-                'batch_size': 50,
-                'max_workers': 4,
-                'parallel_threshold': 20
-            }
+            return {"batch_size": 50, "max_workers": 4, "parallel_threshold": 20}

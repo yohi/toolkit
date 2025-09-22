@@ -2,11 +2,11 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, Type, Callable, Optional, Dict, TypeVar
+from typing import Any, Callable, Dict, Optional, Type, TypeVar
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class AbstractProvider(ABC):
@@ -37,6 +37,7 @@ class AbstractProvider(ABC):
 class ClassProvider(AbstractProvider):
     """Provider that creates instances from a class."""
 
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -46,7 +47,7 @@ if TYPE_CHECKING:
         self,
         service_type: Type[T],
         implementation_type: Type[T],
-        container: Optional['DIContainer'] = None
+        container: Optional["DIContainer"] = None,
     ):
         """Initialize class provider.
 
@@ -82,7 +83,7 @@ class FactoryProvider(AbstractProvider):
         self,
         service_type: Type[T],
         factory: Callable[..., T],
-        container: Optional['DIContainer'] = None
+        container: Optional["DIContainer"] = None,
     ):
         """Initialize factory provider.
 
@@ -162,11 +163,7 @@ class ValueProvider(AbstractProvider):
 class DelegateProvider(AbstractProvider):
     """Provider that delegates to another provider."""
 
-    def __init__(
-        self,
-        service_type: Type[T],
-        delegate: Callable[[], T]
-    ):
+    def __init__(self, service_type: Type[T], delegate: Callable[[], T]):
         """Initialize delegate provider.
 
         Args:
@@ -195,7 +192,7 @@ class ConditionalProvider(AbstractProvider):
         self,
         service_type: Type[T],
         providers: Dict[Callable[[], bool], AbstractProvider],
-        default_provider: Optional[AbstractProvider] = None
+        default_provider: Optional[AbstractProvider] = None,
     ):
         """Initialize conditional provider.
 
@@ -272,12 +269,7 @@ class LazyProvider(AbstractProvider):
 class PooledProvider(AbstractProvider):
     """Provider that maintains a pool of instances."""
 
-    def __init__(
-        self,
-        service_type: Type[T],
-        provider: AbstractProvider,
-        pool_size: int = 10
-    ):
+    def __init__(self, service_type: Type[T], provider: AbstractProvider, pool_size: int = 10):
         """Initialize pooled provider.
 
         Args:
@@ -330,9 +322,9 @@ class PooledProvider(AbstractProvider):
             Pool statistics
         """
         return {
-            'pool_size': len(self._pool),
-            'in_use': len(self._in_use),
-            'max_pool_size': self.pool_size
+            "pool_size": len(self._pool),
+            "in_use": len(self._in_use),
+            "max_pool_size": self.pool_size,
         }
 
     def __repr__(self) -> str:
@@ -370,9 +362,7 @@ class CompositeProvider(AbstractProvider):
 
 
 def create_class_provider(
-    service_type: Type[T],
-    implementation_type: Type[T],
-    container: Optional['DIContainer'] = None
+    service_type: Type[T], implementation_type: Type[T], container: Optional["DIContainer"] = None
 ) -> ClassProvider:
     """Create a class provider.
 
@@ -388,9 +378,7 @@ def create_class_provider(
 
 
 def create_factory_provider(
-    service_type: Type[T],
-    factory: Callable[..., T],
-    container: Optional['DIContainer'] = None
+    service_type: Type[T], factory: Callable[..., T], container: Optional["DIContainer"] = None
 ) -> FactoryProvider:
     """Create a factory provider.
 

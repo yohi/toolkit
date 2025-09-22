@@ -1,15 +1,15 @@
 """GitHub Actions integration for CI/CD pipeline."""
 
-import logging
 import asyncio
 import json
-import yaml
-from typing import Dict, List, Optional, Any, Union, Tuple
-from dataclasses import dataclass, field
-from pathlib import Path
-from datetime import datetime
-import subprocess
+import logging
 import os
+from dataclasses import dataclass, field
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+import yaml
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class StepConfig:
     """Individual step configuration."""
+
     name: str
     run: Optional[str] = None
     uses: Optional[str] = None
@@ -50,6 +51,7 @@ class StepConfig:
 @dataclass
 class JobConfig:
     """Job configuration."""
+
     name: str
     runs_on: str = "ubuntu-latest"
     needs: Optional[List[str]] = None
@@ -69,7 +71,7 @@ class JobConfig:
         job = {
             "name": self.name,
             "runs-on": self.runs_on,
-            "steps": [step.to_dict() for step in self.steps]
+            "steps": [step.to_dict() for step in self.steps],
         }
 
         if self.needs:
@@ -91,6 +93,7 @@ class JobConfig:
 @dataclass
 class WorkflowConfig:
     """GitHub Actions workflow configuration."""
+
     name: str
     on: Dict[str, Any]
     jobs: Dict[str, JobConfig] = field(default_factory=dict)
@@ -107,7 +110,7 @@ class WorkflowConfig:
         workflow = {
             "name": self.name,
             "on": self.on,
-            "jobs": {job_id: job.to_dict() for job_id, job in self.jobs.items()}
+            "jobs": {job_id: job.to_dict() for job_id, job in self.jobs.items()},
         }
 
         if self.env:
@@ -163,7 +166,7 @@ class ActionRunner:
             "start_time": start_time.isoformat(),
             "output": "",
             "error": "",
-            "exit_code": 0
+            "exit_code": 0,
         }
 
         try:
@@ -180,15 +183,14 @@ class ActionRunner:
                     stdout=asyncio.subprocess.PIPE,
                     stderr=asyncio.subprocess.PIPE,
                     cwd=self.workspace_path,
-                    env=env
+                    env=env,
                 )
 
                 # Enforce timeout if specified
                 if step.timeout_minutes:
                     try:
                         stdout, stderr = await asyncio.wait_for(
-                            process.communicate(),
-                            timeout=step.timeout_minutes * 60
+                            process.communicate(), timeout=step.timeout_minutes * 60
                         )
                     except asyncio.TimeoutError:
                         process.kill()
@@ -238,7 +240,7 @@ class ActionRunner:
             "status": "success",
             "output": "",
             "error": "",
-            "exit_code": 0
+            "exit_code": 0,
         }
 
         # Handle common actions
@@ -282,8 +284,8 @@ class ActionRunner:
                 "total_steps": len(job.steps),
                 "successful_steps": 0,
                 "failed_steps": 0,
-                "error_steps": 0
-            }
+                "error_steps": 0,
+            },
         }
 
         # Set job environment variables
@@ -339,7 +341,9 @@ class ActionRunner:
         elif "always()" in cond:
             return True
         # naive equality checks: github.event_name / github.ref
-        import re, os
+        import os
+        import re
+
         m = re.match(r"github\.(event_name|ref)\s*==\s*'([^']+)'", cond)
         if m:
             key, expected = m.group(1), m.group(2)
@@ -372,128 +376,112 @@ class GitHubActionsIntegration:
         workflow = WorkflowConfig(
             name="CodeRabbit Analysis",
             on={
-                "pull_request": {
-                    "types": ["opened", "synchronize", "reopened"]
-                },
-                "push": {
-                    "branches": ["main", "develop"]
-                }
-            }
+                "pull_request": {"types": ["opened", "synchronize", "reopened"]},
+                "push": {"branches": ["main", "develop"]},
+            },
         )
 
         # Setup job
-        setup_job = JobConfig(
-            name="Setup Environment",
-            runs_on="ubuntu-latest"
-        )
+        setup_job = JobConfig(name="Setup Environment", runs_on="ubuntu-latest")
 
         # Add setup steps
-        setup_job.add_step(StepConfig(
-            name="Checkout code",
-            uses="actions/checkout@v4"
-        ))
+        setup_job.add_step(StepConfig(name="Checkout code", uses="actions/checkout@v4"))
 
-        setup_job.add_step(StepConfig(
-            name="Setup Python",
-            uses="actions/setup-python@v4",
-            with_={"python-version": "3.11"}
-        ))
+        setup_job.add_step(
+            StepConfig(
+                name="Setup Python",
+                uses="actions/setup-python@v4",
+                with_={"python-version": "3.11"},
+            )
+        )
 
-        setup_job.add_step(StepConfig(
-            name="Cache dependencies",
-            uses="actions/cache@v3",
-            with_={
-                "path": "~/.cache/pip",
-                "key": "${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}",
-                "restore-keys": "${{ runner.os }}-pip-"
-            }
-        ))
+        setup_job.add_step(
+            StepConfig(
+                name="Cache dependencies",
+                uses="actions/cache@v3",
+                with_={
+                    "path": "~/.cache/pip",
+                    "key": "${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}",
+                    "restore-keys": "${{ runner.os }}-pip-",
+                },
+            )
+        )
 
-        setup_job.add_step(StepConfig(
-            name="Install dependencies",
-            run="pip install -r requirements.txt"
-        ))
+        setup_job.add_step(
+            StepConfig(name="Install dependencies", run="pip install -r requirements.txt")
+        )
 
         workflow.add_job("setup", setup_job)
 
         # Test job
-        test_job = JobConfig(
-            name="Run Tests",
-            runs_on="ubuntu-latest",
-            needs=["setup"]
+        test_job = JobConfig(name="Run Tests", runs_on="ubuntu-latest", needs=["setup"])
+
+        test_job.add_step(StepConfig(name="Checkout code", uses="actions/checkout@v4"))
+
+        test_job.add_step(
+            StepConfig(
+                name="Setup Python",
+                uses="actions/setup-python@v4",
+                with_={"python-version": "3.11"},
+            )
         )
 
-        test_job.add_step(StepConfig(
-            name="Checkout code",
-            uses="actions/checkout@v4"
-        ))
+        test_job.add_step(
+            StepConfig(name="Install dependencies", run="pip install -r requirements.txt")
+        )
 
-        test_job.add_step(StepConfig(
-            name="Setup Python",
-            uses="actions/setup-python@v4",
-            with_={"python-version": "3.11"}
-        ))
+        test_job.add_step(
+            StepConfig(
+                name="Run unit tests",
+                run="python -m pytest tests/unit/ -v --cov=coderabbit_fetcher --cov-report=xml",
+            )
+        )
 
-        test_job.add_step(StepConfig(
-            name="Install dependencies",
-            run="pip install -r requirements.txt"
-        ))
+        test_job.add_step(
+            StepConfig(name="Run integration tests", run="python -m pytest tests/integration/ -v")
+        )
 
-        test_job.add_step(StepConfig(
-            name="Run unit tests",
-            run="python -m pytest tests/unit/ -v --cov=coderabbit_fetcher --cov-report=xml"
-        ))
-
-        test_job.add_step(StepConfig(
-            name="Run integration tests",
-            run="python -m pytest tests/integration/ -v"
-        ))
-
-        test_job.add_step(StepConfig(
-            name="Upload coverage",
-            uses="codecov/codecov-action@v3",
-            with_={"file": "./coverage.xml"}
-        ))
+        test_job.add_step(
+            StepConfig(
+                name="Upload coverage",
+                uses="codecov/codecov-action@v3",
+                with_={"file": "./coverage.xml"},
+            )
+        )
 
         workflow.add_job("test", test_job)
 
         # Quality checks job
-        quality_job = JobConfig(
-            name="Quality Checks",
-            runs_on="ubuntu-latest",
-            needs=["setup"]
+        quality_job = JobConfig(name="Quality Checks", runs_on="ubuntu-latest", needs=["setup"])
+
+        quality_job.add_step(StepConfig(name="Checkout code", uses="actions/checkout@v4"))
+
+        quality_job.add_step(
+            StepConfig(
+                name="Setup Python",
+                uses="actions/setup-python@v4",
+                with_={"python-version": "3.11"},
+            )
         )
 
-        quality_job.add_step(StepConfig(
-            name="Checkout code",
-            uses="actions/checkout@v4"
-        ))
+        quality_job.add_step(
+            StepConfig(name="Install dependencies", run="pip install -r requirements.txt")
+        )
 
-        quality_job.add_step(StepConfig(
-            name="Setup Python",
-            uses="actions/setup-python@v4",
-            with_={"python-version": "3.11"}
-        ))
+        quality_job.add_step(
+            StepConfig(
+                name="Lint with flake8",
+                run="flake8 coderabbit_fetcher/ --count --select=E9,F63,F7,F82 --show-source --statistics",
+            )
+        )
 
-        quality_job.add_step(StepConfig(
-            name="Install dependencies",
-            run="pip install -r requirements.txt"
-        ))
+        quality_job.add_step(
+            StepConfig(name="Type check with mypy", run="mypy coderabbit_fetcher/")
+        )
 
-        quality_job.add_step(StepConfig(
-            name="Lint with flake8",
-            run="flake8 coderabbit_fetcher/ --count --select=E9,F63,F7,F82 --show-source --statistics"
-        ))
-
-        quality_job.add_step(StepConfig(
-            name="Type check with mypy",
-            run="mypy coderabbit_fetcher/"
-        ))
-
-        quality_job.add_step(StepConfig(
-            name="Security check with bandit",
-            run="bandit -r coderabbit_fetcher/"
-        ))
+        quality_job.add_step(
+            StepConfig(name="Security check with bandit", run="bandit -r coderabbit_fetcher/")
+        )
 
         workflow.add_job("quality", quality_job)
 
@@ -502,42 +490,39 @@ class GitHubActionsIntegration:
             name="CodeRabbit Analysis",
             runs_on="ubuntu-latest",
             needs=["test", "quality"],
-            if_condition="github.event_name == 'pull_request'"
+            if_condition="github.event_name == 'pull_request'",
         )
 
-        analysis_job.add_step(StepConfig(
-            name="Checkout code",
-            uses="actions/checkout@v4"
-        ))
+        analysis_job.add_step(StepConfig(name="Checkout code", uses="actions/checkout@v4"))
 
-        analysis_job.add_step(StepConfig(
-            name="Setup Python",
-            uses="actions/setup-python@v4",
-            with_={"python-version": "3.11"}
-        ))
+        analysis_job.add_step(
+            StepConfig(
+                name="Setup Python",
+                uses="actions/setup-python@v4",
+                with_={"python-version": "3.11"},
+            )
+        )
 
-        analysis_job.add_step(StepConfig(
-            name="Install CodeRabbit fetcher",
-            run="pip install -e ."
-        ))
+        analysis_job.add_step(StepConfig(name="Install CodeRabbit fetcher", run="pip install -e ."))
 
-        analysis_job.add_step(StepConfig(
-            name="Run CodeRabbit analysis",
-            run="python -m coderabbit_fetcher --pr-url ${{ github.event.pull_request.html_url }} --output-format json",
-            env={
-                "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
-                "OPENAI_API_KEY": "${{ secrets.OPENAI_API_KEY }}"
-            }
-        ))
+        analysis_job.add_step(
+            StepConfig(
+                name="Run CodeRabbit analysis",
+                run="python -m coderabbit_fetcher --pr-url ${{ github.event.pull_request.html_url }} --output-format json",
+                env={
+                    "GITHUB_TOKEN": "${{ secrets.GITHUB_TOKEN }}",
+                    "OPENAI_API_KEY": "${{ secrets.OPENAI_API_KEY }}",
+                },
+            )
+        )
 
-        analysis_job.add_step(StepConfig(
-            name="Upload analysis results",
-            uses="actions/upload-artifact@v3",
-            with_={
-                "name": "coderabbit-analysis",
-                "path": "analysis-results.json"
-            }
-        ))
+        analysis_job.add_step(
+            StepConfig(
+                name="Upload analysis results",
+                uses="actions/upload-artifact@v3",
+                with_={"name": "coderabbit-analysis", "path": "analysis-results.json"},
+            )
+        )
 
         workflow.add_job("analysis", analysis_job)
 
@@ -547,61 +532,41 @@ class GitHubActionsIntegration:
         """Create deployment workflow."""
         workflow = WorkflowConfig(
             name="Deploy CodeRabbit",
-            on={
-                "push": {
-                    "branches": ["main"]
-                },
-                "release": {
-                    "types": ["published"]
-                }
-            }
+            on={"push": {"branches": ["main"]}, "release": {"types": ["published"]}},
         )
 
         # Build job
-        build_job = JobConfig(
-            name="Build and Test",
-            runs_on="ubuntu-latest"
+        build_job = JobConfig(name="Build and Test", runs_on="ubuntu-latest")
+
+        build_job.add_step(StepConfig(name="Checkout code", uses="actions/checkout@v4"))
+
+        build_job.add_step(
+            StepConfig(
+                name="Setup Python",
+                uses="actions/setup-python@v4",
+                with_={"python-version": "3.11"},
+            )
         )
 
-        build_job.add_step(StepConfig(
-            name="Checkout code",
-            uses="actions/checkout@v4"
-        ))
+        build_job.add_step(
+            StepConfig(name="Install dependencies", run="python -m pip install -r requirements.txt")
+        )
 
-        build_job.add_step(StepConfig(
-            name="Setup Python",
-            uses="actions/setup-python@v4",
-            with_={"python-version": "3.11"}
-        ))
+        build_job.add_step(StepConfig(name="Run tests", run="python -m pytest tests/ -v"))
 
-        build_job.add_step(StepConfig(
-            name="Install dependencies",
-            run="python -m pip install -r requirements.txt"
-        ))
+        build_job.add_step(
+            StepConfig(name="Install build backend", run="python -m pip install --upgrade build")
+        )
 
-        build_job.add_step(StepConfig(
-            name="Run tests",
-            run="python -m pytest tests/ -v"
-        ))
+        build_job.add_step(StepConfig(name="Build package", run="python -m build"))
 
-        build_job.add_step(StepConfig(
-            name="Install build backend",
-            run="python -m pip install --upgrade build"
-        ))
-
-        build_job.add_step(StepConfig(
-            name="Build package",
-            run="python -m build"
-        ))
-
-        build_job.add_step(StepConfig(
-            name="Upload build artifacts",
-            uses="actions/upload-artifact@v3",
-            with_={
-                "name": "dist",
-                "path": "dist/"
-            }
-        ))
+        build_job.add_step(
+            StepConfig(
+                name="Upload build artifacts",
+                uses="actions/upload-artifact@v3",
+                with_={"name": "dist", "path": "dist/"},
+            )
+        )
 
         workflow.add_job("build", build_job)
 
@@ -610,22 +575,24 @@ class GitHubActionsIntegration:
             name="Deploy to Staging",
             runs_on="ubuntu-latest",
             needs=["build"],
-            env={
-                "ENVIRONMENT": "staging"
-            }
+            env={"ENVIRONMENT": "staging"},
         )
 
-        staging_job.add_step(StepConfig(
-            name="Download artifacts",
-            uses="actions/download-artifact@v3",
-            with_={"name": "dist"}
-        ))
+        staging_job.add_step(
+            StepConfig(
+                name="Download artifacts",
+                uses="actions/download-artifact@v3",
+                with_={"name": "dist"},
+            )
+        )
 
-        staging_job.add_step(StepConfig(
-            name="Deploy to staging",
-            run="echo 'Deploying to staging environment'"
-            # In production: actual deployment commands
-        ))
+        staging_job.add_step(
+            StepConfig(
+                name="Deploy to staging",
+                run="echo 'Deploying to staging environment'",
+                # In production: actual deployment commands
+            )
+        )
 
         workflow.add_job("deploy-staging", staging_job)
 
@@ -634,33 +601,37 @@ class GitHubActionsIntegration:
             name="Deploy to Production",
             runs_on="ubuntu-latest",
             needs=["deploy-staging"],
-            env={
-                "ENVIRONMENT": "production"
-            },
-            if_condition="github.ref == 'refs/heads/main'"
+            env={"ENVIRONMENT": "production"},
+            if_condition="github.ref == 'refs/heads/main'",
         )
 
-        production_job.add_step(StepConfig(
-            name="Manual approval",
-            uses="trstringer/manual-approval@v1",
-            with_={
-                "secret": "${{ secrets.GITHUB_TOKEN }}",
-                "approvers": "repo-admins",
-                "minimum-approvals": "1"
-            }
-        ))
+        production_job.add_step(
+            StepConfig(
+                name="Manual approval",
+                uses="trstringer/manual-approval@v1",
+                with_={
+                    "secret": "${{ secrets.GITHUB_TOKEN }}",
+                    "approvers": "repo-admins",
+                    "minimum-approvals": "1",
+                },
+            )
+        )
 
-        production_job.add_step(StepConfig(
-            name="Download artifacts",
-            uses="actions/download-artifact@v3",
-            with_={"name": "dist"}
-        ))
+        production_job.add_step(
+            StepConfig(
+                name="Download artifacts",
+                uses="actions/download-artifact@v3",
+                with_={"name": "dist"},
+            )
+        )
 
-        production_job.add_step(StepConfig(
-            name="Deploy to production",
-            run="echo 'Deploying to production environment'"
-            # In production: actual deployment commands
-        ))
+        production_job.add_step(
+            StepConfig(
+                name="Deploy to production",
+                run="echo 'Deploying to production environment'",
+                # In production: actual deployment commands
+            )
+        )
 
         workflow.add_job("deploy-production", production_job)
 
@@ -678,7 +649,7 @@ class GitHubActionsIntegration:
         """
         workflow_file = self.workflows_path / filename
 
-        with open(workflow_file, 'w', encoding='utf-8') as f:
+        with open(workflow_file, "w", encoding="utf-8") as f:
             f.write(workflow.to_yaml())
 
         logger.info(f"Saved workflow: {workflow_file}")
@@ -695,11 +666,7 @@ class GitHubActionsIntegration:
         """
         logger.info(f"Testing workflow locally: {workflow.name}")
 
-        results = {
-            "workflow_name": workflow.name,
-            "status": "success",
-            "jobs": []
-        }
+        results = {"workflow_name": workflow.name, "status": "success", "jobs": []}
 
         # Sort jobs by dependencies
         sorted_jobs = self._sort_jobs_by_dependencies(workflow.jobs)

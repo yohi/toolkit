@@ -4,19 +4,20 @@
 Actionableコメントの解決状態を判定し、未解決コメントのフィルタリングを行う
 """
 
-import re
 import logging
-from typing import List, Dict, Set, Optional, Tuple
+import re
 from dataclasses import dataclass
 from enum import Enum
+from typing import Dict, List, Optional
 
-from .structured_comment_parser import ParsedComment, CommentSection
+from .structured_comment_parser import CommentSection, ParsedComment
 
 logger = logging.getLogger(__name__)
 
 
 class ResolutionStatus(Enum):
     """解決状態"""
+
     RESOLVED = "resolved"
     UNRESOLVED = "unresolved"
     UNKNOWN = "unknown"
@@ -25,6 +26,7 @@ class ResolutionStatus(Enum):
 @dataclass
 class ResolutionMarker:
     """解決マーカー情報"""
+
     marker_text: str
     marker_type: str
     context: str
@@ -34,6 +36,7 @@ class ResolutionMarker:
 @dataclass
 class CommentResolution:
     """コメント解決情報"""
+
     comment: ParsedComment
     status: ResolutionStatus
     resolution_markers: List[ResolutionMarker]
@@ -58,60 +61,56 @@ class ResolutionDetector:
         # デフォルト解決マーカーパターン
         self.default_resolution_patterns = [
             # 日本語パターン
-            r'解決済み',
-            r'解決しました',
-            r'解決された',
-            r'修正済み',
-            r'修正しました',
-            r'修正された',
-            r'対応済み',
-            r'対応しました',
-            r'対応された',
-            r'完了',
-            r'完了しました',
-            r'適切です',
-            r'問題ありません',
-
+            r"解決済み",
+            r"解決しました",
+            r"解決された",
+            r"修正済み",
+            r"修正しました",
+            r"修正された",
+            r"対応済み",
+            r"対応しました",
+            r"対応された",
+            r"完了",
+            r"完了しました",
+            r"適切です",
+            r"問題ありません",
             # 英語パターン
-            r'resolved',
-            r'fixed',
-            r'addressed',
-            r'completed',
-            r'done',
-            r'corrected',
-            r'appropriate',
-            r'good',
-            r'ok',
-            r'fine',
-
+            r"resolved",
+            r"fixed",
+            r"addressed",
+            r"completed",
+            r"done",
+            r"corrected",
+            r"appropriate",
+            r"good",
+            r"ok",
+            r"fine",
             # 肯定的なフィードバックパターン
-            r'解決.*?[！!]',
-            r'適切.*?改名',
-            r'前回.*?解決',
-            r'問題.*?解決',
-            r'指摘.*?解決',
-            r'衝突.*?解決',
-
+            r"解決.*?[！!]",
+            r"適切.*?改名",
+            r"前回.*?解決",
+            r"問題.*?解決",
+            r"指摘.*?解決",
+            r"衝突.*?解決",
             # CodeRabbit特有の解決表現
-            r'前回のレビューで指摘した.*?修正',
-            r'前回のレビューで指摘した.*?解決',
-            r'素晴らしい対応です',
-            r'適切に修正されています',
-            r'適切です[！!]',
-            r'適切な対応です',
-            r'問題が解決されました',
-            r'命名衝突が解決',
-            r'適切に.*?修正',
-            r'正しく.*?修正',
-            r'適切な.*?変更',
-
+            r"前回のレビューで指摘した.*?修正",
+            r"前回のレビューで指摘した.*?解決",
+            r"素晴らしい対応です",
+            r"適切に修正されています",
+            r"適切です[！!]",
+            r"適切な対応です",
+            r"問題が解決されました",
+            r"命名衝突が解決",
+            r"適切に.*?修正",
+            r"正しく.*?修正",
+            r"適切な.*?変更",
             # 重複コメントセクション内のパターン
-            r'♻️\s*Duplicate\s+comments',
-            r'Duplicate\s+comments',
+            r"♻️\s*Duplicate\s+comments",
+            r"Duplicate\s+comments",
         ]
 
         # カスタムパターンを設定から取得
-        custom_patterns = self.config.get('resolution_patterns', [])
+        custom_patterns = self.config.get("resolution_patterns", [])
         self.resolution_patterns = self.default_resolution_patterns + custom_patterns
 
         # コンパイル済み正規表現
@@ -123,20 +122,21 @@ class ResolutionDetector:
         # 除外パターン（解決マーカーがあっても未解決と判定すべきケース）
         self.exclusion_patterns = [
             re.compile(pattern, re.IGNORECASE | re.MULTILINE)
-            for pattern in self.config.get('exclusion_patterns', [
-                r'まだ.*?解決.*?していません',
-                r'未だ.*?解決.*?していません',
-                r'まだ.*?修正.*?していません',
-                r'not.*?resolved',
-                r'not.*?fixed',
-                r'still.*?unresolved',
-            ])
+            for pattern in self.config.get(
+                "exclusion_patterns",
+                [
+                    r"まだ.*?解決.*?していません",
+                    r"未だ.*?解決.*?していません",
+                    r"まだ.*?修正.*?していません",
+                    r"not.*?resolved",
+                    r"not.*?fixed",
+                    r"still.*?unresolved",
+                ],
+            )
         ]
 
     def detect_resolution_status(
-        self,
-        comments: List[ParsedComment],
-        all_review_bodies: List[str]
+        self, comments: List[ParsedComment], all_review_bodies: List[str]
     ) -> List[CommentResolution]:
         """
         コメントリストの解決状態を検出
@@ -157,22 +157,16 @@ class ResolutionDetector:
             else:
                 # その他のコメントは全て未解決扱い（フィルタリング条件なし）
                 resolution = CommentResolution(
-                    comment=comment,
-                    status=ResolutionStatus.UNRESOLVED,
-                    resolution_markers=[]
+                    comment=comment, status=ResolutionStatus.UNRESOLVED, resolution_markers=[]
                 )
 
             resolutions.append(resolution)
 
-        self.logger.info(
-            f"解決状態解析完了: {len(resolutions)}個のコメントを解析"
-        )
+        self.logger.info(f"解決状態解析完了: {len(resolutions)}個のコメントを解析")
         return resolutions
 
     def _analyze_comment_resolution(
-        self,
-        comment: ParsedComment,
-        all_review_bodies: List[str]
+        self, comment: ParsedComment, all_review_bodies: List[str]
     ) -> CommentResolution:
         """
         個別コメントの解決状態を解析
@@ -188,11 +182,7 @@ class ResolutionDetector:
 
         # 全レビューから解決マーカーを検索
         for review_index, review_body in enumerate(all_review_bodies):
-            markers = self._find_resolution_markers_in_review(
-                comment,
-                review_body,
-                review_index
-            )
+            markers = self._find_resolution_markers_in_review(comment, review_body, review_index)
             resolution_markers.extend(markers)
 
         # 解決状態を判定
@@ -205,14 +195,11 @@ class ResolutionDetector:
             comment=comment,
             status=status,
             resolution_markers=resolution_markers,
-            resolution_context=context
+            resolution_context=context,
         )
 
     def _find_resolution_markers_in_review(
-        self,
-        comment: ParsedComment,
-        review_body: str,
-        review_index: int
+        self, comment: ParsedComment, review_body: str, review_index: int
     ) -> List[ResolutionMarker]:
         """
         特定のレビュー内で解決マーカーを検索
@@ -230,11 +217,11 @@ class ResolutionDetector:
         # コメントのファイル名と行番号で関連箇所を特定
         comment_context_patterns = [
             # ファイル名 + 行番号の組み合わせ
-            rf'{re.escape(comment.file_path)}.*?{re.escape(comment.line_range)}',
+            rf"{re.escape(comment.file_path)}.*?{re.escape(comment.line_range)}",
             # 行番号のみ
-            rf'`{re.escape(comment.line_range)}`',
+            rf"`{re.escape(comment.line_range)}`",
             # タイトルの一部
-            rf'{re.escape(comment.title[:20])}',  # タイトルの最初の20文字
+            rf"{re.escape(comment.title[:20])}",  # タイトルの最初の20文字
         ]
 
         for context_pattern in comment_context_patterns:
@@ -253,8 +240,7 @@ class ResolutionDetector:
                     for marker_match in marker_matches:
                         # 除外パターンをチェック
                         is_excluded = any(
-                            exclusion.search(context_text)
-                            for exclusion in self.exclusion_patterns
+                            exclusion.search(context_text) for exclusion in self.exclusion_patterns
                         )
 
                         if not is_excluded:
@@ -262,16 +248,14 @@ class ResolutionDetector:
                                 marker_text=marker_match.group(0),
                                 marker_type=pattern.pattern,
                                 context=context_text,
-                                review_index=review_index
+                                review_index=review_index,
                             )
                             markers.append(marker)
 
         return markers
 
     def _determine_resolution_status(
-        self,
-        comment: ParsedComment,
-        resolution_markers: List[ResolutionMarker]
+        self, comment: ParsedComment, resolution_markers: List[ResolutionMarker]
     ) -> ResolutionStatus:
         """
         解決マーカーに基づいて解決状態を判定
@@ -291,12 +275,12 @@ class ResolutionDetector:
 
         # 明確な解決マーカーがある場合
         definitive_patterns = [
-            r'解決済み',
-            r'修正済み',
-            r'対応済み',
-            r'resolved',
-            r'fixed',
-            r'addressed',
+            r"解決済み",
+            r"修正済み",
+            r"対応済み",
+            r"resolved",
+            r"fixed",
+            r"addressed",
         ]
 
         for pattern in definitive_patterns:
@@ -311,8 +295,7 @@ class ResolutionDetector:
         return ResolutionStatus.UNRESOLVED
 
     def _build_resolution_context(
-        self,
-        resolution_markers: List[ResolutionMarker]
+        self, resolution_markers: List[ResolutionMarker]
     ) -> Optional[str]:
         """
         解決状態のコンテキスト情報を構築
@@ -331,8 +314,7 @@ class ResolutionDetector:
         return f"Review {latest_marker.review_index + 1}: {latest_marker.marker_text}"
 
     def filter_unresolved_actionable(
-        self,
-        resolutions: List[CommentResolution]
+        self, resolutions: List[CommentResolution]
     ) -> List[ParsedComment]:
         """
         未解決のActionableコメントのみをフィルタリング
@@ -347,8 +329,10 @@ class ResolutionDetector:
 
         for resolution in resolutions:
             # Actionableコメントで未解決のもののみ
-            if (resolution.comment.section_type == CommentSection.ACTIONABLE and
-                resolution.status == ResolutionStatus.UNRESOLVED):
+            if (
+                resolution.comment.section_type == CommentSection.ACTIONABLE
+                and resolution.status == ResolutionStatus.UNRESOLVED
+            ):
                 unresolved_actionable.append(resolution.comment)
 
         self.logger.info(
@@ -358,8 +342,7 @@ class ResolutionDetector:
         return unresolved_actionable
 
     def filter_all_non_actionable(
-        self,
-        resolutions: List[CommentResolution]
+        self, resolutions: List[CommentResolution]
     ) -> List[ParsedComment]:
         """
         Actionable以外のコメントを全て取得（条件フィルタリングなし）
@@ -378,10 +361,7 @@ class ResolutionDetector:
 
         return non_actionable
 
-    def get_resolution_statistics(
-        self,
-        resolutions: List[CommentResolution]
-    ) -> Dict[str, Dict]:
+    def get_resolution_statistics(self, resolutions: List[CommentResolution]) -> Dict[str, Dict]:
         """
         解決状態統計情報を取得
 
@@ -392,30 +372,27 @@ class ResolutionDetector:
             統計情報辞書
         """
         stats = {
-            'total': len(resolutions),
-            'by_section': {},
-            'by_status': {status.value: 0 for status in ResolutionStatus}
+            "total": len(resolutions),
+            "by_section": {},
+            "by_status": {status.value: 0 for status in ResolutionStatus},
         }
 
         # セクション別統計
         for section in CommentSection:
-            section_resolutions = [
-                r for r in resolutions
-                if r.comment.section_type == section
-            ]
+            section_resolutions = [r for r in resolutions if r.comment.section_type == section]
 
             section_stats = {
-                'total': len(section_resolutions),
-                'by_status': {status.value: 0 for status in ResolutionStatus}
+                "total": len(section_resolutions),
+                "by_status": {status.value: 0 for status in ResolutionStatus},
             }
 
             for resolution in section_resolutions:
-                section_stats['by_status'][resolution.status.value] += 1
+                section_stats["by_status"][resolution.status.value] += 1
 
-            stats['by_section'][section.value] = section_stats
+            stats["by_section"][section.value] = section_stats
 
         # 全体の状態別統計
         for resolution in resolutions:
-            stats['by_status'][resolution.status.value] += 1
+            stats["by_status"][resolution.status.value] += 1
 
         return stats

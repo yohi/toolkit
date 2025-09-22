@@ -1,10 +1,9 @@
 """Prompt templates for AI-powered analysis."""
 
 import logging
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
-import json
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +25,7 @@ class PromptTemplate(ABC):
 @dataclass
 class CommentContext:
     """Context information for comment analysis."""
+
     file_path: Optional[str] = None
     line_number: Optional[int] = None
     function_name: Optional[str] = None
@@ -86,8 +86,8 @@ Be precise, consistent, and focus on technical impact and actionability."""
 
     def create_prompt(self, **kwargs) -> str:
         """Create classification prompt."""
-        comment_text = kwargs.get('comment_text', '')
-        context = kwargs.get('context', {})
+        comment_text = kwargs.get("comment_text", "")
+        context = kwargs.get("context", {})
 
         prompt = f"""Please classify the following CodeRabbit review comment:
 
@@ -100,15 +100,15 @@ Be precise, consistent, and focus on technical impact and actionability."""
         # Add context if available
         if context:
             prompt += "\n**Context:**\n"
-            if context.get('file_path'):
+            if context.get("file_path"):
                 prompt += f"- File: {context['file_path']}\n"
-            if context.get('line_number'):
+            if context.get("line_number"):
                 prompt += f"- Line: {context['line_number']}\n"
-            if context.get('function_name'):
+            if context.get("function_name"):
                 prompt += f"- Function: {context['function_name']}\n"
-            if context.get('language'):
+            if context.get("language"):
                 prompt += f"- Language: {context['language']}\n"
-            if context.get('diff_context'):
+            if context.get("diff_context"):
                 prompt += f"- Diff Context:\n```\n{context['diff_context']}\n```\n"
 
         prompt += """
@@ -121,17 +121,12 @@ Analyze this comment and provide classification in the specified JSON format. Co
 
         return prompt
 
-    def create_classification_prompt(
-        self,
-        comment_text: str,
-        context: Dict[str, Any]
-    ) -> str:
+    def create_classification_prompt(self, comment_text: str, context: Dict[str, Any]) -> str:
         """Create classification prompt with context."""
         return self.create_prompt(comment_text=comment_text, context=context)
 
     def create_batch_classification_prompt(
-        self,
-        comments: List[Tuple[str, Optional[Dict[str, Any]]]]
+        self, comments: List[Tuple[str, Optional[Dict[str, Any]]]]
     ) -> str:
         """Create batch classification prompt."""
         prompt = """Please classify the following CodeRabbit review comments.
@@ -146,9 +141,9 @@ Return a JSON array with classification results for each comment in order.
 
             if context:
                 prompt += "Context:\n"
-                if context.get('file_path'):
+                if context.get("file_path"):
                     prompt += f"- File: {context['file_path']}\n"
-                if context.get('line_number'):
+                if context.get("line_number"):
                     prompt += f"- Line: {context['line_number']}\n"
 
             prompt += "\n"
@@ -191,9 +186,9 @@ Provide detailed, actionable feedback with specific recommendations for improvem
 
     def create_prompt(self, **kwargs) -> str:
         """Create analysis prompt."""
-        code_snippet = kwargs.get('code_snippet', '')
-        analysis_type = kwargs.get('analysis_type', 'general')
-        context = kwargs.get('context', {})
+        code_snippet = kwargs.get("code_snippet", "")
+        analysis_type = kwargs.get("analysis_type", "general")
+        context = kwargs.get("context", {})
 
         prompt = f"""Please analyze the following code snippet:
 
@@ -211,7 +206,7 @@ Provide detailed, actionable feedback with specific recommendations for improvem
                 if value:
                     prompt += f"- {key.replace('_', ' ').title()}: {value}\n"
 
-        if analysis_type == 'security':
+        if analysis_type == "security":
             prompt += """
 Focus on security analysis:
 1. Input validation and sanitization
@@ -221,7 +216,7 @@ Focus on security analysis:
 5. Access control and permissions
 6. Sensitive data handling
 """
-        elif analysis_type == 'performance':
+        elif analysis_type == "performance":
             prompt += """
 Focus on performance analysis:
 1. Algorithm complexity and efficiency
@@ -231,7 +226,7 @@ Focus on performance analysis:
 5. Resource utilization
 6. Bottleneck identification
 """
-        elif analysis_type == 'quality':
+        elif analysis_type == "quality":
             prompt += """
 Focus on code quality analysis:
 1. Code structure and organization
@@ -284,10 +279,10 @@ Focus on key insights, critical issues, and clear next steps."""
 
     def create_prompt(self, **kwargs) -> str:
         """Create summary prompt."""
-        content = kwargs.get('content', '')
-        summary_type = kwargs.get('summary_type', 'general')
-        audience = kwargs.get('audience', 'developers')
-        max_length = kwargs.get('max_length', 500)
+        content = kwargs.get("content", "")
+        summary_type = kwargs.get("summary_type", "general")
+        audience = kwargs.get("audience", "developers")
+        max_length = kwargs.get("max_length", 500)
 
         prompt = f"""Please create a {summary_type} summary of the following content:
 
@@ -302,21 +297,21 @@ Focus on key insights, critical issues, and clear next steps."""
 - Summary type: {summary_type}
 """
 
-        if summary_type == 'executive':
+        if summary_type == "executive":
             prompt += """
 - Focus on business impact and high-level outcomes
 - Include metrics and quantifiable results
 - Highlight critical issues and risks
 - Provide clear recommendations
 """
-        elif summary_type == 'technical':
+        elif summary_type == "technical":
             prompt += """
 - Focus on technical details and implementation
 - Include specific code locations and files
 - Explain technical concepts and solutions
 - Provide actionable next steps
 """
-        elif summary_type == 'progress':
+        elif summary_type == "progress":
             prompt += """
 - Focus on completed work and remaining tasks
 - Include timeline and milestone updates
@@ -349,8 +344,8 @@ Be objective and precise in your analysis."""
 
     def create_prompt(self, **kwargs) -> str:
         """Create sentiment analysis prompt."""
-        text = kwargs.get('text', '')
-        context = kwargs.get('context', {})
+        text = kwargs.get("text", "")
+        context = kwargs.get("context", {})
 
         prompt = f"""Please analyze the sentiment and emotional tone of this code review comment:
 
@@ -411,10 +406,10 @@ Your suggestions should be:
 
     def create_prompt(self, **kwargs) -> str:
         """Create code suggestion prompt."""
-        original_code = kwargs.get('original_code', '')
-        feedback = kwargs.get('feedback', '')
-        language = kwargs.get('language', '')
-        context = kwargs.get('context', {})
+        original_code = kwargs.get("original_code", "")
+        feedback = kwargs.get("feedback", "")
+        language = kwargs.get("language", "")
+        context = kwargs.get("context", {})
 
         prompt = f"""Please provide code suggestions based on the following:
 
@@ -480,11 +475,11 @@ def create_prompt_template(template_type: str) -> PromptTemplate:
         Prompt template instance
     """
     template_map = {
-        'classification': ClassificationPrompt,
-        'analysis': AnalysisPrompt,
-        'summary': SummaryPrompt,
-        'sentiment': SentimentPrompt,
-        'suggestion': CodeSuggestionPrompt
+        "classification": ClassificationPrompt,
+        "analysis": AnalysisPrompt,
+        "summary": SummaryPrompt,
+        "sentiment": SentimentPrompt,
+        "suggestion": CodeSuggestionPrompt,
     }
 
     template_class = template_map.get(template_type.lower())
@@ -549,7 +544,7 @@ def validate_prompt_template(template: PromptTemplate, test_data: Dict[str, Any]
             return False
 
         # Check for template variables
-        if '{' in prompt and '}' in prompt:
+        if "{" in prompt and "}" in prompt:
             logger.warning("Unresolved template variables found")
             return False
 
@@ -566,16 +561,12 @@ if __name__ == "__main__":
     classifier = ClassificationPrompt()
 
     test_comment = "This function has a potential SQL injection vulnerability. The user input is not properly sanitized before being used in the database query."
-    test_context = {
-        'file_path': 'src/auth/login.py',
-        'line_number': 42,
-        'language': 'python'
-    }
+    test_context = {"file_path": "src/auth/login.py", "line_number": 42, "language": "python"}
 
     prompt = classifier.create_classification_prompt(test_comment, test_context)
     print("Classification Prompt:")
     print(prompt)
-    print("\n" + "="*50 + "\n")
+    print("\n" + "=" * 50 + "\n")
 
     # Test analysis template
     analyzer = AnalysisPrompt()
@@ -588,8 +579,8 @@ def login(username, password):
 
     analysis_prompt = analyzer.create_prompt(
         code_snippet=test_code,
-        analysis_type='security',
-        context={'language': 'python', 'function': 'login'}
+        analysis_type="security",
+        context={"language": "python", "function": "login"},
     )
     print("Analysis Prompt:")
     print(analysis_prompt)

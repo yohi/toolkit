@@ -3,7 +3,7 @@
 ## 実装完了状況
 
 ✅ **Task 1: 構造化設計** - 完了
-✅ **Task 2: データ品質改善** - 完了  
+✅ **Task 2: データ品質改善** - 完了
 ✅ **Task 3: 重複除去・ノイズ削減** - 完了
 ✅ **Task 4: アクション指示明確化** - 完了
 ✅ **Task 5: 構造化出力実装** - 完了
@@ -21,7 +21,7 @@
 - **Files Affected**: 7
 
 ## 🔴 Critical Issues (Immediate Action Required)
-## 🟡 Important Issues (Should Fix Soon)  
+## 🟡 Important Issues (Should Fix Soon)
 ## 🟢 Minor Issues (Optional Improvements)
 ## Files Summary
 ```
@@ -29,7 +29,7 @@
 ### 2. データ品質向上 (Task 2)
 
 #### 改良されたファイルパス抽出 (`_clean_file_path`)
-- **無効パターン除去**: `--`, `#`, `http://`, `Line`, `Comment` など  
+- **無効パターン除去**: `--`, `#`, `http://`, `Line`, `Comment` など
 - **ファイル拡張子検証**: `.py`, `.js`, `.ts` など25種類の拡張子をサポート
 - **パス構造保持**: `src/components/Button.tsx` → 完全パス保持
 - **深いパス短縮**: `very/deep/path/to/file.py` → `.../path/to/file.py`
@@ -44,7 +44,7 @@
 
 #### 3段階フィルタリング (`_deduplicate_items`)
 1. **無効アイテム除去**: ファイルパス・タイトル検証
-2. **高度重複検出**: 位置・内容類似度による重複判定  
+2. **高度重複検出**: 位置・内容類似度による重複判定
 3. **品質フィルタ**: 優先度別制限（High: 無制限, Medium: 8個, Low: 4個）
 
 #### コンテンツ類似度検出 (`_are_contents_similar`)
@@ -55,13 +55,13 @@
 ### 4. 具体的アクション指示 (Task 4)
 
 #### カテゴリ別詳細アクション (`_categorize_comment`)
-- **Security**: 
+- **Security**:
   - 認証/トークン → "Review authentication/token handling - validate input, use secure storage"
   - パスワード → "Secure credential handling - hash passwords, use environment variables"
   - 入力検証 → "Sanitize user input - validate, escape, and filter all inputs"
 
 - **Performance**:
-  - ループ → "Optimize loop performance - consider caching, break conditions, or vectorization"  
+  - ループ → "Optimize loop performance - consider caching, break conditions, or vectorization"
   - DB → "Optimize database queries - add indexes, use pagination, avoid N+1 queries"
   - メモリ → "Reduce memory usage - use generators, release references, optimize data structures"
 

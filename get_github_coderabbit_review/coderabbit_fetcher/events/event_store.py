@@ -2,13 +2,15 @@
 
 import json
 import logging
+import os
+import tempfile
 import threading
-from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any
-from dataclasses import dataclass, field
-from datetime import datetime
-from pathlib import Path
 import uuid
+from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 from ..patterns.observer import Event, EventType
 
@@ -18,39 +20,39 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EventRecord:
     """Event record for storage."""
+
     id: str
     event: Event
-from datetime import timezone
     stored_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     metadata: Dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for serialization."""
         return {
-            'id': self.id,
-            'event': self.event.to_dict(),
-            'stored_at': self.stored_at.isoformat(),
-            'metadata': self.metadata
+            "id": self.id,
+            "event": self.event.to_dict(),
+            "stored_at": self.stored_at.isoformat(),
+            "metadata": self.metadata,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'EventRecord':
+    def from_dict(cls, data: Dict[str, Any]) -> "EventRecord":
         """Create from dictionary."""
-        event_data = data['event']
+        event_data = data["event"]
         event = Event(
-            event_type=EventType(event_data['event_type']),
-            timestamp=datetime.fromisoformat(event_data['timestamp']),
-            source=event_data['source'],
-            data=event_data['data'],
-            severity=event_data['severity'],
-            session_id=event_data.get('session_id')
+            event_type=EventType(event_data["event_type"]),
+            timestamp=datetime.fromisoformat(event_data["timestamp"]),
+            source=event_data["source"],
+            data=event_data["data"],
+            severity=event_data["severity"],
+            session_id=event_data.get("session_id"),
         )
 
         return cls(
-            id=data['id'],
+            id=data["id"],
             event=event,
-            stored_at=datetime.fromisoformat(data['stored_at']),
-            metadata=data.get('metadata', {})
+            stored_at=datetime.fromisoformat(data["stored_at"]),
+            metadata=data.get("metadata", {}),
         )
 
 
@@ -75,7 +77,7 @@ class EventStore(ABC):
         session_id: Optional[str] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
-        limit: Optional[int] = None
+        limit: Optional[int] = None,
     ) -> List[EventRecord]:
         """Query events."""
         pass
@@ -105,29 +107,21 @@ class InMemoryEventStore(EventStore):
         self._event_order: List[str] = []
         self._lock = threading.RLock()
 
-        self.stats = {
-            'events_stored': 0,
-            'events_evicted': 0,
-            'queries_executed': 0
-        }
+        self.stats = {"events_stored": 0, "events_evicted": 0, "queries_executed": 0}
 
     def store(self, event: Event, metadata: Optional[Dict[str, Any]] = None) -> str:
         """Store event in memory."""
         with self._lock:
             event_id = str(uuid.uuid4())
 
-            record = EventRecord(
-                id=event_id,
-                event=event,
-                metadata=metadata or {}
-            )
+            record = EventRecord(id=event_id, event=event, metadata=metadata or {})
 
             if len(self._events) >= self.max_events:
                 self._evict_oldest()
 
             self._events[event_id] = record
             self._event_order.append(event_id)
-            self.stats['events_stored'] += 1
+            self.stats["events_stored"] += 1
 
             return event_id
 
@@ -143,11 +137,11 @@ class InMemoryEventStore(EventStore):
         session_id: Optional[str] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
-        limit: Optional[int] = None
+        limit: Optional[int] = None,
     ) -> List[EventRecord]:
         """Query events with filters."""
         with self._lock:
-            self.stats['queries_executed'] += 1
+            self.stats["queries_executed"] += 1
             results = []
 
             for record in self._events.values():
@@ -193,10 +187,7 @@ class InMemoryEventStore(EventStore):
         """Get statistics."""
         with self._lock:
             stats = self.stats.copy()
-            stats.update({
-                'current_events': len(self._events),
-                'max_events': self.max_events
-            })
+            stats.update({"current_events": len(self._events), "max_events": self.max_events})
             return stats
 
     def _evict_oldest(self) -> None:
@@ -205,7 +196,7 @@ class InMemoryEventStore(EventStore):
             oldest_id = self._event_order.pop(0)
             if oldest_id in self._events:
                 del self._events[oldest_id]
-                self.stats['events_evicted'] += 1
+                self.stats["events_evicted"] += 1
 
 
 class FileEventStore(EventStore):
@@ -218,32 +209,25 @@ class FileEventStore(EventStore):
         self.storage_dir.mkdir(parents=True, exist_ok=True)
         self._current_file_path = self.storage_dir / "events.jsonl"
 
-        self.stats = {
-            'events_stored': 0,
-            'queries_executed': 0
-        }
+        self.stats = {"events_stored": 0, "queries_executed": 0}
 
     def store(self, event: Event, metadata: Optional[Dict[str, Any]] = None) -> str:
         """Store event in file."""
         with self._lock:
             event_id = str(uuid.uuid4())
 
-            record = EventRecord(
-                id=event_id,
-                event=event,
-                metadata=metadata or {}
-            )
+            record = EventRecord(id=event_id, event=event, metadata=metadata or {})
 
-            record_json = json.dumps(record.to_dict()) + '\n'
+            record_json = json.dumps(record.to_dict()) + "\n"
 
             try:
                 # Write to temporary file first
                 temp_fd, temp_path = tempfile.mkstemp(dir=self.storage_dir, text=True)
                 try:
-                    with os.fdopen(temp_fd, 'w', encoding='utf-8') as temp_file:
+                    with os.fdopen(temp_fd, "w", encoding="utf-8") as temp_file:
                         # Read existing content
                         if self._current_file_path.exists():
-                            with open(self._current_file_path, 'r', encoding='utf-8') as f:
+                            with open(self._current_file_path, encoding="utf-8") as f:
                                 temp_file.write(f.read())
                         # Append new record
                         temp_file.write(record_json)
@@ -253,7 +237,7 @@ class FileEventStore(EventStore):
                     os.unlink(temp_path)
                     raise
 
-                self.stats['events_stored'] += 1
+                self.stats["events_stored"] += 1
                 return event_id
 
             except Exception as e:
@@ -264,12 +248,12 @@ class FileEventStore(EventStore):
         """Get event by ID."""
         with self._lock:
             try:
-                with open(self._current_file_path, 'r', encoding='utf-8') as f:
+                with open(self._current_file_path, encoding="utf-8") as f:
                     for line in f:
                         if line.strip():
                             try:
                                 record_data = json.loads(line)
-                                if record_data['id'] == event_id:
+                                if record_data["id"] == event_id:
                                     return EventRecord.from_dict(record_data)
                             except json.JSONDecodeError:
                                 continue
@@ -285,15 +269,15 @@ class FileEventStore(EventStore):
         session_id: Optional[str] = None,
         start_time: Optional[datetime] = None,
         end_time: Optional[datetime] = None,
-        limit: Optional[int] = None
+        limit: Optional[int] = None,
     ) -> List[EventRecord]:
         """Query events from file."""
         with self._lock:
-            self.stats['queries_executed'] += 1
+            self.stats["queries_executed"] += 1
             results = []
 
             try:
-                with open(self._current_file_path, 'r', encoding='utf-8') as f:
+                with open(self._current_file_path, encoding="utf-8") as f:
                     for line in f:
                         if line.strip():
                             try:
@@ -334,7 +318,7 @@ class FileEventStore(EventStore):
             count = 0
 
             try:
-                with open(self._current_file_path, 'r', encoding='utf-8') as f:
+                with open(self._current_file_path, encoding="utf-8") as f:
                     for line in f:
                         if line.strip():
                             count += 1
@@ -353,9 +337,9 @@ class FileEventStore(EventStore):
 
             try:
                 file_size = self._current_file_path.stat().st_size
-                stats['file_size_bytes'] = file_size
+                stats["file_size_bytes"] = file_size
             except FileNotFoundError:
-                stats['file_size_bytes'] = 0
+                stats["file_size_bytes"] = 0
 
             return stats
 

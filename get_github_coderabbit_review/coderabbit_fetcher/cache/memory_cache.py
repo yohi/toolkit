@@ -2,12 +2,10 @@
 
 import logging
 import threading
-from typing import Dict, Optional, Any, List
 from dataclasses import dataclass
-from datetime import datetime
-import heapq
+from typing import Any, Dict, List, Optional
 
-from .cache_manager import CacheProvider, CacheKey, CacheEntry, CacheError
+from .cache_manager import CacheEntry, CacheKey, CacheProvider
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +13,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class MemoryCacheConfig:
     """Memory cache configuration."""
+
     max_entries: int = 1000
     eviction_policy: str = "lru"  # lru, lfu, fifo
     cleanup_expired: bool = True
@@ -41,14 +40,7 @@ class MemoryCache(CacheProvider):
         else:
             self._lock = threading.RLock()  # Always use lock for safety
 
-        self.stats = {
-            'hits': 0,
-            'misses': 0,
-            'sets': 0,
-            'deletes': 0,
-            'evictions': 0,
-            'size': 0
-        }
+        self.stats = {"hits": 0, "misses": 0, "sets": 0, "deletes": 0, "evictions": 0, "size": 0}
 
     def get(self, key: CacheKey) -> Optional[CacheEntry]:
         """Get entry from memory cache."""
@@ -56,7 +48,7 @@ class MemoryCache(CacheProvider):
             key_str = key.to_string()
 
             if key_str not in self._cache:
-                self.stats['misses'] += 1
+                self.stats["misses"] += 1
                 return None
 
             entry = self._cache[key_str]
@@ -64,12 +56,12 @@ class MemoryCache(CacheProvider):
             # Check expiration
             if entry.is_expired():
                 self._remove_entry(key_str)
-                self.stats['misses'] += 1
+                self.stats["misses"] += 1
                 return None
 
             # Update access tracking
             self._update_access(key_str)
-            self.stats['hits'] += 1
+            self.stats["hits"] += 1
 
             return entry
 
@@ -93,8 +85,8 @@ class MemoryCache(CacheProvider):
                     self._access_count[key_str] = 0
 
                 self._update_access(key_str)
-                self.stats['sets'] += 1
-                self.stats['size'] = len(self._cache)
+                self.stats["sets"] += 1
+                self.stats["size"] = len(self._cache)
 
                 return True
 
@@ -110,8 +102,8 @@ class MemoryCache(CacheProvider):
 
                 if key_str in self._cache:
                     self._remove_entry(key_str)
-                    self.stats['deletes'] += 1
-                    self.stats['size'] = len(self._cache)
+                    self.stats["deletes"] += 1
+                    self.stats["size"] = len(self._cache)
                     return True
 
                 return False
@@ -143,7 +135,7 @@ class MemoryCache(CacheProvider):
                 self._access_order.clear()
                 self._access_count.clear()
                 self._creation_order.clear()
-                self.stats['size'] = 0
+                self.stats["size"] = 0
                 return True
 
         except Exception as e:
@@ -154,19 +146,21 @@ class MemoryCache(CacheProvider):
         """Get memory cache statistics."""
         with self._lock:
             stats = self.stats.copy()
-            stats.update({
-                'current_size': len(self._cache),
-                'max_entries': self.config.max_entries,
-                'eviction_policy': self.config.eviction_policy,
-                'memory_usage_estimate': self._estimate_memory_usage()
-            })
+            stats.update(
+                {
+                    "current_size": len(self._cache),
+                    "max_entries": self.config.max_entries,
+                    "eviction_policy": self.config.eviction_policy,
+                    "memory_usage_estimate": self._estimate_memory_usage(),
+                }
+            )
 
             # Calculate additional metrics
-            total_requests = stats['hits'] + stats['misses']
+            total_requests = stats["hits"] + stats["misses"]
             if total_requests > 0:
-                stats['hit_rate'] = stats['hits'] / total_requests
+                stats["hit_rate"] = stats["hits"] / total_requests
             else:
-                stats['hit_rate'] = 0.0
+                stats["hit_rate"] = 0.0
 
             return stats
 
@@ -187,7 +181,7 @@ class MemoryCache(CacheProvider):
                 self._remove_entry(key_str)
 
             if expired_keys:
-                self.stats['size'] = len(self._cache)
+                self.stats["size"] = len(self._cache)
                 logger.debug(f"Cleaned up {len(expired_keys)} expired entries")
 
             return len(expired_keys)
@@ -230,8 +224,8 @@ class MemoryCache(CacheProvider):
                 self._remove_entry(key_str)
 
             if keys_to_evict:
-                self.stats['size'] = len(self._cache)
-                self.stats['evictions'] += len(keys_to_evict)
+                self.stats["size"] = len(self._cache)
+                self.stats["evictions"] += len(keys_to_evict)
                 logger.debug(f"Evicted {len(keys_to_evict)} entries from namespace: {namespace}")
 
             return len(keys_to_evict)
@@ -304,8 +298,8 @@ class MemoryCache(CacheProvider):
                 else:
                     break
 
-        self.stats['evictions'] += evicted
-        self.stats['size'] = len(self._cache)
+        self.stats["evictions"] += evicted
+        self.stats["size"] = len(self._cache)
 
         if evicted > 0:
             logger.debug(f"Evicted {evicted} entries using {policy} policy")
@@ -346,10 +340,7 @@ class LRUCache(MemoryCache):
         Args:
             max_entries: Maximum number of entries
         """
-        config = MemoryCacheConfig(
-            max_entries=max_entries,
-            eviction_policy="lru"
-        )
+        config = MemoryCacheConfig(max_entries=max_entries, eviction_policy="lru")
         super().__init__(config)
 
 
@@ -362,10 +353,7 @@ class LFUCache(MemoryCache):
         Args:
             max_entries: Maximum number of entries
         """
-        config = MemoryCacheConfig(
-            max_entries=max_entries,
-            eviction_policy="lfu"
-        )
+        config = MemoryCacheConfig(max_entries=max_entries, eviction_policy="lfu")
         super().__init__(config)
 
 
@@ -378,8 +366,5 @@ class FIFOCache(MemoryCache):
         Args:
             max_entries: Maximum number of entries
         """
-        config = MemoryCacheConfig(
-            max_entries=max_entries,
-            eviction_policy="fifo"
-        )
+        config = MemoryCacheConfig(max_entries=max_entries, eviction_policy="fifo")
         super().__init__(config)

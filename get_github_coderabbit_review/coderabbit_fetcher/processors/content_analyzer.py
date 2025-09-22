@@ -2,8 +2,7 @@
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Tuple
-from collections import defaultdict
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -14,19 +13,44 @@ class ContentAnalyzer:
     def __init__(self):
         """Initialize the content analyzer."""
         self.security_keywords = [
-            'security', 'vulnerability', 'credential', 'token', 'password',
-            'injection', 'xss', 'csrf', 'authentication', 'authorization',
-            'leak', 'expose', 'sensitive'
+            "security",
+            "vulnerability",
+            "credential",
+            "token",
+            "password",
+            "injection",
+            "xss",
+            "csrf",
+            "authentication",
+            "authorization",
+            "leak",
+            "expose",
+            "sensitive",
         ]
-        
+
         self.performance_keywords = [
-            'performance', 'slow', 'optimization', 'memory', 'cpu',
-            'bottleneck', 'cache', 'efficient', 'scale', 'latency'
+            "performance",
+            "slow",
+            "optimization",
+            "memory",
+            "cpu",
+            "bottleneck",
+            "cache",
+            "efficient",
+            "scale",
+            "latency",
         ]
-        
+
         self.critical_keywords = [
-            'critical', 'urgent', 'breaking', 'fails', 'error',
-            'exception', 'crash', 'timeout', 'corrupt'
+            "critical",
+            "urgent",
+            "breaking",
+            "fails",
+            "error",
+            "exception",
+            "crash",
+            "timeout",
+            "corrupt",
         ]
 
     def analyze_comment_priority(self, content: str, file_path: str = "") -> str:
@@ -56,16 +80,16 @@ class ContentAnalyzer:
 
         # File type considerations
         if file_path:
-            if any(ext in file_path.lower() for ext in ['.py', '.js', '.ts', '.java']):
+            if any(ext in file_path.lower() for ext in [".py", ".js", ".ts", ".java"]):
                 priority_score += 2  # Source code files are more important
-            elif any(ext in file_path.lower() for ext in ['.md', '.txt', '.rst']):
+            elif any(ext in file_path.lower() for ext in [".md", ".txt", ".rst"]):
                 priority_score -= 1  # Documentation files are lower priority
 
         # Content indicators
-        if any(indicator in content_lower for indicator in ['fix', 'change', 'update', 'remove']):
+        if any(indicator in content_lower for indicator in ["fix", "change", "update", "remove"]):
             priority_score += 3
 
-        if any(indicator in content_lower for indicator in ['style', 'format', 'comment', 'typo']):
+        if any(indicator in content_lower for indicator in ["style", "format", "comment", "typo"]):
             priority_score -= 2
 
         # Determine final priority
@@ -112,32 +136,30 @@ class ContentAnalyzer:
         code_blocks = []
 
         # Find fenced code blocks
-        pattern = r'```(\w+)?\n(.*?)\n```'
+        pattern = r"```(\w+)?\n(.*?)\n```"
         matches = re.finditer(pattern, content, re.DOTALL)
 
         for match in matches:
-            language = match.group(1) or 'text'
+            language = match.group(1) or "text"
             code_content = match.group(2).strip()
-            
+
             if code_content:
-                code_blocks.append({
-                    'language': language,
-                    'content': code_content,
-                    'lines': len(code_content.split('\n'))
-                })
+                code_blocks.append(
+                    {
+                        "language": language,
+                        "content": code_content,
+                        "lines": len(code_content.split("\n")),
+                    }
+                )
 
         # Find inline code
-        inline_pattern = r'`([^`]+)`'
+        inline_pattern = r"`([^`]+)`"
         inline_matches = re.finditer(inline_pattern, content)
 
         for match in inline_matches:
             code_content = match.group(1).strip()
             if code_content and len(code_content) > 10:  # Only longer inline code
-                code_blocks.append({
-                    'language': 'inline',
-                    'content': code_content,
-                    'lines': 1
-                })
+                code_blocks.append({"language": "inline", "content": code_content, "lines": 1})
 
         return code_blocks
 
@@ -151,26 +173,26 @@ class ContentAnalyzer:
             Dictionary with complexity metrics
         """
         complexity = {
-            'word_count': len(content.split()),
-            'line_count': len(content.split('\n')),
-            'code_blocks': len(self.extract_code_blocks(content)),
-            'has_links': bool(re.search(r'https?://', content)),
-            'has_lists': bool(re.search(r'^[*-]\s+', content, re.MULTILINE)),
-            'has_tables': bool(re.search(r'\|.*\|', content)),
-            'complexity_score': 0
+            "word_count": len(content.split()),
+            "line_count": len(content.split("\n")),
+            "code_blocks": len(self.extract_code_blocks(content)),
+            "has_links": bool(re.search(r"https?://", content)),
+            "has_lists": bool(re.search(r"^[*-]\s+", content, re.MULTILINE)),
+            "has_tables": bool(re.search(r"\|.*\|", content)),
+            "complexity_score": 0,
         }
 
         # Calculate complexity score
         score = 0
-        score += min(complexity['word_count'] // 50, 5)  # Cap at 5 points
-        score += min(complexity['line_count'] // 10, 3)   # Cap at 3 points
-        score += complexity['code_blocks'] * 2
-        score += 1 if complexity['has_links'] else 0
-        score += 1 if complexity['has_lists'] else 0
-        score += 1 if complexity['has_tables'] else 0
+        score += min(complexity["word_count"] // 50, 5)  # Cap at 5 points
+        score += min(complexity["line_count"] // 10, 3)  # Cap at 3 points
+        score += complexity["code_blocks"] * 2
+        score += 1 if complexity["has_links"] else 0
+        score += 1 if complexity["has_lists"] else 0
+        score += 1 if complexity["has_tables"] else 0
 
-        complexity['complexity_score'] = score
-        
+        complexity["complexity_score"] = score
+
         return complexity
 
     def extract_file_references(self, content: str) -> List[Dict[str, Any]]:
@@ -185,7 +207,9 @@ class ContentAnalyzer:
         file_refs = []
 
         # Pattern for file references with optional line numbers
-        file_pattern = r'([^\s]+\.(py|js|ts|java|cpp|c|h|md|txt|json|yaml|yml|toml|ini|cfg))(?::(\d+))?'
+        file_pattern = (
+            r"([^\s]+\.(py|js|ts|java|cpp|c|h|md|txt|json|yaml|yml|toml|ini|cfg))(?::(\d+))?"
+        )
         matches = re.finditer(file_pattern, content)
 
         for match in matches:
@@ -193,12 +217,14 @@ class ContentAnalyzer:
             extension = match.group(2)
             line_number = int(match.group(3)) if match.group(3) else None
 
-            file_refs.append({
-                'path': file_path,
-                'extension': extension,
-                'line_number': line_number,
-                'is_source_code': extension in ['py', 'js', 'ts', 'java', 'cpp', 'c', 'h']
-            })
+            file_refs.append(
+                {
+                    "path": file_path,
+                    "extension": extension,
+                    "line_number": line_number,
+                    "is_source_code": extension in ["py", "js", "ts", "java", "cpp", "c", "h"],
+                }
+            )
 
         return file_refs
 
@@ -214,18 +240,41 @@ class ContentAnalyzer:
         content_lower = content.lower()
 
         positive_words = [
-            'good', 'great', 'excellent', 'nice', 'clean', 'clear',
-            'improvement', 'better', 'optimize', 'enhance'
+            "good",
+            "great",
+            "excellent",
+            "nice",
+            "clean",
+            "clear",
+            "improvement",
+            "better",
+            "optimize",
+            "enhance",
         ]
 
         negative_words = [
-            'wrong', 'bad', 'poor', 'unclear', 'confusing', 'problematic',
-            'issue', 'problem', 'error', 'broken', 'fail'
+            "wrong",
+            "bad",
+            "poor",
+            "unclear",
+            "confusing",
+            "problematic",
+            "issue",
+            "problem",
+            "error",
+            "broken",
+            "fail",
         ]
 
         neutral_words = [
-            'consider', 'suggest', 'might', 'could', 'perhaps',
-            'alternative', 'option', 'possible'
+            "consider",
+            "suggest",
+            "might",
+            "could",
+            "perhaps",
+            "alternative",
+            "option",
+            "possible",
         ]
 
         positive_count = sum(1 for word in positive_words if word in content_lower)
@@ -249,11 +298,11 @@ class ContentAnalyzer:
                 confidence = max(neutral_count, max(positive_count, negative_count)) / total_words
 
         return {
-            'sentiment': sentiment,
-            'confidence': confidence,
-            'positive_indicators': positive_count,
-            'negative_indicators': negative_count,
-            'neutral_indicators': neutral_count
+            "sentiment": sentiment,
+            "confidence": confidence,
+            "positive_indicators": positive_count,
+            "negative_indicators": negative_count,
+            "neutral_indicators": neutral_count,
         }
 
     def extract_action_words(self, content: str) -> List[str]:
@@ -266,9 +315,22 @@ class ContentAnalyzer:
             List of action words found
         """
         action_words = [
-            'fix', 'change', 'update', 'modify', 'replace', 'remove',
-            'add', 'implement', 'refactor', 'optimize', 'improve',
-            'validate', 'check', 'verify', 'test', 'ensure'
+            "fix",
+            "change",
+            "update",
+            "modify",
+            "replace",
+            "remove",
+            "add",
+            "implement",
+            "refactor",
+            "optimize",
+            "improve",
+            "validate",
+            "check",
+            "verify",
+            "test",
+            "ensure",
         ]
 
         content_lower = content.lower()
@@ -292,18 +354,45 @@ class ContentAnalyzer:
         content_lower = content.lower()
 
         technical_terms = [
-            'algorithm', 'complexity', 'optimization', 'performance',
-            'architecture', 'design pattern', 'inheritance', 'polymorphism',
-            'async', 'thread', 'concurrency', 'memory', 'garbage collection',
-            'database', 'sql', 'orm', 'api', 'rest', 'graphql',
-            'security', 'encryption', 'authentication', 'authorization'
+            "algorithm",
+            "complexity",
+            "optimization",
+            "performance",
+            "architecture",
+            "design pattern",
+            "inheritance",
+            "polymorphism",
+            "async",
+            "thread",
+            "concurrency",
+            "memory",
+            "garbage collection",
+            "database",
+            "sql",
+            "orm",
+            "api",
+            "rest",
+            "graphql",
+            "security",
+            "encryption",
+            "authentication",
+            "authorization",
         ]
 
         advanced_terms = [
-            'deadlock', 'race condition', 'mutex', 'semaphore',
-            'microservices', 'event sourcing', 'cqrs', 'ddd',
-            'functional programming', 'monad', 'closure',
-            'dependency injection', 'inversion of control'
+            "deadlock",
+            "race condition",
+            "mutex",
+            "semaphore",
+            "microservices",
+            "event sourcing",
+            "cqrs",
+            "ddd",
+            "functional programming",
+            "monad",
+            "closure",
+            "dependency injection",
+            "inversion of control",
         ]
 
         technical_count = sum(1 for term in technical_terms if term in content_lower)
@@ -321,9 +410,9 @@ class ContentAnalyzer:
             depth_level = "general"
 
         return {
-            'depth_level': depth_level,
-            'depth_score': depth_score,
-            'technical_terms_count': technical_count,
-            'advanced_terms_count': advanced_count,
-            'has_code_examples': bool(self.extract_code_blocks(content))
+            "depth_level": depth_level,
+            "depth_score": depth_score,
+            "technical_terms_count": technical_count,
+            "advanced_terms_count": advanced_count,
+            "has_code_examples": bool(self.extract_code_blocks(content)),
         }

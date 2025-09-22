@@ -2,11 +2,10 @@
 
 import logging
 import threading
-from typing import Dict, List, Optional, Callable, Any, Set
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from collections import defaultdict, deque
-import time
+from typing import Any, Callable, Dict, List, Optional, Set
 
 from ..patterns.observer import Event, EventType
 
@@ -16,6 +15,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class EventWindow:
     """Time window for event aggregation."""
+
     start_time: datetime
     end_time: datetime
     events: List[Event] = field(default_factory=list)
@@ -37,6 +37,7 @@ class EventWindow:
 @dataclass
 class AggregatedEvent:
     """Aggregated event data."""
+
     event_type: EventType
     window: EventWindow
     count: int
@@ -50,16 +51,20 @@ class AggregatedEvent:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
-            'event_type': self.event_type.value,
-            'window_start': self.window.start_time.isoformat(),
-            'window_end': self.window.end_time.isoformat(),
-            'count': self.count,
-            'sources': list(self.sources),
-            'session_ids': list(self.session_ids),
-            'severity_counts': self.severity_counts,
-            'data_summary': self.data_summary,
-            'first_event_timestamp': self.first_event.timestamp.isoformat() if self.first_event else None,
-            'last_event_timestamp': self.last_event.timestamp.isoformat() if self.last_event else None
+            "event_type": self.event_type.value,
+            "window_start": self.window.start_time.isoformat(),
+            "window_end": self.window.end_time.isoformat(),
+            "count": self.count,
+            "sources": list(self.sources),
+            "session_ids": list(self.session_ids),
+            "severity_counts": self.severity_counts,
+            "data_summary": self.data_summary,
+            "first_event_timestamp": (
+                self.first_event.timestamp.isoformat() if self.first_event else None
+            ),
+            "last_event_timestamp": (
+                self.last_event.timestamp.isoformat() if self.last_event else None
+            ),
         }
 
 
@@ -70,7 +75,7 @@ class EventAggregator:
         self,
         window_size_seconds: int = 60,
         max_windows: int = 100,
-        aggregation_functions: Optional[Dict[str, Callable]] = None
+        aggregation_functions: Optional[Dict[str, Callable]] = None,
     ):
         """Initialize event aggregator.
 
@@ -93,10 +98,10 @@ class EventAggregator:
 
         # Statistics
         self.stats = {
-            'events_processed': 0,
-            'windows_created': 0,
-            'aggregations_created': 0,
-            'window_rotations': 0
+            "events_processed": 0,
+            "windows_created": 0,
+            "aggregations_created": 0,
+            "window_rotations": 0,
         }
 
     def add_event(self, event: Event) -> None:
@@ -110,7 +115,7 @@ class EventAggregator:
 
             if self._current_window and self._current_window.contains(event.timestamp):
                 self._current_window.add_event(event)
-                self.stats['events_processed'] += 1
+                self.stats["events_processed"] += 1
 
                 logger.debug(f"Added event {event.event_type.value} to current window")
             else:
@@ -136,7 +141,7 @@ class EventAggregator:
                     aggregated = self._aggregate_window(window)
                     for event_type, agg_events in aggregated.items():
                         self._aggregated_events[event_type].extend(agg_events)
-                        self.stats['aggregations_created'] += len(agg_events)
+                        self.stats["aggregations_created"] += len(agg_events)
 
                     # Clear window events to avoid re-processing
                     window.events.clear()
@@ -147,7 +152,7 @@ class EventAggregator:
         self,
         event_type: Optional[EventType] = None,
         start_time: Optional[datetime] = None,
-        end_time: Optional[datetime] = None
+        end_time: Optional[datetime] = None,
     ) -> List[AggregatedEvent]:
         """Get aggregated events with filters.
 
@@ -162,7 +167,9 @@ class EventAggregator:
         with self._lock:
             results = []
 
-            event_types_to_check = [event_type] if event_type else list(self._aggregated_events.keys())
+            event_types_to_check = (
+                [event_type] if event_type else list(self._aggregated_events.keys())
+            )
 
             for et in event_types_to_check:
                 for agg_event in self._aggregated_events[et]:
@@ -180,9 +187,7 @@ class EventAggregator:
             return results
 
     def get_event_counts(
-        self,
-        event_type: Optional[EventType] = None,
-        time_range_minutes: int = 60
+        self, event_type: Optional[EventType] = None, time_range_minutes: int = 60
     ) -> Dict[str, int]:
         """Get event counts over time range.
 
@@ -208,9 +213,7 @@ class EventAggregator:
             return dict(counts)
 
     def get_rate_statistics(
-        self,
-        event_type: EventType,
-        time_range_minutes: int = 60
+        self, event_type: EventType, time_range_minutes: int = 60
     ) -> Dict[str, float]:
         """Get rate statistics for event type.
 
@@ -229,10 +232,10 @@ class EventAggregator:
 
             if not aggregated:
                 return {
-                    'total_events': 0,
-                    'events_per_minute': 0.0,
-                    'events_per_second': 0.0,
-                    'peak_rate_per_minute': 0.0
+                    "total_events": 0,
+                    "events_per_minute": 0.0,
+                    "events_per_second": 0.0,
+                    "peak_rate_per_minute": 0.0,
                 }
 
             total_events = sum(agg.count for agg in aggregated)
@@ -248,12 +251,12 @@ class EventAggregator:
             peak_rate_per_minute = peak_count / window_minutes if window_minutes > 0 else 0
 
             return {
-                'total_events': total_events,
-                'events_per_minute': events_per_minute,
-                'events_per_second': events_per_second,
-                'peak_rate_per_minute': peak_rate_per_minute,
-                'time_range_minutes': time_range_minutes,
-                'window_count': len(aggregated)
+                "total_events": total_events,
+                "events_per_minute": events_per_minute,
+                "events_per_second": events_per_second,
+                "peak_rate_per_minute": peak_rate_per_minute,
+                "time_range_minutes": time_range_minutes,
+                "window_count": len(aggregated),
             }
 
     def clear_old_data(self, older_than_minutes: int = 60) -> int:
@@ -274,7 +277,8 @@ class EventAggregator:
 
                 # Keep only recent aggregated events
                 self._aggregated_events[event_type] = [
-                    agg for agg in self._aggregated_events[event_type]
+                    agg
+                    for agg in self._aggregated_events[event_type]
                     if agg.window.end_time >= cutoff_time
                 ]
 
@@ -292,23 +296,25 @@ class EventAggregator:
         with self._lock:
             stats = self.stats.copy()
 
-            stats.update({
-                'current_windows': len(self._windows),
-                'max_windows': self.max_windows,
-                'window_size_seconds': self.window_size_seconds,
-                'aggregated_event_types': len(self._aggregated_events),
-                'total_aggregated_events': sum(
-                    len(events) for events in self._aggregated_events.values()
-                ),
-                'current_window_start': (
-                    self._current_window.start_time.isoformat()
-                    if self._current_window else None
-                ),
-                'current_window_event_count': (
-                    len(self._current_window.events)
-                    if self._current_window else 0
-                )
-            })
+            stats.update(
+                {
+                    "current_windows": len(self._windows),
+                    "max_windows": self.max_windows,
+                    "window_size_seconds": self.window_size_seconds,
+                    "aggregated_event_types": len(self._aggregated_events),
+                    "total_aggregated_events": sum(
+                        len(events) for events in self._aggregated_events.values()
+                    ),
+                    "current_window_start": (
+                        self._current_window.start_time.isoformat()
+                        if self._current_window
+                        else None
+                    ),
+                    "current_window_event_count": (
+                        len(self._current_window.events) if self._current_window else 0
+                    ),
+                }
+            )
 
             return stats
 
@@ -326,21 +332,23 @@ class EventAggregator:
         """Create a new window containing the timestamp."""
         # Align to window boundaries
         epoch_seconds = timestamp.timestamp()
-        window_start_seconds = (epoch_seconds // self.window_size_seconds) * self.window_size_seconds
+        window_start_seconds = (
+            epoch_seconds // self.window_size_seconds
+        ) * self.window_size_seconds
 
         start_time = datetime.fromtimestamp(window_start_seconds)
         end_time = start_time + timedelta(seconds=self.window_size_seconds)
 
         self._current_window = EventWindow(start_time=start_time, end_time=end_time)
 
-        self.stats['windows_created'] += 1
+        self.stats["windows_created"] += 1
         logger.debug(f"Created new window: {start_time} to {end_time}")
 
     def _finalize_current_window(self) -> None:
         """Finalize current window and add to completed windows."""
         if self._current_window:
             self._windows.append(self._current_window)
-            self.stats['window_rotations'] += 1
+            self.stats["window_rotations"] += 1
 
             logger.debug(
                 f"Finalized window with {len(self._current_window.events)} events: "
@@ -401,7 +409,7 @@ class EventAggregator:
                 severity_counts=dict(severity_counts),
                 data_summary=data_summary,
                 first_event=sorted_events[0],
-                last_event=sorted_events[-1]
+                last_event=sorted_events[-1],
             )
 
             aggregated[event_type].append(agg_event)
@@ -432,14 +440,15 @@ class EventAggregator:
                     value_samples[key].add(str(value))
 
         return {
-            'common_data_keys': dict(key_counts),
-            'value_samples': {k: list(v) for k, v in value_samples.items()},
-            'total_events': len(events)
+            "common_data_keys": dict(key_counts),
+            "value_samples": {k: list(v) for k, v in value_samples.items()},
+            "total_events": len(events),
         }
 
 
 def create_progress_aggregation_function() -> Callable[[List[Event]], Dict[str, Any]]:
     """Create aggregation function for progress events."""
+
     def aggregate_progress(events: List[Event]) -> Dict[str, Any]:
         if not events:
             return {}
@@ -450,29 +459,31 @@ def create_progress_aggregation_function() -> Callable[[List[Event]], Dict[str, 
 
         for event in events:
             data = event.data
-            if 'phase' in data:
-                phases.add(data['phase'])
-            if 'progress_percent' in data:
+            if "phase" in data:
+                phases.add(data["phase"])
+            if "progress_percent" in data:
                 try:
-                    progress_values.append(float(data['progress_percent']))
+                    progress_values.append(float(data["progress_percent"]))
                 except (ValueError, TypeError):
                     pass
             if event.session_id:
                 sessions.add(event.session_id)
 
         summary = {
-            'unique_phases': list(phases),
-            'unique_sessions': list(sessions),
-            'phase_count': len(phases),
-            'session_count': len(sessions)
+            "unique_phases": list(phases),
+            "unique_sessions": list(sessions),
+            "phase_count": len(phases),
+            "session_count": len(sessions),
         }
 
         if progress_values:
-            summary.update({
-                'min_progress': min(progress_values),
-                'max_progress': max(progress_values),
-                'avg_progress': sum(progress_values) / len(progress_values)
-            })
+            summary.update(
+                {
+                    "min_progress": min(progress_values),
+                    "max_progress": max(progress_values),
+                    "avg_progress": sum(progress_values) / len(progress_values),
+                }
+            )
 
         return summary
 
@@ -481,6 +492,7 @@ def create_progress_aggregation_function() -> Callable[[List[Event]], Dict[str, 
 
 def create_error_aggregation_function() -> Callable[[List[Event]], Dict[str, Any]]:
     """Create aggregation function for error events."""
+
     def aggregate_errors(events: List[Event]) -> Dict[str, Any]:
         if not events:
             return {}
@@ -491,20 +503,20 @@ def create_error_aggregation_function() -> Callable[[List[Event]], Dict[str, Any
 
         for event in events:
             data = event.data
-            if 'error_type' in data:
-                error_types[data['error_type']] += 1
-            if 'error' in data:
+            if "error_type" in data:
+                error_types[data["error_type"]] += 1
+            if "error" in data:
                 # Keep first 100 chars of error message
-                error_msg = str(data['error'])[:100]
+                error_msg = str(data["error"])[:100]
                 error_messages.add(error_msg)
             sources.add(event.source)
 
         return {
-            'error_types': dict(error_types),
-            'sample_error_messages': list(error_messages),
-            'error_sources': list(sources),
-            'unique_error_types': len(error_types),
-            'unique_sources': len(sources)
+            "error_types": dict(error_types),
+            "sample_error_messages": list(error_messages),
+            "error_sources": list(sources),
+            "unique_error_types": len(error_types),
+            "unique_sources": len(sources),
         }
 
     return aggregate_errors

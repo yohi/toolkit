@@ -2,9 +2,9 @@
 Utility functions for extracting diff blocks from CodeRabbit comments.
 """
 
-import re
 import logging
-from typing import List, Dict, Any
+import re
+from typing import Any, Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +26,7 @@ class DiffExtractor:
             return ""
 
         # Look for diff blocks between ```diff and ``` markers
-        diff_pattern = r'```diff\s*\n(.*?)\n```'
+        diff_pattern = r"```diff\s*\n(.*?)\n```"
         matches = re.findall(diff_pattern, content, re.DOTALL)
 
         if matches:
@@ -37,7 +37,7 @@ class DiffExtractor:
                 return f"```diff\n{diff_content}\n```"
 
         # If no diff blocks, look for suggestion blocks
-        suggestion_pattern = r'```suggestion\s*\n(.*?)\n```'
+        suggestion_pattern = r"```suggestion\s*\n(.*?)\n```"
         suggestion_matches = re.findall(suggestion_pattern, content, re.DOTALL)
 
         if suggestion_matches:
@@ -47,24 +47,24 @@ class DiffExtractor:
                 return f"```diff\n{suggestion_content}\n```"
 
         # Look for code blocks with + or - prefixes (inline diff style)
-        inline_diff_pattern = r'```[\w]*\n([^`]*(?:[+-][^\n]*\n)+[^`]*)\n```'
+        inline_diff_pattern = r"```[\w]*\n([^`]*(?:[+-][^\n]*\n)+[^`]*)\n```"
         inline_matches = re.findall(inline_diff_pattern, content, re.DOTALL)
 
         if inline_matches:
             inline_content = inline_matches[0].strip()
-            if inline_content and ('+' in inline_content or '-' in inline_content):
+            if inline_content and ("+" in inline_content or "-" in inline_content):
                 logger.debug(f"Found inline diff: {len(inline_content)} chars")
                 return f"```diff\n{inline_content}\n```"
 
         # Look for generic code blocks that might contain diffs
-        code_block_pattern = r'```[\w]*\n(.*?)\n```'
+        code_block_pattern = r"```[\w]*\n(.*?)\n```"
         code_matches = re.findall(code_block_pattern, content, re.DOTALL)
 
         for code_match in code_matches:
             code_content = code_match.strip()
             # Check if it looks like a diff (has + or - at line starts)
-            lines = code_content.split('\n')
-            diff_lines = [line for line in lines if line.strip().startswith(('+', '-'))]
+            lines = code_content.split("\n")
+            diff_lines = [line for line in lines if line.strip().startswith(("+", "-"))]
 
             if diff_lines and len(diff_lines) >= 2:  # At least 2 diff lines
                 logger.debug(f"Found code block with diff patterns: {len(code_content)} chars")
@@ -112,10 +112,10 @@ class DiffExtractor:
                     code_content = match.group(1).strip()
                     # Clean up the + prefixes and reconstruct the code
                     lines = []
-                    for line in code_content.split('\n'):
-                        if line.startswith('+'):
+                    for line in code_content.split("\n"):
+                        if line.startswith("+"):
                             lines.append(line[1:].strip())
-                    code_content = '\n'.join(lines)
+                    code_content = "\n".join(lines)
                     language = "diff"
                 else:
                     code_content = match.group(2 if r"\1" in language_or_group else 1).strip()
@@ -124,12 +124,10 @@ class DiffExtractor:
                 # Filter out meaningless code fragments
                 if code_content and len(code_content) > 10:
                     # Skip fragments that are just variable names or simple expressions
-                    if not re.match(r'^[\w\s]*$', code_content) or ' ' in code_content:
-                        code_blocks.append({
-                            'code': code_content,
-                            'language': language,
-                            'type': block_type
-                        })
+                    if not re.match(r"^[\w\s]*$", code_content) or " " in code_content:
+                        code_blocks.append(
+                            {"code": code_content, "language": language, "type": block_type}
+                        )
 
         return code_blocks
 
@@ -148,9 +146,9 @@ class DiffExtractor:
 
         # Look for bold text patterns that typically indicate titles
         title_patterns = [
-            r'\*\*([^*]+)\*\*',  # **Bold text**
-            r'__([^_]+)__',      # __Bold text__
-            r'^([^.\n]+)',       # First line without period
+            r"\*\*([^*]+)\*\*",  # **Bold text**
+            r"__([^_]+)__",  # __Bold text__
+            r"^([^.\n]+)",  # First line without period
         ]
 
         for pattern in title_patterns:
@@ -179,20 +177,22 @@ class DiffExtractor:
             return ""
 
         # Remove title (first bold text) and extract description
-        content_without_title = re.sub(r'^\*\*[^*]+\*\*\s*', '', content.strip(), flags=re.MULTILINE)
+        content_without_title = re.sub(
+            r"^\*\*[^*]+\*\*\s*", "", content.strip(), flags=re.MULTILINE
+        )
 
         # Extract text before first code block or AI prompt
         description_match = re.search(
-            r'^(.*?)(?:```|🤖 Prompt for AI Agents|\Z)',
+            r"^(.*?)(?:```|🤖 Prompt for AI Agents|\Z)",
             content_without_title,
-            re.DOTALL | re.MULTILINE
+            re.DOTALL | re.MULTILINE,
         )
 
         if description_match:
             description = description_match.group(1).strip()
             # Clean up extra whitespace and newlines
-            description = re.sub(r'\n\s*\n', '\n\n', description)
-            description = re.sub(r'^\s+|\s+$', '', description, flags=re.MULTILINE)
+            description = re.sub(r"\n\s*\n", "\n\n", description)
+            description = re.sub(r"^\s+|\s+$", "", description, flags=re.MULTILINE)
 
             if description:
                 return description
@@ -200,4 +200,3 @@ class DiffExtractor:
         # Fallback: truncate original content
         fallback = content[:300] + "..." if len(content) > 300 else content
         return fallback.strip()
-

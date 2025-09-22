@@ -284,7 +284,9 @@ Quality, Security, Standards, Specificity, Impact-awareness
             "build_system": build_system,
         }
 
-    def _format_coderabbit_review_summary(self, analyzed_comments: AnalyzedComments, quiet: bool = False) -> str:
+    def _format_coderabbit_review_summary(
+        self, analyzed_comments: AnalyzedComments, quiet: bool = False
+    ) -> str:
         """Format CodeRabbit review summary section."""
         # Count different types of comments
         actionable_comments = 0
@@ -297,7 +299,9 @@ Quality, Security, Standards, Specificity, Impact-awareness
             nitpick_comments += len(review.nitpick_comments)
             outside_diff_comments += len(review.outside_diff_comments)
             if not quiet:
-                print(f"DEBUG: Review has {len(review.outside_diff_comments)} outside_diff_comments")
+                print(
+                    f"DEBUG: Review has {len(review.outside_diff_comments)} outside_diff_comments"
+                )
 
         # Count from thread contexts (these are typically actionable)
         for thread in analyzed_comments.unresolved_threads:
@@ -532,7 +536,7 @@ For comments with multiple exchanges, consider:
         """Deduplicate nitpick comments that have 'also_applies_to' information."""
         seen_issues = set()
         deduplicated = []
-        
+
         for comment in nitpick_comments:
             # Extract the issue summary/title to use as a deduplication key
             if hasattr(comment, "suggestion"):
@@ -541,18 +545,18 @@ For comments with multiple exchanges, consider:
                 issue_key = self._extract_issue_summary(comment.raw_content, "")
             else:
                 issue_key = str(comment)
-            
+
             # Normalize the issue key for comparison
             normalized_key = issue_key.strip().lower()
-            
+
             # Skip if we've already seen this issue
             if normalized_key in seen_issues:
                 continue
-                
+
             # Add to seen issues and deduplicated list
             seen_issues.add(normalized_key)
             deduplicated.append(comment)
-            
+
         return deduplicated
 
     def _format_review_comment(self, comment: ActionableComment, comment_type: str) -> str:
@@ -730,7 +734,7 @@ For comments with multiple exchanges, consider:
 
         # Clean the input first to remove HTML comments and tags
         cleaned_description = self._clean_html_and_comments(description)
-        
+
         # Handle inline format: **Title** analysis_content
         import re
 
@@ -862,28 +866,28 @@ For comments with multiple exchanges, consider:
         import re
 
         # Remove HTML comments
-        text = re.sub(r'<!--.*?-->', '', text, flags=re.DOTALL)
-        
+        text = re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
+
         # Remove HTML tags
-        text = re.sub(r'<[^>]+>', '', text)
-        
+        text = re.sub(r"<[^>]+>", "", text)
+
         # Remove markdown indicators and special markers
-        text = re.sub(r'^[\s]*[‼️📝🤖>|*+-].*$', '', text, flags=re.MULTILINE)
-        
+        text = re.sub(r"^[\s]*[‼️📝🤖>|*+-].*$", "", text, flags=re.MULTILINE)
+
         # Remove "IMPORTANT" and "Carefully review" lines
-        text = re.sub(r'^.*(?:IMPORTANT|Carefully review).*$', '', text, flags=re.MULTILINE)
-        
+        text = re.sub(r"^.*(?:IMPORTANT|Carefully review).*$", "", text, flags=re.MULTILINE)
+
         # Remove "This is an auto-generated comment" lines
-        text = re.sub(r'^.*This is an auto-generated comment.*$', '', text, flags=re.MULTILINE)
-        
+        text = re.sub(r"^.*This is an auto-generated comment.*$", "", text, flags=re.MULTILINE)
+
         # Remove fingerprinting comments
-        text = re.sub(r'^.*fingerprinting:.*$', '', text, flags=re.MULTILINE)
-        
+        text = re.sub(r"^.*fingerprinting:.*$", "", text, flags=re.MULTILINE)
+
         # Remove excessive whitespace and clean up
-        text = re.sub(r'\n\s*\n', '\n', text)  # Remove empty lines
-        text = re.sub(r'[ \t]+', ' ', text)    # Normalize spaces
+        text = re.sub(r"\n\s*\n", "\n", text)  # Remove empty lines
+        text = re.sub(r"[ \t]+", " ", text)  # Normalize spaces
         text = text.strip()
-        
+
         return text
 
     def _extract_also_applies_to(self, raw_content: str) -> str:
@@ -892,20 +896,20 @@ For comments with multiple exchanges, consider:
             return ""
 
         import re
-        
+
         # Look for "Also applies to:" pattern
         also_applies_match = re.search(
             r"Also applies to:\s*([0-9\-,\s]+)", raw_content, re.IGNORECASE
         )
-        
+
         if also_applies_match:
             # Extract and clean the match
             result = also_applies_match.group(1).strip()
             # Remove any trailing separators or unwanted characters
-            result = re.sub(r'\s*[-]{2,}.*$', '', result, flags=re.MULTILINE | re.DOTALL)
+            result = re.sub(r"\s*[-]{2,}.*$", "", result, flags=re.MULTILINE | re.DOTALL)
             result = result.strip()
             return result
-        
+
         return ""
 
     def _generate_proposed_diff(self, description: str, file_path: str, line_range: str) -> str:
@@ -987,7 +991,6 @@ For comments with multiple exchanges, consider:
         return (
             fallback_description.split("\n")[0] if fallback_description else "No summary available"
         )
-
 
     def _extract_ai_agent_prompt_text(self, raw_content: str) -> str:
         """Extract AI agent prompt text from raw content."""

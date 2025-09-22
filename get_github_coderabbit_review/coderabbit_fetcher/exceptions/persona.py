@@ -5,6 +5,7 @@ from .base import CodeRabbitFetcherError
 
 class PersonaFileError(CodeRabbitFetcherError):
     """Base exception for persona file-related errors."""
+
     pass
 
 

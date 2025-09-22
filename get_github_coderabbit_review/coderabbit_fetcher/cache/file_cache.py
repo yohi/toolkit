@@ -1,20 +1,19 @@
 """File-based cache implementation for CodeRabbit fetcher."""
 
-import logging
+import fcntl
 import json
-import pickle
+import logging
 import os
+import pickle
+import shutil
+import tempfile
 import threading
-from typing import Dict, Optional, Any, List
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-import hashlib
-import fcntl
-import tempfile
-import shutil
+from typing import Any, Dict, Optional
 
-from .cache_manager import CacheProvider, CacheKey, CacheEntry, CacheError
+from .cache_manager import CacheEntry, CacheError, CacheKey, CacheProvider
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +21,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class FileCacheConfig:
     """File cache configuration."""
+
     cache_dir: str = None  # Will default to system temp dir + "coderabbit_cache"
     max_file_size_mb: int = 100
     max_total_size_mb: int = 1000
@@ -51,14 +51,7 @@ class FileCache(CacheProvider):
         self.cache_dir = Path(self.config.cache_dir)
         self._lock = threading.RLock()
 
-        self.stats = {
-            'hits': 0,
-            'misses': 0,
-            'sets': 0,
-            'deletes': 0,
-            'errors': 0,
-            'cleanups': 0
-        }
+        self.stats = {"hits": 0, "misses": 0, "sets": 0, "deletes": 0, "errors": 0, "cleanups": 0}
 
         self._ensure_cache_dir()
 
@@ -74,7 +67,7 @@ class FileCache(CacheProvider):
         """Get file path for cache key."""
         # Create subdirectories based on namespace for organization
         namespace_dir = self.cache_dir / key.namespace
-        namespace_dir.mkdir(exist_ok=True, mode=self.config.dir_mode)
+        namespace_dir.mkdir(parents=True, exist_ok=True, mode=self.config.dir_mode)
 
         # Use hash to create safe filename
         key_hash = key.to_hash()
@@ -86,23 +79,24 @@ class FileCache(CacheProvider):
         """Serialize cache entry for file storage."""
         try:
             data = {
-                'key': entry.key.to_string(),
-                'value': entry.value,
-                'created_at': entry.created_at.isoformat(),
-                'expires_at': entry.expires_at.isoformat() if entry.expires_at else None,
-                'access_count': entry.access_count,
-                'last_accessed': entry.last_accessed.isoformat(),
-                'metadata': entry.metadata
+                "key": entry.key.to_string(),
+                "value": entry.value,
+                "created_at": entry.created_at.isoformat(),
+                "expires_at": entry.expires_at.isoformat() if entry.expires_at else None,
+                "access_count": entry.access_count,
+                "last_accessed": entry.last_accessed.isoformat(),
+                "metadata": entry.metadata,
             }
 
             if self.config.serialization == "pickle":
                 serialized = pickle.dumps(data)
             else:
-                serialized = json.dumps(data, default=str).encode('utf-8')
+                serialized = json.dumps(data, default=str).encode("utf-8")
 
             # Compression if enabled
             if self.config.compression:
                 import gzip
+
                 serialized = gzip.compress(serialized)
 
             return serialized
@@ -117,37 +111,40 @@ class FileCache(CacheProvider):
             # Decompression if enabled
             if self.config.compression:
                 import gzip
+
                 data = gzip.decompress(data)
 
             if self.config.serialization == "pickle":
                 entry_data = pickle.loads(data)
             else:
-                entry_data = json.loads(data.decode('utf-8'))
+                entry_data = json.loads(data.decode("utf-8"))
 
             # Parse key
-            key_parts = entry_data['key'].split(':', 2)
+            key_parts = entry_data["key"].split(":", 2)
             if len(key_parts) == 3:
-                key = CacheKey(namespace=key_parts[0], identifier=key_parts[1], version=key_parts[2])
+                key = CacheKey(
+                    namespace=key_parts[0], identifier=key_parts[1], version=key_parts[2]
+                )
             elif len(key_parts) == 2:
                 key = CacheKey(namespace=key_parts[0], identifier=key_parts[1])
             else:
                 key = CacheKey(namespace="default", identifier=key_parts[0])
 
             # Parse timestamps
-            created_at = datetime.fromisoformat(entry_data['created_at'])
-            last_accessed = datetime.fromisoformat(entry_data['last_accessed'])
+            created_at = datetime.fromisoformat(entry_data["created_at"])
+            last_accessed = datetime.fromisoformat(entry_data["last_accessed"])
             expires_at = None
-            if entry_data['expires_at']:
-                expires_at = datetime.fromisoformat(entry_data['expires_at'])
+            if entry_data["expires_at"]:
+                expires_at = datetime.fromisoformat(entry_data["expires_at"])
 
             return CacheEntry(
                 key=key,
-                value=entry_data['value'],
+                value=entry_data["value"],
                 created_at=created_at,
                 expires_at=expires_at,
-                access_count=entry_data.get('access_count', 0),
+                access_count=entry_data.get("access_count", 0),
                 last_accessed=last_accessed,
-                metadata=entry_data.get('metadata', {})
+                metadata=entry_data.get("metadata", {}),
             )
 
         except Exception as e:
@@ -157,7 +154,7 @@ class FileCache(CacheProvider):
     def _read_file_with_lock(self, file_path: Path) -> Optional[bytes]:
         """Read file with file locking."""
         try:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 fcntl.flock(f.fileno(), fcntl.LOCK_SH)  # Shared lock for reading
                 return f.read()
         except FileNotFoundError:
@@ -169,17 +166,20 @@ class FileCache(CacheProvider):
     def _write_file_with_lock(self, file_path: Path, data: bytes) -> bool:
         """Write file with file locking."""
         try:
-            # Write to temporary file first, then rename (atomic operation)
-            temp_file = file_path.with_suffix('.tmp')
+            # Write to a unique temp file in the same dir, then atomic replace
+            import tempfile
 
-            with open(temp_file, 'wb') as f:
+            with tempfile.NamedTemporaryFile(
+                "wb", delete=False, dir=file_path.parent, prefix=file_path.name + ".", suffix=".tmp"
+            ) as f:
+                tmp_path = Path(f.name)
                 fcntl.flock(f.fileno(), fcntl.LOCK_EX)  # Exclusive lock for writing
                 f.write(data)
                 f.flush()
-                os.fsync(f.fileno())  # Force write to disk
+                os.fsync(f.fileno())
 
-            # Atomic rename
-            temp_file.rename(file_path)
+            # Atomic replace
+            os.replace(tmp_path, file_path)
 
             # Set file permissions
             os.chmod(file_path, self.config.file_mode)
@@ -190,8 +190,8 @@ class FileCache(CacheProvider):
             logger.error(f"Error writing cache file {file_path}: {e}")
             # Clean up temporary file
             try:
-                if 'temp_file' in locals() and temp_file.exists():
-                    temp_file.unlink()
+                if "tmp_path" in locals():
+                    tmp_path.unlink(missing_ok=True)
             except Exception:
                 pass
             return False
@@ -203,12 +203,12 @@ class FileCache(CacheProvider):
                 file_path = self._get_file_path(key)
 
                 if not file_path.exists():
-                    self.stats['misses'] += 1
+                    self.stats["misses"] += 1
                     return None
 
                 data = self._read_file_with_lock(file_path)
                 if data is None:
-                    self.stats['misses'] += 1
+                    self.stats["misses"] += 1
                     return None
 
                 entry = self._deserialize_entry(data)
@@ -216,19 +216,19 @@ class FileCache(CacheProvider):
                 # Check expiration
                 if entry.is_expired():
                     self.delete(key)
-                    self.stats['misses'] += 1
+                    self.stats["misses"] += 1
                     return None
 
                 # Update access information
                 entry.touch()
                 self.set(entry)  # Update file with new access info
 
-                self.stats['hits'] += 1
+                self.stats["hits"] += 1
                 return entry
 
             except Exception as e:
                 logger.error(f"Error getting from file cache: {e}")
-                self.stats['errors'] += 1
+                self.stats["errors"] += 1
                 return None
 
     def set(self, entry: CacheEntry) -> bool:
@@ -240,7 +240,9 @@ class FileCache(CacheProvider):
                 file_size_mb = len(serialized_data) / (1024 * 1024)
 
                 if file_size_mb > self.config.max_file_size_mb:
-                    logger.warning(f"Cache entry too large: {file_size_mb:.2f}MB > {self.config.max_file_size_mb}MB")
+                    logger.warning(
+                        f"Cache entry too large: {file_size_mb:.2f}MB > {self.config.max_file_size_mb}MB"
+                    )
                     return False
 
                 # Check total cache size and cleanup if needed
@@ -251,13 +253,13 @@ class FileCache(CacheProvider):
                 success = self._write_file_with_lock(file_path, serialized_data)
 
                 if success:
-                    self.stats['sets'] += 1
+                    self.stats["sets"] += 1
 
                 return success
 
             except Exception as e:
                 logger.error(f"Error setting file cache: {e}")
-                self.stats['errors'] += 1
+                self.stats["errors"] += 1
                 return False
 
     def delete(self, key: CacheKey) -> bool:
@@ -268,14 +270,14 @@ class FileCache(CacheProvider):
 
                 if file_path.exists():
                     file_path.unlink()
-                    self.stats['deletes'] += 1
+                    self.stats["deletes"] += 1
                     return True
 
                 return False
 
             except Exception as e:
                 logger.error(f"Error deleting from file cache: {e}")
-                self.stats['errors'] += 1
+                self.stats["errors"] += 1
                 return False
 
     def exists(self, key: CacheKey) -> bool:
@@ -305,7 +307,7 @@ class FileCache(CacheProvider):
 
             except Exception as e:
                 logger.error(f"Error clearing file cache: {e}")
-                self.stats['errors'] += 1
+                self.stats["errors"] += 1
                 return False
 
     def get_stats(self) -> Dict[str, Any]:
@@ -314,11 +316,11 @@ class FileCache(CacheProvider):
             stats = self.stats.copy()
 
             # Calculate hit rate
-            total_requests = stats['hits'] + stats['misses']
+            total_requests = stats["hits"] + stats["misses"]
             if total_requests > 0:
-                stats['hit_rate'] = stats['hits'] / total_requests
+                stats["hit_rate"] = stats["hits"] / total_requests
             else:
-                stats['hit_rate'] = 0.0
+                stats["hit_rate"] = 0.0
 
             # Get cache directory info
             try:
@@ -328,7 +330,7 @@ class FileCache(CacheProvider):
 
                 for root, dirs, files in os.walk(self.cache_dir):
                     for file in files:
-                        if file.endswith('.cache'):
+                        if file.endswith(".cache"):
                             file_count += 1
                             file_path = Path(root) / file
                             file_size = file_path.stat().st_size
@@ -338,23 +340,21 @@ class FileCache(CacheProvider):
                             namespace = Path(root).name
                             namespace_counts[namespace] = namespace_counts.get(namespace, 0) + 1
 
-                stats.update({
-                    'file_count': file_count,
-                    'total_size_bytes': total_size,
-                    'total_size_mb': total_size / (1024 * 1024),
-                    'namespace_counts': namespace_counts,
-                    'cache_dir': str(self.cache_dir),
-                    'max_files': self.config.max_files,
-                    'max_total_size_mb': self.config.max_total_size_mb
-                })
+                stats.update(
+                    {
+                        "file_count": file_count,
+                        "total_size_bytes": total_size,
+                        "total_size_mb": total_size / (1024 * 1024),
+                        "namespace_counts": namespace_counts,
+                        "cache_dir": str(self.cache_dir),
+                        "max_files": self.config.max_files,
+                        "max_total_size_mb": self.config.max_total_size_mb,
+                    }
+                )
 
             except Exception as e:
                 logger.error(f"Error getting cache directory stats: {e}")
-                stats.update({
-                    'file_count': -1,
-                    'total_size_bytes': -1,
-                    'error': str(e)
-                })
+                stats.update({"file_count": -1, "total_size_bytes": -1, "error": str(e)})
 
             return stats
 
@@ -370,7 +370,7 @@ class FileCache(CacheProvider):
             try:
                 for root, dirs, files in os.walk(self.cache_dir):
                     for file in files:
-                        if file.endswith('.cache'):
+                        if file.endswith(".cache"):
                             file_path = Path(root) / file
 
                             try:
@@ -390,7 +390,7 @@ class FileCache(CacheProvider):
                                     pass
 
                 if removed_count > 0:
-                    self.stats['cleanups'] += 1
+                    self.stats["cleanups"] += 1
                     logger.info(f"Cleaned up {removed_count} expired/corrupted cache files")
 
             except Exception as e:
@@ -404,11 +404,11 @@ class FileCache(CacheProvider):
             stats = self.get_stats()
 
             # Check file count limit
-            if stats.get('file_count', 0) > self.config.max_files:
+            if stats.get("file_count", 0) > self.config.max_files:
                 return True
 
             # Check total size limit
-            if stats.get('total_size_mb', 0) > self.config.max_total_size_mb:
+            if stats.get("total_size_mb", 0) > self.config.max_total_size_mb:
                 return True
 
             return False
@@ -424,7 +424,7 @@ class FileCache(CacheProvider):
 
             for root, dirs, files in os.walk(self.cache_dir):
                 for file in files:
-                    if file.endswith('.cache'):
+                    if file.endswith(".cache"):
                         file_path = Path(root) / file
                         try:
                             mtime = file_path.stat().st_mtime
@@ -454,7 +454,7 @@ class FileCache(CacheProvider):
 
             if removed > 0:
                 logger.info(f"Cache cleanup removed {removed} old files")
-                self.stats['cleanups'] += 1
+                self.stats["cleanups"] += 1
 
         except Exception as e:
             logger.error(f"Error during cache cleanup: {e}")
@@ -479,7 +479,7 @@ class FileCache(CacheProvider):
                         1
                         for root, dirs, files in os.walk(namespace_dir)
                         for f in files
-                        if f.endswith('.cache')
+                        if f.endswith(".cache")
                     )
                     shutil.rmtree(namespace_dir)
                 except Exception as e:

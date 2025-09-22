@@ -1,21 +1,21 @@
 """Dependency Injection Container implementation."""
 
-import logging
 import inspect
+import logging
 import threading
-from typing import Dict, Any, Optional, Type, TypeVar, Generic, Callable, List, Union
-from enum import Enum
-from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
-import weakref
+from dataclasses import dataclass, field
+from enum import Enum
+from typing import Any, Callable, Dict, Generic, List, Optional, Type, TypeVar
 
 logger = logging.getLogger(__name__)
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 class ServiceScope(Enum):
     """Service scope enumeration."""
+
     SINGLETON = "singleton"
     TRANSIENT = "transient"
     SCOPED = "scoped"
@@ -23,17 +23,20 @@ class ServiceScope(Enum):
 
 class DIError(Exception):
     """Dependency injection error."""
+
     pass
 
 
 class CircularDependencyError(DIError):
     """Circular dependency error."""
+
     pass
 
 
 @dataclass
 class ServiceBinding:
     """Service binding configuration."""
+
     service_type: Type
     implementation_type: Optional[Type] = None
     factory: Optional[Callable] = None
@@ -46,7 +49,7 @@ class ServiceProvider(ABC):
     """Abstract service provider."""
 
     @abstractmethod
-    def provide(self, container: 'DIContainer', binding: ServiceBinding) -> Any:
+    def provide(self, container: "DIContainer", binding: ServiceBinding) -> Any:
         """Provide service instance.
 
         Args:
@@ -67,7 +70,7 @@ class SingletonProvider(ServiceProvider):
         self._instances: Dict[Type, Any] = {}
         self._lock = threading.RLock()
 
-    def provide(self, container: 'DIContainer', binding: ServiceBinding) -> Any:
+    def provide(self, container: "DIContainer", binding: ServiceBinding) -> Any:
         """Provide singleton instance."""
         service_type = binding.service_type
 
@@ -86,7 +89,7 @@ class SingletonProvider(ServiceProvider):
             logger.debug(f"Created singleton instance for {service_type.__name__}")
             return instance
 
-    def _create_instance(self, container: 'DIContainer', binding: ServiceBinding) -> Any:
+    def _create_instance(self, container: "DIContainer", binding: ServiceBinding) -> Any:
         """Create service instance."""
         if binding.instance is not None:
             return binding.instance
@@ -101,7 +104,7 @@ class SingletonProvider(ServiceProvider):
 class TransientProvider(ServiceProvider):
     """Transient service provider."""
 
-    def provide(self, container: 'DIContainer', binding: ServiceBinding) -> Any:
+    def provide(self, container: "DIContainer", binding: ServiceBinding) -> Any:
         """Provide new instance each time."""
         if binding.instance is not None:
             return binding.instance
@@ -121,7 +124,7 @@ class ScopedProvider(ServiceProvider):
         self._scoped_instances: Dict[str, Dict[Type, Any]] = {}
         self._lock = threading.RLock()
 
-    def provide(self, container: 'DIContainer', binding: ServiceBinding) -> Any:
+    def provide(self, container: "DIContainer", binding: ServiceBinding) -> Any:
         """Provide scoped instance."""
         scope_id = container.current_scope_id
         if scope_id is None:
@@ -165,7 +168,7 @@ class ScopedProvider(ServiceProvider):
 class DIContainer:
     """Dependency Injection Container."""
 
-    def __init__(self, parent: Optional['DIContainer'] = None):
+    def __init__(self, parent: Optional["DIContainer"] = None):
         """Initialize DI container.
 
         Args:
@@ -176,7 +179,7 @@ class DIContainer:
         self._providers: Dict[ServiceScope, ServiceProvider] = {
             ServiceScope.SINGLETON: SingletonProvider(),
             ServiceScope.TRANSIENT: TransientProvider(),
-            ServiceScope.SCOPED: ScopedProvider()
+            ServiceScope.SCOPED: ScopedProvider(),
         }
         self._resolution_stack: List[Type] = []
         self._lock = threading.RLock()
@@ -186,14 +189,14 @@ class DIContainer:
         self._scope_stack: List[str] = []
 
         # Container hierarchy
-        self._child_containers: List['DIContainer'] = []
+        self._child_containers: List[DIContainer] = []
         if parent:
             parent._child_containers.append(self)
 
         # Self-register the container
         self.bind(DIContainer).to_instance(self)
 
-    def bind(self, service_type: Type[T]) -> 'ServiceBinder[T]':
+    def bind(self, service_type: Type[T]) -> "ServiceBinder[T]":
         """Bind a service type.
 
         Args:
@@ -233,7 +236,7 @@ class DIContainer:
         except DIError:
             return None
 
-    def create_scope(self, scope_id: Optional[str] = None) -> 'ScopeContext':
+    def create_scope(self, scope_id: Optional[str] = None) -> "ScopeContext":
         """Create a new scope for scoped services.
 
         Args:
@@ -244,11 +247,12 @@ class DIContainer:
         """
         if scope_id is None:
             import uuid
+
             scope_id = str(uuid.uuid4())
 
         return ScopeContext(self, scope_id)
 
-    def create_child_container(self) -> 'DIContainer':
+    def create_child_container(self) -> "DIContainer":
         """Create a child container.
 
         Returns:
@@ -282,7 +286,9 @@ class DIContainer:
                 logger.debug(f"Auto-wiring {service_type.__name__}")
                 return self._create_instance(service_type)
 
-            raise DIError(f"Service {service_type.__name__} is not registered and cannot be auto-wired")
+            raise DIError(
+                f"Service {service_type.__name__} is not registered and cannot be auto-wired"
+            )
 
         finally:
             self._resolution_stack.pop()
@@ -308,7 +314,7 @@ class DIContainer:
         # Prepare constructor arguments
         kwargs = {}
         for param_name, param in signature.parameters.items():
-            if param_name == 'self':
+            if param_name == "self":
                 continue
 
             # Skip parameters with default values if no binding exists
@@ -316,7 +322,9 @@ class DIContainer:
                 if param.default != param.empty:
                     continue
                 else:
-                    raise DIError(f"Parameter {param_name} in {implementation_type.__name__} has no type annotation")
+                    raise DIError(
+                        f"Parameter {param_name} in {implementation_type.__name__} has no type annotation"
+                    )
 
             param_type = param.annotation
 
@@ -405,7 +413,7 @@ class ServiceBinder(Generic[T]):
         self.service_type = service_type
         self.binding = ServiceBinding(service_type=service_type)
 
-    def to(self, implementation_type: Type[T]) -> 'ServiceBinder[T]':
+    def to(self, implementation_type: Type[T]) -> "ServiceBinder[T]":
         """Bind to implementation type.
 
         Args:
@@ -417,7 +425,7 @@ class ServiceBinder(Generic[T]):
         self.binding.implementation_type = implementation_type
         return self
 
-    def to_factory(self, factory: Callable[..., T]) -> 'ServiceBinder[T]':
+    def to_factory(self, factory: Callable[..., T]) -> "ServiceBinder[T]":
         """Bind to factory function.
 
         Args:
@@ -429,7 +437,7 @@ class ServiceBinder(Generic[T]):
         self.binding.factory = factory
         return self
 
-    def to_instance(self, instance: T) -> 'ServiceBinder[T]':
+    def to_instance(self, instance: T) -> "ServiceBinder[T]":
         """Bind to specific instance.
 
         Args:
@@ -442,7 +450,7 @@ class ServiceBinder(Generic[T]):
         self.binding.scope = ServiceScope.SINGLETON
         return self
 
-    def as_singleton(self) -> 'ServiceBinder[T]':
+    def as_singleton(self) -> "ServiceBinder[T]":
         """Configure as singleton.
 
         Returns:
@@ -451,7 +459,7 @@ class ServiceBinder(Generic[T]):
         self.binding.scope = ServiceScope.SINGLETON
         return self
 
-    def as_transient(self) -> 'ServiceBinder[T]':
+    def as_transient(self) -> "ServiceBinder[T]":
         """Configure as transient.
 
         Returns:
@@ -460,7 +468,7 @@ class ServiceBinder(Generic[T]):
         self.binding.scope = ServiceScope.TRANSIENT
         return self
 
-    def as_scoped(self) -> 'ServiceBinder[T]':
+    def as_scoped(self) -> "ServiceBinder[T]":
         """Configure as scoped.
 
         Returns:
@@ -469,7 +477,7 @@ class ServiceBinder(Generic[T]):
         self.binding.scope = ServiceScope.SCOPED
         return self
 
-    def with_metadata(self, **metadata) -> 'ServiceBinder[T]':
+    def with_metadata(self, **metadata) -> "ServiceBinder[T]":
         """Add metadata to binding.
 
         Args:
@@ -481,7 +489,7 @@ class ServiceBinder(Generic[T]):
         self.binding.metadata.update(metadata)
         return self
 
-    def __enter__(self) -> 'ServiceBinder[T]':
+    def __enter__(self) -> "ServiceBinder[T]":
         """Context manager entry."""
         return self
 

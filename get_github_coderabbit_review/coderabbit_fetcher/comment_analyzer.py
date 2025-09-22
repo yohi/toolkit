@@ -6,8 +6,6 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .exceptions import CodeRabbitFetcherError
-from .utils.memory_manager import MemoryManager, memory_efficient_processing
-from .utils.streaming_processor import CommentStreamProcessor
 from .models import (
     ActionableComment,
     AnalyzedComments,
@@ -19,6 +17,8 @@ from .models import (
 )
 from .processors import ReviewProcessor, SummaryProcessor, ThreadProcessor
 from .resolved_marker import ResolvedMarkerConfig, ResolvedMarkerDetector
+from .utils.memory_manager import MemoryManager, memory_efficient_processing
+from .utils.streaming_processor import CommentStreamProcessor
 
 logger = logging.getLogger(__name__)
 

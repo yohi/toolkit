@@ -1,35 +1,36 @@
 """API Gateway for microservices architecture."""
 
+import hashlib
 import logging
-import asyncio
+import threading
 import time
-from typing import Dict, List, Optional, Any, Callable, Tuple
+from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from enum import Enum
-import json
-import hashlib
-from collections import defaultdict, deque
-import threading
+from typing import Any, Dict, List, Optional, Tuple
 
 # Optional dependencies
 try:
-    from fastapi import FastAPI, Request, Response, HTTPException, Depends
+    import uvicorn
+    from fastapi import FastAPI, HTTPException, Request, Response
     from fastapi.middleware.cors import CORSMiddleware
     from fastapi.middleware.gzip import GZipMiddleware
-    from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-    import uvicorn
+
+    # from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer  # Unused currently
+
     FASTAPI_AVAILABLE = True
 except ImportError:
     FASTAPI_AVAILABLE = False
     FastAPI = None
 
-from ..patterns.observer import publish_event, EventType
+from ..patterns.observer import EventType, publish_event
 
 logger = logging.getLogger(__name__)
 
 
 class LoadBalancingStrategy(Enum):
     """Load balancing strategy enumeration."""
+
     ROUND_ROBIN = "round_robin"
     LEAST_CONNECTIONS = "least_connections"
     WEIGHTED_ROUND_ROBIN = "weighted_round_robin"
@@ -40,6 +41,7 @@ class LoadBalancingStrategy(Enum):
 @dataclass
 class ServiceInstance:
     """Service instance configuration."""
+
     service_name: str
     instance_id: str
     host: str
@@ -61,22 +63,23 @@ class ServiceInstance:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
-            'service_name': self.service_name,
-            'instance_id': self.instance_id,
-            'host': self.host,
-            'port': self.port,
-            'healthy': self.healthy,
-            'weight': self.weight,
-            'current_connections': self.current_connections,
-            'max_connections': self.max_connections,
-            'response_time_avg': self.response_time_avg,
-            'error_count': self.error_count
+            "service_name": self.service_name,
+            "instance_id": self.instance_id,
+            "host": self.host,
+            "port": self.port,
+            "healthy": self.healthy,
+            "weight": self.weight,
+            "current_connections": self.current_connections,
+            "max_connections": self.max_connections,
+            "response_time_avg": self.response_time_avg,
+            "error_count": self.error_count,
         }
 
 
 @dataclass
 class RouteConfig:
     """Route configuration for API Gateway."""
+
     path: str
     service_name: str
     methods: List[str] = field(default_factory=lambda: ["GET"])
@@ -101,6 +104,7 @@ class RouteConfig:
 @dataclass
 class GatewayConfig:
     """API Gateway configuration."""
+
     host: str = "0.0.0.0"
     port: int = 8000
     enable_cors: bool = True
@@ -203,7 +207,9 @@ class LoadBalancer:
 
             # Add new instance
             existing_instances.append(instance)
-            logger.info(f"Registered service instance: {instance.service_name}:{instance.instance_id}")
+            logger.info(
+                f"Registered service instance: {instance.service_name}:{instance.instance_id}"
+            )
 
     def unregister_instance(self, service_name: str, instance_id: str) -> None:
         """Unregister service instance.
@@ -215,7 +221,8 @@ class LoadBalancer:
         with self.lock:
             if service_name in self.service_instances:
                 self.service_instances[service_name] = [
-                    instance for instance in self.service_instances[service_name]
+                    instance
+                    for instance in self.service_instances[service_name]
                     if instance.instance_id != instance_id
                 ]
                 logger.info(f"Unregistered service instance: {service_name}:{instance_id}")
@@ -250,7 +257,9 @@ class LoadBalancer:
             else:
                 return healthy_instances[0]
 
-    def _round_robin_select(self, service_name: str, instances: List[ServiceInstance]) -> ServiceInstance:
+    def _round_robin_select(
+        self, service_name: str, instances: List[ServiceInstance]
+    ) -> ServiceInstance:
         """Round robin selection."""
         counter = self.round_robin_counters[service_name]
         selected = instances[counter % len(instances)]
@@ -261,7 +270,9 @@ class LoadBalancer:
         """Least connections selection."""
         return min(instances, key=lambda x: x.current_connections)
 
-    def _weighted_round_robin_select(self, service_name: str, instances: List[ServiceInstance]) -> ServiceInstance:
+    def _weighted_round_robin_select(
+        self, service_name: str, instances: List[ServiceInstance]
+    ) -> ServiceInstance:
         """Weighted round robin selection."""
         # Simple weighted selection based on instance weights
         total_weight = sum(inst.weight for inst in instances)
@@ -282,11 +293,12 @@ class LoadBalancer:
     def _random_select(self, instances: List[ServiceInstance]) -> ServiceInstance:
         """Random selection."""
         import random
+
         return random.choice(instances)
 
     def _health_based_select(self, instances: List[ServiceInstance]) -> ServiceInstance:
         """Health-based selection (lowest response time)."""
-        return min(instances, key=lambda x: x.response_time_avg or float('inf'))
+        return min(instances, key=lambda x: x.response_time_avg or float("inf"))
 
     def get_service_stats(self, service_name: str) -> Dict[str, Any]:
         """Get service statistics.
@@ -302,11 +314,11 @@ class LoadBalancer:
             healthy_count = sum(1 for inst in instances if inst.healthy)
 
             return {
-                'service_name': service_name,
-                'total_instances': len(instances),
-                'healthy_instances': healthy_count,
-                'unhealthy_instances': len(instances) - healthy_count,
-                'instances': [inst.to_dict() for inst in instances]
+                "service_name": service_name,
+                "total_instances": len(instances),
+                "healthy_instances": healthy_count,
+                "unhealthy_instances": len(instances) - healthy_count,
+                "instances": [inst.to_dict() for inst in instances],
             }
 
 
@@ -314,10 +326,7 @@ class CircuitBreaker:
     """Circuit breaker for service calls."""
 
     def __init__(
-        self,
-        failure_threshold: int = 5,
-        timeout_seconds: int = 60,
-        success_threshold: int = 3
+        self, failure_threshold: int = 5, timeout_seconds: int = 60, success_threshold: int = 3
     ):
         """Initialize circuit breaker.
 
@@ -333,7 +342,9 @@ class CircuitBreaker:
         self.failure_counts: Dict[str, int] = defaultdict(int)
         self.last_failure_times: Dict[str, float] = {}
         self.success_counts: Dict[str, int] = defaultdict(int)
-        self.circuit_states: Dict[str, str] = defaultdict(lambda: "closed")  # closed, open, half-open
+        self.circuit_states: Dict[str, str] = defaultdict(
+            lambda: "closed"
+        )  # closed, open, half-open
         self.lock = threading.Lock()
 
     def call_allowed(self, service_name: str) -> bool:
@@ -418,7 +429,9 @@ class APIGateway:
             config: Gateway configuration
         """
         if not FASTAPI_AVAILABLE:
-            raise ImportError("FastAPI is required for API Gateway. Install with: pip install fastapi uvicorn")
+            raise ImportError(
+                "FastAPI is required for API Gateway. Install with: pip install fastapi uvicorn"
+            )
 
         self.config = config
         self.app = FastAPI(title="CodeRabbit API Gateway", version="1.0.0")
@@ -432,12 +445,12 @@ class APIGateway:
 
         # Metrics
         self.metrics = {
-            'total_requests': 0,
-            'successful_requests': 0,
-            'failed_requests': 0,
-            'rate_limited_requests': 0,
-            'cached_requests': 0,
-            'circuit_breaker_opens': 0
+            "total_requests": 0,
+            "successful_requests": 0,
+            "failed_requests": 0,
+            "rate_limited_requests": 0,
+            "cached_requests": 0,
+            "circuit_breaker_opens": 0,
         }
 
         # Setup middleware and routes
@@ -452,7 +465,7 @@ class APIGateway:
                 allow_origins=["*"],
                 allow_credentials=True,
                 allow_methods=["*"],
-                allow_headers=["*"]
+                allow_headers=["*"],
             )
 
         if self.config.enable_gzip:
@@ -470,7 +483,7 @@ class APIGateway:
                 "services": {
                     service_name: self.load_balancer.get_service_stats(service_name)
                     for service_name in self.load_balancer.service_instances.keys()
-                }
+                },
             }
 
         @self.app.get("/gateway/metrics")
@@ -481,7 +494,7 @@ class APIGateway:
                 "services": {
                     service_name: self.load_balancer.get_service_stats(service_name)
                     for service_name in self.load_balancer.service_instances.keys()
-                }
+                },
             }
 
         @self.app.api_route("/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
@@ -516,7 +529,7 @@ class APIGateway:
         Returns:
             Response from service
         """
-        self.metrics['total_requests'] += 1
+        self.metrics["total_requests"] += 1
         start_time = time.time()
 
         try:
@@ -529,7 +542,7 @@ class APIGateway:
             if route.rate_limit_rpm and self.config.rate_limit_enabled:
                 client_id = self._get_client_id(request)
                 if not self.rate_limiter.is_allowed(client_id, route.rate_limit_rpm):
-                    self.metrics['rate_limited_requests'] += 1
+                    self.metrics["rate_limited_requests"] += 1
                     raise HTTPException(status_code=429, detail="Rate limit exceeded")
 
             # Check authentication
@@ -541,19 +554,21 @@ class APIGateway:
                 cache_key = self._generate_cache_key(request, path)
                 cached_response = self._get_cached_response(cache_key, route.cache_ttl_seconds)
                 if cached_response:
-                    self.metrics['cached_requests'] += 1
+                    self.metrics["cached_requests"] += 1
                     return cached_response
 
             # Check circuit breaker
             if self.config.circuit_breaker_enabled:
                 if not self.circuit_breaker.call_allowed(route.service_name):
-                    self.metrics['circuit_breaker_opens'] += 1
+                    self.metrics["circuit_breaker_opens"] += 1
                     raise HTTPException(status_code=503, detail="Service temporarily unavailable")
 
             # Select service instance
             instance = self.load_balancer.select_instance(route.service_name)
             if not instance:
-                raise HTTPException(status_code=503, detail="No healthy service instances available")
+                raise HTTPException(
+                    status_code=503, detail="No healthy service instances available"
+                )
 
             # Forward request
             response = await self._forward_request(request, route, instance, path)
@@ -567,19 +582,19 @@ class APIGateway:
             if self.config.circuit_breaker_enabled:
                 self.circuit_breaker.record_success(route.service_name)
 
-            self.metrics['successful_requests'] += 1
+            self.metrics["successful_requests"] += 1
 
             # Publish metrics event
             publish_event(
                 EventType.PROCESSING_COMPLETED,
                 source="APIGateway",
                 data={
-                    'path': path,
-                    'service': route.service_name,
-                    'instance': instance.instance_id,
-                    'response_time_ms': (time.time() - start_time) * 1000,
-                    'status_code': response.status_code
-                }
+                    "path": path,
+                    "service": route.service_name,
+                    "instance": instance.instance_id,
+                    "response_time_ms": (time.time() - start_time) * 1000,
+                    "status_code": response.status_code,
+                },
             )
 
             return response
@@ -587,10 +602,10 @@ class APIGateway:
         except HTTPException:
             raise
         except Exception as e:
-            self.metrics['failed_requests'] += 1
+            self.metrics["failed_requests"] += 1
 
             # Record failure in circuit breaker
-            if 'route' in locals() and self.config.circuit_breaker_enabled:
+            if "route" in locals() and self.config.circuit_breaker_enabled:
                 self.circuit_breaker.record_failure(route.service_name)
 
             # Publish error event
@@ -598,11 +613,11 @@ class APIGateway:
                 EventType.PROCESSING_FAILED,
                 source="APIGateway",
                 data={
-                    'path': path,
-                    'error': str(e),
-                    'response_time_ms': (time.time() - start_time) * 1000
+                    "path": path,
+                    "error": str(e),
+                    "response_time_ms": (time.time() - start_time) * 1000,
                 },
-                severity="error"
+                severity="error",
             )
 
             logger.error(f"Request handling error: {e}")
@@ -695,11 +710,7 @@ class APIGateway:
         self.request_cache[cache_key] = (response, time.time())
 
     async def _forward_request(
-        self,
-        request: Request,
-        route: RouteConfig,
-        instance: ServiceInstance,
-        path: str
+        self, request: Request, route: RouteConfig, instance: ServiceInstance, path: str
     ) -> Response:
         """Forward request to service instance.
 
@@ -717,7 +728,7 @@ class APIGateway:
         # Prepare target URL
         target_path = path
         if route.strip_prefix and route.path != "/" and path.startswith(route.path):
-            target_path = path[len(route.path):]
+            target_path = path[len(route.path) :]
 
         target_url = f"{instance.base_url}{target_path}"
 
@@ -735,14 +746,14 @@ class APIGateway:
                 url=target_url,
                 headers=headers,
                 content=body,
-                params=dict(request.query_params)
+                params=dict(request.query_params),
             )
 
         # Create response
         response = Response(
             content=service_response.content,
             status_code=service_response.status_code,
-            headers=dict(service_response.headers)
+            headers=dict(service_response.headers),
         )
 
         return response
@@ -751,12 +762,7 @@ class APIGateway:
         """Start API Gateway server."""
         logger.info(f"Starting API Gateway on {self.config.host}:{self.config.port}")
 
-        uvicorn.run(
-            self.app,
-            host=self.config.host,
-            port=self.config.port,
-            log_level="info"
-        )
+        uvicorn.run(self.app, host=self.config.host, port=self.config.port, log_level="info")
 
     def get_stats(self) -> Dict[str, Any]:
         """Get gateway statistics.
@@ -765,24 +771,20 @@ class APIGateway:
             Gateway statistics
         """
         return {
-            'config': {
-                'host': self.config.host,
-                'port': self.config.port,
-                'load_balancing_strategy': self.config.load_balancing_strategy.value
+            "config": {
+                "host": self.config.host,
+                "port": self.config.port,
+                "load_balancing_strategy": self.config.load_balancing_strategy.value,
             },
-            'metrics': self.metrics,
-            'routes': [
-                {
-                    'path': route.path,
-                    'service_name': route.service_name,
-                    'methods': route.methods
-                }
+            "metrics": self.metrics,
+            "routes": [
+                {"path": route.path, "service_name": route.service_name, "methods": route.methods}
                 for route in self.routes
             ],
-            'services': {
+            "services": {
                 service_name: self.load_balancer.get_service_stats(service_name)
                 for service_name in self.load_balancer.service_instances.keys()
-            }
+            },
         }
 
 
@@ -821,46 +823,43 @@ def set_api_gateway(gateway: APIGateway) -> None:
 # Example usage
 if __name__ == "__main__":
     # Create gateway configuration
-    config = GatewayConfig(
-        host="0.0.0.0",
-        port=8000,
-        enable_cors=True,
-        rate_limit_enabled=True
-    )
+    config = GatewayConfig(host="0.0.0.0", port=8000, enable_cors=True, rate_limit_enabled=True)
 
     # Create and configure gateway
     gateway = create_api_gateway(config)
 
     # Add routes
-    gateway.add_route(RouteConfig(
-        path="/api/analysis/*",
-        service_name="analysis-service",
-        methods=["GET", "POST"],
-        rate_limit_rpm=100
-    ))
+    gateway.add_route(
+        RouteConfig(
+            path="/api/analysis/*",
+            service_name="analysis-service",
+            methods=["GET", "POST"],
+            rate_limit_rpm=100,
+        )
+    )
 
-    gateway.add_route(RouteConfig(
-        path="/api/comments/*",
-        service_name="comment-service",
-        methods=["GET", "POST", "PUT"],
-        auth_required=True,
-        cache_ttl_seconds=300
-    ))
+    gateway.add_route(
+        RouteConfig(
+            path="/api/comments/*",
+            service_name="comment-service",
+            methods=["GET", "POST", "PUT"],
+            auth_required=True,
+            cache_ttl_seconds=300,
+        )
+    )
 
     # Register service instances
-    gateway.register_service(ServiceInstance(
-        service_name="analysis-service",
-        instance_id="analysis-1",
-        host="localhost",
-        port=8001
-    ))
+    gateway.register_service(
+        ServiceInstance(
+            service_name="analysis-service", instance_id="analysis-1", host="localhost", port=8001
+        )
+    )
 
-    gateway.register_service(ServiceInstance(
-        service_name="comment-service",
-        instance_id="comment-1",
-        host="localhost",
-        port=8002
-    ))
+    gateway.register_service(
+        ServiceInstance(
+            service_name="comment-service", instance_id="comment-1", host="localhost", port=8002
+        )
+    )
 
     # Start gateway
     gateway.start()

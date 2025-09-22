@@ -1,22 +1,24 @@
 """Redis cache implementation for CodeRabbit fetcher."""
 
-import logging
 import json
+import logging
 import pickle
-from typing import Dict, Optional, Any, Union
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import datetime
+from typing import Any, Dict, Optional, Union
 
-from .cache_manager import CacheProvider, CacheKey, CacheEntry, CacheError
+from .cache_manager import CacheEntry, CacheError, CacheKey, CacheProvider
 
 logger = logging.getLogger(__name__)
 
 
-from dataclasses import dataclass, field
+from dataclasses import field
+
 
 @dataclass
 class RedisConfig:
     """Redis cache configuration."""
+
     host: str = "localhost"
     port: int = 6379
     db: int = 0
@@ -32,6 +34,7 @@ class RedisConfig:
     compression: bool = False
     key_prefix: str = "coderabbit:"
 
+
 class RedisCache(CacheProvider):
     """Redis cache implementation."""
 
@@ -45,14 +48,7 @@ class RedisCache(CacheProvider):
         self._redis_client = None
         self._available = False
 
-        self.stats = {
-            'hits': 0,
-            'misses': 0,
-            'sets': 0,
-            'deletes': 0,
-            'errors': 0,
-            'reconnects': 0
-        }
+        self.stats = {"hits": 0, "misses": 0, "sets": 0, "deletes": 0, "errors": 0, "reconnects": 0}
 
         self._connect()
 
@@ -60,6 +56,14 @@ class RedisCache(CacheProvider):
         """Connect to Redis server."""
         try:
             import redis
+
+            # Enforce safe decode policy for pickle payloads
+            decode_responses = self.config.decode_responses
+            if self.config.serialization == "pickle" and decode_responses:
+                logger.warning(
+                    "For 'pickle' serialization, forcing decode_responses=False to avoid binary corruption"
+                )
+                decode_responses = False
 
             connection_pool = redis.ConnectionPool(
                 host=self.config.host,
@@ -71,8 +75,8 @@ class RedisCache(CacheProvider):
                 socket_keepalive=self.config.socket_keepalive,
                 socket_keepalive_options=self.config.socket_keepalive_options or {},
                 retry_on_timeout=self.config.retry_on_timeout,
-                decode_responses=self.config.decode_responses,
-                max_connections=self.config.max_connections
+                decode_responses=decode_responses,
+                max_connections=self.config.max_connections,
             )
 
             self._redis_client = redis.Redis(connection_pool=connection_pool)
@@ -104,20 +108,20 @@ class RedisCache(CacheProvider):
         except Exception as e:
             logger.warning(f"Redis connection lost, attempting reconnect: {e}")
             self._connect()
-            self.stats['reconnects'] += 1
+            self.stats["reconnects"] += 1
             return self._available
 
     def _serialize_entry(self, entry: CacheEntry) -> Union[str, bytes]:
         """Serialize cache entry for storage."""
         try:
             data = {
-                'key': entry.key.to_string(),
-                'value': entry.value,
-                'created_at': entry.created_at.isoformat(),
-                'expires_at': entry.expires_at.isoformat() if entry.expires_at else None,
-                'access_count': entry.access_count,
-                'last_accessed': entry.last_accessed.isoformat(),
-                'metadata': entry.metadata
+                "key": entry.key.to_string(),
+                "value": entry.value,
+                "created_at": entry.created_at.isoformat(),
+                "expires_at": entry.expires_at.isoformat() if entry.expires_at else None,
+                "access_count": entry.access_count,
+                "last_accessed": entry.last_accessed.isoformat(),
+                "metadata": entry.metadata,
             }
 
             if self.config.serialization == "pickle":
@@ -138,29 +142,31 @@ class RedisCache(CacheProvider):
                 entry_data = json.loads(data)
 
             # Parse key
-            key_parts = entry_data['key'].split(':', 2)
+            key_parts = entry_data["key"].split(":", 2)
             if len(key_parts) == 3:
-                key = CacheKey(namespace=key_parts[0], identifier=key_parts[1], version=key_parts[2])
+                key = CacheKey(
+                    namespace=key_parts[0], identifier=key_parts[1], version=key_parts[2]
+                )
             elif len(key_parts) == 2:
                 key = CacheKey(namespace=key_parts[0], identifier=key_parts[1])
             else:
                 key = CacheKey(namespace="default", identifier=key_parts[0])
 
             # Parse timestamps
-            created_at = datetime.fromisoformat(entry_data['created_at'])
-            last_accessed = datetime.fromisoformat(entry_data['last_accessed'])
+            created_at = datetime.fromisoformat(entry_data["created_at"])
+            last_accessed = datetime.fromisoformat(entry_data["last_accessed"])
             expires_at = None
-            if entry_data['expires_at']:
-                expires_at = datetime.fromisoformat(entry_data['expires_at'])
+            if entry_data["expires_at"]:
+                expires_at = datetime.fromisoformat(entry_data["expires_at"])
 
             return CacheEntry(
                 key=key,
-                value=entry_data['value'],
+                value=entry_data["value"],
                 created_at=created_at,
                 expires_at=expires_at,
-                access_count=entry_data.get('access_count', 0),
+                access_count=entry_data.get("access_count", 0),
                 last_accessed=last_accessed,
-                metadata=entry_data.get('metadata', {})
+                metadata=entry_data.get("metadata", {}),
             )
 
         except Exception as e:
@@ -174,7 +180,7 @@ class RedisCache(CacheProvider):
     def get(self, key: CacheKey) -> Optional[CacheEntry]:
         """Get entry from Redis cache."""
         if not self._ensure_connected():
-            self.stats['errors'] += 1
+            self.stats["errors"] += 1
             return None
 
         try:
@@ -182,7 +188,7 @@ class RedisCache(CacheProvider):
             data = self._redis_client.get(redis_key)
 
             if data is None:
-                self.stats['misses'] += 1
+                self.stats["misses"] += 1
                 return None
 
             entry = self._deserialize_entry(data)
@@ -190,25 +196,25 @@ class RedisCache(CacheProvider):
             # Check expiration (Redis should handle this, but double-check)
             if entry.is_expired():
                 self.delete(key)
-                self.stats['misses'] += 1
+                self.stats["misses"] += 1
                 return None
 
             # Update access information
             entry.touch()
             self.set(entry)  # Update in Redis
 
-            self.stats['hits'] += 1
+            self.stats["hits"] += 1
             return entry
 
         except Exception as e:
             logger.error(f"Error getting from Redis cache: {e}")
-            self.stats['errors'] += 1
+            self.stats["errors"] += 1
             return None
 
     def set(self, entry: CacheEntry) -> bool:
         """Set entry in Redis cache."""
         if not self._ensure_connected():
-            self.stats['errors'] += 1
+            self.stats["errors"] += 1
             return False
 
         try:
@@ -227,18 +233,18 @@ class RedisCache(CacheProvider):
             else:
                 self._redis_client.set(redis_key, serialized_data)
 
-            self.stats['sets'] += 1
+            self.stats["sets"] += 1
             return True
 
         except Exception as e:
             logger.error(f"Error setting Redis cache: {e}")
-            self.stats['errors'] += 1
+            self.stats["errors"] += 1
             return False
 
     def delete(self, key: CacheKey) -> bool:
         """Delete entry from Redis cache."""
         if not self._ensure_connected():
-            self.stats['errors'] += 1
+            self.stats["errors"] += 1
             return False
 
         try:
@@ -246,14 +252,14 @@ class RedisCache(CacheProvider):
             result = self._redis_client.delete(redis_key)
 
             if result > 0:
-                self.stats['deletes'] += 1
+                self.stats["deletes"] += 1
                 return True
 
             return False
 
         except Exception as e:
             logger.error(f"Error deleting from Redis cache: {e}")
-            self.stats['errors'] += 1
+            self.stats["errors"] += 1
             return False
 
     def exists(self, key: CacheKey) -> bool:
@@ -272,7 +278,7 @@ class RedisCache(CacheProvider):
     def clear(self) -> bool:
         """Clear all entries from Redis cache."""
         if not self._ensure_connected():
-            self.stats['errors'] += 1
+            self.stats["errors"] += 1
             return False
 
         try:
@@ -291,7 +297,7 @@ class RedisCache(CacheProvider):
 
         except Exception as e:
             logger.error(f"Error clearing Redis cache: {e}")
-            self.stats['errors'] += 1
+            self.stats["errors"] += 1
             return False
 
     def get_stats(self) -> Dict[str, Any]:
@@ -299,42 +305,44 @@ class RedisCache(CacheProvider):
         stats = self.stats.copy()
 
         # Calculate hit rate
-        total_requests = stats['hits'] + stats['misses']
+        total_requests = stats["hits"] + stats["misses"]
         if total_requests > 0:
-            stats['hit_rate'] = stats['hits'] / total_requests
+            stats["hit_rate"] = stats["hits"] / total_requests
         else:
-            stats['hit_rate'] = 0.0
+            stats["hit_rate"] = 0.0
 
         # Add Redis-specific stats
-        stats['redis_available'] = self._available
-        stats['config'] = {
-            'host': self.config.host,
-            'port': self.config.port,
-            'db': self.config.db,
-            'serialization': self.config.serialization,
-            'compression': self.config.compression
+        stats["redis_available"] = self._available
+        stats["config"] = {
+            "host": self.config.host,
+            "port": self.config.port,
+            "db": self.config.db,
+            "serialization": self.config.serialization,
+            "compression": self.config.compression,
         }
 
         # Get Redis server info if available
         if self._ensure_connected():
             try:
                 redis_info = self._redis_client.info()
-                stats['redis_info'] = {
-                    'version': redis_info.get('redis_version'),
-                    'used_memory': redis_info.get('used_memory'),
-                    'used_memory_human': redis_info.get('used_memory_human'),
-                    'connected_clients': redis_info.get('connected_clients'),
-                    'total_commands_processed': redis_info.get('total_commands_processed'),
-                    'uptime_in_seconds': redis_info.get('uptime_in_seconds')
+                stats["redis_info"] = {
+                    "version": redis_info.get("redis_version"),
+                    "used_memory": redis_info.get("used_memory"),
+                    "used_memory_human": redis_info.get("used_memory_human"),
+                    "connected_clients": redis_info.get("connected_clients"),
+                    "total_commands_processed": redis_info.get("total_commands_processed"),
+                    "uptime_in_seconds": redis_info.get("uptime_in_seconds"),
                 }
 
                 # Count our keys using SCAN for production safety
                 pattern = f"{self.config.key_prefix}*"
-                stats['key_count'] = sum(1 for _ in self._redis_client.scan_iter(pattern, count=1000))
+                stats["key_count"] = sum(
+                    1 for _ in self._redis_client.scan_iter(pattern, count=1000)
+                )
 
             except Exception as e:
                 logger.warning(f"Error getting Redis server info: {e}")
-                stats['redis_info'] = {'error': str(e)}
+                stats["redis_info"] = {"error": str(e)}
 
         return stats
 

@@ -226,8 +226,8 @@ For comments with multiple exchanges, consider:
 ---
 ---
 ---
-- 確認: 以下の重複ファイルを検出（内容一致、MD5=06243edb1911b71561dd2a03ca59473b）: lazygit-llm/lazygit_llm/base_provider.py、lazygit-llm/src/base_provider.py。  
-- 対応: 単一の正本を src/lazygit_llm/base_provider.py に配置するか、プロジェクトで採用しているパッケージ構成に合わせて canonical な場所を決定して移動・統一する。重複ファイルを削除し、全ての import を canonical パスに揃えること。  
+- 確認: 以下の重複ファイルを検出（内容一致、MD5=06243edb1911b71561dd2a03ca59473b）: lazygit-llm/lazygit_llm/base_provider.py、lazygit-llm/src/base_provider.py。
+- 対応: 単一の正本を src/lazygit_llm/base_provider.py に配置するか、プロジェクトで採用しているパッケージ構成に合わせて canonical な場所を決定して移動・統一する。重複ファイルを削除し、全ての import を canonical パスに揃えること。
 - 要修正箇所（例）: lazygit-llm/src/main.py（現: from src.base_provider ...）、lazygit-llm/lazygit_llm/main.py（現: from lazygit_llm.base_provider ...）、および lazygit-llm/lazygit_llm/api_providers/__init__.py、lazygit-llm/lazygit_llm/cli_providers/__init__.py を更新すること。
 ]]>
     </proposed_diff>
@@ -244,8 +244,8 @@ For comments with multiple exchanges, consider:
       <![CDATA[
 ---
 ---
-- lazygit-llm/src/main.py の project_root/sys.path.insert(...)（先頭、約26–33行）を削除。  
-- パッケージ名とエントリポイントを整合させる：パッケージを適切なトップレベル名にリネームして setup.py の console_scripts をそのパッケージの絶対 import（例: lazygit_llm.main:main）に変更する、もしくは 'src' を正式なパッケージ名として一貫させて相対 import／python -m 実行フローに統一する。  
+- lazygit-llm/src/main.py の project_root/sys.path.insert(...)（先頭、約26–33行）を削除。
+- パッケージ名とエントリポイントを整合させる：パッケージを適切なトップレベル名にリネームして setup.py の console_scripts をそのパッケージの絶対 import（例: lazygit_llm.main:main）に変更する、もしくは 'src' を正式なパッケージ名として一貫させて相対 import／python -m 実行フローに統一する。
 - インポートをパッケージ絶対 import に統一（'from src.…' を実際のパッケージ名に合わせるか、相対 import に切り替える）。
 ]]>
     </proposed_diff>
@@ -495,7 +495,7 @@ For comments with multiple exchanges, consider:
     <proposed_diff>
       <![CDATA[
 API_PROVIDERS: Dict[str, Type[BaseProvider]] = {}
- 
+
 +__all__ = [
 +    "API_PROVIDERS",
 +    "register_provider",
@@ -983,32 +983,32 @@ level = logging.DEBUG if verbose else logging.INFO
 def test_configuration(config_manager: ConfigManager) -> bool:
      """
      設定をテストして結果を表示
- 
+
      Args:
          config_manager: 設定マネージャー
- 
+
      Returns:
          設定が有効な場合True
      """
      logger = logging.getLogger(__name__)
- 
+
      try:
          # 設定の基本検証
          if not config_manager.validate_config():
              print("❌ 設定ファイルの検証に失敗しました")
              return False
- 
+
          # プロバイダーの接続テスト
          provider_factory = ProviderFactory()
          provider = provider_factory.create_provider(config_manager.config)
- 
+
          if provider.test_connection():
              print("✅ 設定とプロバイダー接続は正常です")
              return True
          else:
              print("❌ プロバイダーへの接続に失敗しました")
              return False
- 
+
 -    except Exception as e:
 -        logger.error(f"設定テスト中にエラー: {e}")
 +    except (ProviderError, AuthenticationError, ProviderTimeoutError) as e:
@@ -1031,17 +1031,17 @@ def test_configuration(config_manager: ConfigManager) -> bool:
 # メッセージをフォーマット
          formatter = MessageFormatter()
          formatted_message = formatter.format_response(raw_message)
- 
+
          # LazyGitに出力
          print(formatted_message)
- 
+
 -        logger.info("コミットメッセージ生成完了")
 -        return 0
 +    except AuthenticationError as e:
 +        logger.exception("認証エラー")
 +        print("❌ 認証エラー: APIキーを確認してください")
 +        return 1
- 
+
 -    except AuthenticationError as e:
 -        logger.error(f"認証エラー: {e}")
 -        print(f"❌ 認証エラー: APIキーを確認してください")
@@ -1063,7 +1063,7 @@ def test_configuration(config_manager: ConfigManager) -> bool:
 +        logger.exception("プロバイダーエラー")
          print(f"❌ プロバイダーエラー: {e}")
          return 1
- 
+
      except KeyboardInterrupt:
          print("⛔ 操作が中断されました")
          return 130
@@ -1143,7 +1143,7 @@ logger.info("コミットメッセージ生成完了")
 +        logger.exception("認証エラー: %s", e)
 +        print("❌ 認証エラー: APIキーを確認してください")
          return 1
- 
+
 -    except ProviderTimeoutError as e:
 -        logger.error(f"タイムアウトエラー: {e}")
 -        print(f"❌ タイムアウト: ネットワーク接続を確認してください")
@@ -1553,9 +1553,9 @@ if "{diff}" in prompt_template:
 
   <review_comment type="OutsideDiff" file="lazygit-llm/src/main.py" lines="1-209">
     <issue>
-      &gt; 
+      &gt;
 &gt; 最小ラッパーに置き換え、ドキュメントのパイプ例も削除。
-&gt; 
+&gt;
 &gt; ```diff
 &gt; -#!/usr/bin/env python3
 &gt; -"""
@@ -1572,17 +1572,17 @@ if "{diff}" in prompt_template:
 &gt; +if __name__ == "__main__":
 &gt; +    sys.exit(main())
 &gt; ```
-&gt; 
+&gt;
 &gt; &lt;/blockquote&gt;&lt;/details&gt;
-&gt; 
+&gt;
 &gt; &lt;/blockquote&gt;&lt;/details&gt;
 
 &lt;details&gt;
     </issue>
     <instructions>
-      &gt; 
+      &gt;
 &gt; 最小ラッパーに置き換え、ドキュメントのパイプ例も削除。
-&gt; 
+&gt;
 &gt; ```diff
 &gt; -#!/usr/bin/env python3
 &gt; -"""
@@ -1599,9 +1599,9 @@ if "{diff}" in prompt_template:
 &gt; +if __name__ == "__main__":
 &gt; +    sys.exit(main())
 &gt; ```
-&gt; 
+&gt;
 &gt; &lt;/blockquote&gt;&lt;/details&gt;
-&gt; 
+&gt;
 &gt; &lt;/blockquote&gt;&lt;/details&gt;
 
 &lt;details&gt;

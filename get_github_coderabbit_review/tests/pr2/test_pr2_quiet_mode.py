@@ -9,7 +9,7 @@ import json
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch, Mock
+from unittest.mock import Mock, patch
 
 # モックヘルパーをインポート
 try:
@@ -36,7 +36,7 @@ class TestPR2QuietModeMocked(unittest.TestCase):
         # 期待値ファイルを読み込み
         expected_file = self.test_dir / "expected" / "expected_pr_2_ai_agent_prompt.md"
         if expected_file.exists():
-            with open(expected_file, "r", encoding="utf-8") as f:
+            with open(expected_file, encoding="utf-8") as f:
                 self.expected_output = f.read()
         else:
             self.expected_output = None
@@ -44,7 +44,7 @@ class TestPR2QuietModeMocked(unittest.TestCase):
     def mock_subprocess_run(self, args, **kwargs):
         """subprocessの実行をモック化"""
         cmd_str = " ".join(args) if isinstance(args, list) else str(args)
-        
+
         # GitHub CLIコマンドの場合
         if "gh " in cmd_str:
             response = self.mock_helper.mock_github_cli_command(args)
@@ -53,7 +53,7 @@ class TestPR2QuietModeMocked(unittest.TestCase):
             result.stdout = response
             result.stderr = ""
             return result
-        
+
         # その他のコマンドは失敗させる
         result = Mock()
         result.returncode = 1
@@ -61,11 +61,11 @@ class TestPR2QuietModeMocked(unittest.TestCase):
         result.stderr = f"Mocked command not supported: {cmd_str}"
         return result
 
-    @patch('subprocess.run')
+    @patch("subprocess.run")
     def test_pr2_quiet_mode_with_mocks(self, mock_run):
         """PR2のquiet mode実行テスト（モック使用）"""
         import tempfile
-        
+
         # subprocessのrunをモック化
         mock_run.side_effect = self.mock_subprocess_run
 
@@ -84,24 +84,27 @@ class TestPR2QuietModeMocked(unittest.TestCase):
 
                 # Orchestratorを実行
                 orchestrator = CodeRabbitOrchestrator(config)
-                
+
                 # メイン処理を実行
                 result = orchestrator.execute()
-                
+
                 # 実行結果を確認
-                self.assertTrue(result["success"], f"Orchestrator execution failed: {result.get('error', 'Unknown error')}")
+                self.assertTrue(
+                    result["success"],
+                    f"Orchestrator execution failed: {result.get('error', 'Unknown error')}",
+                )
 
                 # 出力ファイルから内容を読み取り
-                with open(temp_file.name, "r", encoding="utf-8") as f:
+                with open(temp_file.name, encoding="utf-8") as f:
                     output = f.read()
 
                 # デバッグ: 出力内容を表示
                 print(f"DEBUG: Actual output length: {len(output)}")
                 print(f"DEBUG: First 500 chars of output:\n{output[:500]}")
-                
+
                 # 実際の出力が生成されているかを確認
                 self.assertGreater(len(output), 50, "Output should be substantial")
-                
+
                 # AI Agent Prompt形式の基本構造を確認
                 basic_sections = [
                     "# CodeRabbit Review Analysis - AI Agent Prompt",
@@ -114,17 +117,21 @@ class TestPR2QuietModeMocked(unittest.TestCase):
                 for section in basic_sections:
                     if section not in output:
                         missing_sections.append(section)
-                
+
                 if missing_sections:
                     print(f"Missing sections: {missing_sections}")
                     print(f"First 1000 chars of output: {output[:1000]}")
-                    
+
                 # 少なくとも基本セクションが含まれていることを確認
                 self.assertIn("CodeRabbit Review Analysis", output, "Should be AI Agent format")
-                
+
                 # PR情報の確認
                 self.assertIn("feat(task-01)", output, "Should contain PR title")
-                self.assertIn("https://github.com/yohi/lazygit-llm-commit-generator/pull/2", output, "Should contain PR URL")
+                self.assertIn(
+                    "https://github.com/yohi/lazygit-llm-commit-generator/pull/2",
+                    output,
+                    "Should contain PR URL",
+                )
 
                 print("✅ PR2 quiet mode mocked test passed")
 
@@ -133,6 +140,7 @@ class TestPR2QuietModeMocked(unittest.TestCase):
             finally:
                 # 一時ファイルをクリーンアップ
                 import os
+
                 if os.path.exists(temp_file.name):
                     os.unlink(temp_file.name)
 
@@ -153,7 +161,7 @@ class TestPR2QuietModeMocked(unittest.TestCase):
 
         # モックデータを使用した出力をシミュレート
         mock_output = self._generate_mock_output()
-        
+
         for section in required_sections:
             with self.subTest(section=section):
                 self.assertIn(section, mock_output, f"Required section missing: {section}")
@@ -179,7 +187,7 @@ class TestPR2QuietModeMocked(unittest.TestCase):
 
                 # JSONファイルの構造を確認
                 if file_path.exists():
-                    with open(file_path, "r", encoding="utf-8") as f:
+                    with open(file_path, encoding="utf-8") as f:
                         try:
                             data = json.load(f)
                             self.assertIsNotNone(data, f"Invalid JSON in {filename}")

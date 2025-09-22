@@ -1,22 +1,22 @@
 """Localization management for international support."""
 
-import logging
-import json
-import yaml
-from typing import Dict, List, Optional, Any, Union, Callable
-from dataclasses import dataclass, field
-from pathlib import Path
-from datetime import datetime, timezone
-import re
 import gettext
+import json
 import locale
+import logging
+import re
+from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
 
 class SupportedLanguage(Enum):
     """Supported languages enumeration."""
+
     ENGLISH = "en"
     JAPANESE = "ja"
     CHINESE_SIMPLIFIED = "zh-CN"
@@ -34,6 +34,7 @@ class SupportedLanguage(Enum):
 @dataclass
 class LocaleConfig:
     """Locale configuration."""
+
     language: SupportedLanguage
     country_code: Optional[str] = None
     encoding: str = "UTF-8"
@@ -61,24 +62,25 @@ class LocaleConfig:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
-            'language': self.language.value,
-            'country_code': self.country_code,
-            'locale_code': self.locale_code,
-            'encoding': self.encoding,
-            'date_format': self.date_format,
-            'time_format': self.time_format,
-            'datetime_format': self.datetime_format,
-            'number_format': self.number_format,
-            'currency_symbol': self.currency_symbol,
-            'decimal_separator': self.decimal_separator,
-            'thousands_separator': self.thousands_separator,
-            'rtl': self.is_rtl
+            "language": self.language.value,
+            "country_code": self.country_code,
+            "locale_code": self.locale_code,
+            "encoding": self.encoding,
+            "date_format": self.date_format,
+            "time_format": self.time_format,
+            "datetime_format": self.datetime_format,
+            "number_format": self.number_format,
+            "currency_symbol": self.currency_symbol,
+            "decimal_separator": self.decimal_separator,
+            "thousands_separator": self.thousands_separator,
+            "rtl": self.is_rtl,
         }
 
 
 @dataclass
 class MessageCatalog:
     """Message catalog for translations."""
+
     language: SupportedLanguage
     messages: Dict[str, str] = field(default_factory=dict)
     plurals: Dict[str, Dict[str, str]] = field(default_factory=dict)
@@ -108,12 +110,11 @@ class MessageCatalog:
             singular: Singular form
             plural: Plural form
         """
-        self.plurals[key] = {
-            'singular': singular,
-            'plural': plural
-        }
+        self.plurals[key] = {"singular": singular, "plural": plural}
 
-    def get_message(self, key: str, context: Optional[str] = None, default: Optional[str] = None) -> str:
+    def get_message(
+        self, key: str, context: Optional[str] = None, default: Optional[str] = None
+    ) -> str:
         """Get translated message.
 
         Args:
@@ -132,7 +133,13 @@ class MessageCatalog:
 
         return default or key
 
-    def get_plural(self, key: str, count: int, default_singular: Optional[str] = None, default_plural: Optional[str] = None) -> str:
+    def get_plural(
+        self,
+        key: str,
+        count: int,
+        default_singular: Optional[str] = None,
+        default_plural: Optional[str] = None,
+    ) -> str:
         """Get plural form.
 
         Args:
@@ -148,9 +155,9 @@ class MessageCatalog:
             forms = self.plurals[key]
             # Simple English plural rules (expand for other languages)
             if count == 1:
-                return forms['singular']
+                return forms["singular"]
             else:
-                return forms['plural']
+                return forms["plural"]
 
         # Fallback to regular messages
         message = self.get_message(key)
@@ -166,22 +173,22 @@ class MessageCatalog:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
-            'language': self.language.value,
-            'messages': self.messages,
-            'plurals': self.plurals,
-            'contexts': self.contexts,
-            'metadata': self.metadata
+            "language": self.language.value,
+            "messages": self.messages,
+            "plurals": self.plurals,
+            "contexts": self.contexts,
+            "metadata": self.metadata,
         }
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'MessageCatalog':
+    def from_dict(cls, data: Dict[str, Any]) -> "MessageCatalog":
         """Create from dictionary."""
         return cls(
-            language=SupportedLanguage(data['language']),
-            messages=data.get('messages', {}),
-            plurals=data.get('plurals', {}),
-            contexts=data.get('contexts', {}),
-            metadata=data.get('metadata', {})
+            language=SupportedLanguage(data["language"]),
+            messages=data.get("messages", {}),
+            plurals=data.get("plurals", {}),
+            contexts=data.get("contexts", {}),
+            metadata=data.get("metadata", {}),
         )
 
 
@@ -211,13 +218,15 @@ class TranslationProvider:
                 lang_code = lang_file.stem
                 language = SupportedLanguage(lang_code)
 
-                with open(lang_file, 'r', encoding='utf-8') as f:
+                with open(lang_file, encoding="utf-8") as f:
                     data = json.load(f)
 
                 catalog = MessageCatalog.from_dict(data)
                 self.catalogs[language] = catalog
 
-                logger.info(f"Loaded translations for {language.value}: {len(catalog.messages)} messages")
+                logger.info(
+                    f"Loaded translations for {language.value}: {len(catalog.messages)} messages"
+                )
 
             except Exception as e:
                 logger.error(f"Failed to load translation file {lang_file}: {e}")
@@ -258,7 +267,7 @@ class TranslationProvider:
         # Ensure directory exists
         output_file.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             json.dump(catalog.to_dict(), f, indent=2, ensure_ascii=False)
 
         logger.info(f"Saved catalog for {language.value} to {output_file}")
@@ -283,9 +292,9 @@ class TranslationProvider:
         ]
 
         for source_path in source_paths:
-            if source_path.is_file() and source_path.suffix == '.py':
+            if source_path.is_file() and source_path.suffix == ".py":
                 try:
-                    with open(source_path, 'r', encoding='utf-8') as f:
+                    with open(source_path, encoding="utf-8") as f:
                         content = f.read()
 
                     for pattern in patterns:
@@ -336,7 +345,7 @@ class LocalizationManager:
             datetime_format="%Y-%m-%d %H:%M:%S",
             currency_symbol="$",
             decimal_separator=".",
-            thousands_separator=","
+            thousands_separator=",",
         )
 
         # Japanese
@@ -348,7 +357,7 @@ class LocalizationManager:
             datetime_format="%Y年%m月%d日 %H:%M:%S",
             currency_symbol="¥",
             decimal_separator=".",
-            thousands_separator=","
+            thousands_separator=",",
         )
 
         # Chinese Simplified
@@ -360,7 +369,7 @@ class LocalizationManager:
             datetime_format="%Y年%m月%d日 %H:%M:%S",
             currency_symbol="¥",
             decimal_separator=".",
-            thousands_separator=","
+            thousands_separator=",",
         )
 
         # German
@@ -372,7 +381,7 @@ class LocalizationManager:
             datetime_format="%d.%m.%Y %H:%M:%S",
             currency_symbol="€",
             decimal_separator=",",
-            thousands_separator="."
+            thousands_separator=".",
         )
 
         # Arabic (RTL)
@@ -385,7 +394,7 @@ class LocalizationManager:
             currency_symbol="ر.س",
             decimal_separator=".",
             thousands_separator=",",
-            rtl=True
+            rtl=True,
         )
 
     def _setup_gettext(self) -> None:
@@ -480,7 +489,7 @@ class LocalizationManager:
         # Format message with parameters
         try:
             if kwargs:
-                kwargs['count'] = count
+                kwargs["count"] = count
                 return message.format(**kwargs)
             return message
         except Exception as e:
@@ -551,12 +560,14 @@ class LocalizationManager:
         languages = []
 
         for language, config in self.locale_configs.items():
-            languages.append({
-                'code': language.value,
-                'name': self._get_language_name(language),
-                'native_name': self._get_native_language_name(language),
-                'rtl': config.is_rtl
-            })
+            languages.append(
+                {
+                    "code": language.value,
+                    "name": self._get_language_name(language),
+                    "native_name": self._get_native_language_name(language),
+                    "rtl": config.is_rtl,
+                }
+            )
 
         return languages
 
@@ -581,7 +592,7 @@ class LocalizationManager:
             SupportedLanguage.PORTUGUESE: "Portuguese",
             SupportedLanguage.RUSSIAN: "Russian",
             SupportedLanguage.ARABIC: "Arabic",
-            SupportedLanguage.HINDI: "Hindi"
+            SupportedLanguage.HINDI: "Hindi",
         }
         return names.get(language, language.value)
 
@@ -606,7 +617,7 @@ class LocalizationManager:
             SupportedLanguage.PORTUGUESE: "Português",
             SupportedLanguage.RUSSIAN: "Русский",
             SupportedLanguage.ARABIC: "العربية",
-            SupportedLanguage.HINDI: "हिन्दी"
+            SupportedLanguage.HINDI: "हिन्दी",
         }
         return names.get(language, language.value)
 
@@ -620,20 +631,20 @@ class LocalizationManager:
         messages = self.translation_provider.extract_messages_from_code(source_paths)
 
         template = {
-            'language': 'template',
-            'messages': messages,
-            'plurals': {},
-            'contexts': {},
-            'metadata': {
-                'created': datetime.now().isoformat(),
-                'generator': 'CodeRabbit LocalizationManager',
-                'total_messages': len(messages)
-            }
+            "language": "template",
+            "messages": messages,
+            "plurals": {},
+            "contexts": {},
+            "metadata": {
+                "created": datetime.now().isoformat(),
+                "generator": "CodeRabbit LocalizationManager",
+                "total_messages": len(messages),
+            },
         }
 
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(output_path, "w", encoding="utf-8") as f:
             json.dump(template, f, indent=2, ensure_ascii=False)
 
         logger.info(f"Created translation template: {output_path}")

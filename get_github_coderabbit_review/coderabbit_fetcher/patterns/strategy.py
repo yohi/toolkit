@@ -2,15 +2,16 @@
 
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Optional, List, Callable, Union
-from enum import Enum
 from dataclasses import dataclass
+from enum import Enum
+from typing import Any, Dict, Optional, Union
 
 logger = logging.getLogger(__name__)
 
 
 class ProcessingMode(Enum):
     """Processing mode enumeration."""
+
     FAST = "fast"
     BALANCED = "balanced"
     THOROUGH = "thorough"
@@ -20,6 +21,7 @@ class ProcessingMode(Enum):
 @dataclass
 class ProcessingContext:
     """Context for processing strategies."""
+
     mode: ProcessingMode
     max_memory_mb: int = 300
     max_workers: int = 3
@@ -88,19 +90,16 @@ class FastProcessingStrategy(ProcessingStrategy):
         from ..utils.streaming_processor import CommentStreamProcessor
 
         processor = CommentStreamProcessor(
-            max_workers=context.max_workers,
-            batch_size=context.batch_size
+            max_workers=context.max_workers, batch_size=context.batch_size
         )
 
         def fast_processor(item):
             # Minimal processing for speed
             return self._minimal_processing(item)
 
-        if hasattr(data, '__iter__') and not isinstance(data, (str, dict)):
+        if hasattr(data, "__iter__") and not isinstance(data, (str, dict)):
             return processor.process_streaming(
-                list(data),
-                fast_processor,
-                parallel=context.parallel_enabled
+                list(data), fast_processor, parallel=context.parallel_enabled
             )
         else:
             return fast_processor(data)
@@ -109,12 +108,8 @@ class FastProcessingStrategy(ProcessingStrategy):
         """Minimal processing for maximum speed."""
         # Basic processing only
         if isinstance(item, dict):
-            return {
-                'id': item.get('id'),
-                'processed': True,
-                'strategy': 'fast'
-            }
-        return {'item': item, 'processed': True, 'strategy': 'fast'}
+            return {"id": item.get("id"), "processed": True, "strategy": "fast"}
+        return {"item": item, "processed": True, "strategy": "fast"}
 
     def get_name(self) -> str:
         return "Fast Processing"
@@ -138,24 +133,21 @@ class BalancedProcessingStrategy(ProcessingStrategy):
 
     def _process_with_balance(self, data: Any, context: ProcessingContext) -> Any:
         """Process with balanced approach."""
-        from ..utils.streaming_processor import CommentStreamProcessor
         from ..utils.memory_manager import MemoryManager
+        from ..utils.streaming_processor import CommentStreamProcessor
 
         # Use memory manager for efficiency
         memory_manager = MemoryManager(max_memory_mb=context.max_memory_mb)
         processor = CommentStreamProcessor(
-            max_workers=context.max_workers,
-            batch_size=context.batch_size
+            max_workers=context.max_workers, batch_size=context.batch_size
         )
 
         def balanced_processor(item):
             return self._balanced_processing(item, context)
 
-        if hasattr(data, '__iter__') and not isinstance(data, (str, dict)):
+        if hasattr(data, "__iter__") and not isinstance(data, (str, dict)):
             return memory_manager.process_with_memory_limit(
-                list(data),
-                balanced_processor,
-                batch_size=context.batch_size
+                list(data), balanced_processor, batch_size=context.batch_size
             )
         else:
             return balanced_processor(data)
@@ -165,20 +157,20 @@ class BalancedProcessingStrategy(ProcessingStrategy):
         if isinstance(item, dict):
             # Moderate processing
             result = {
-                'id': item.get('id'),
-                'content': item.get('body', item.get('content', '')),
-                'processed': True,
-                'strategy': 'balanced'
+                "id": item.get("id"),
+                "content": item.get("body", item.get("content", "")),
+                "processed": True,
+                "strategy": "balanced",
             }
 
             # Add quality score if applicable
-            content = result.get('content', '')
+            content = result.get("content", "")
             if content:
-                result['quality_score'] = min(len(content) / 100.0, 1.0)
+                result["quality_score"] = min(len(content) / 100.0, 1.0)
 
             return result
 
-        return {'item': item, 'processed': True, 'strategy': 'balanced'}
+        return {"item": item, "processed": True, "strategy": "balanced"}
 
     def get_name(self) -> str:
         return "Balanced Processing"
@@ -205,7 +197,7 @@ class ThoroughProcessingStrategy(ProcessingStrategy):
 
     def _process_with_quality_focus(self, data: Any, context: ProcessingContext) -> Any:
         """Process with quality focus."""
-        from ..utils.code_quality import QualityGate, CodeQualityAnalyzer
+        from ..utils.code_quality import CodeQualityAnalyzer, QualityGate
 
         quality_gate = QualityGate(max_complexity=8, max_lines=40)
         analyzer = CodeQualityAnalyzer()
@@ -213,7 +205,7 @@ class ThoroughProcessingStrategy(ProcessingStrategy):
         def thorough_processor(item):
             return self._thorough_processing(item, quality_gate, analyzer, context)
 
-        if hasattr(data, '__iter__') and not isinstance(data, (str, dict)):
+        if hasattr(data, "__iter__") and not isinstance(data, (str, dict)):
             results = []
             for item in data:
                 result = thorough_processor(item)
@@ -224,21 +216,17 @@ class ThoroughProcessingStrategy(ProcessingStrategy):
             return thorough_processor(data)
 
     def _thorough_processing(
-        self,
-        item: Any,
-        quality_gate,
-        analyzer,
-        context: ProcessingContext
+        self, item: Any, quality_gate, analyzer, context: ProcessingContext
     ) -> Any:
         """Thorough processing with comprehensive quality checks."""
         if isinstance(item, dict):
-            content = item.get('body', item.get('content', ''))
+            content = item.get("body", item.get("content", ""))
 
             result = {
-                'id': item.get('id'),
-                'content': content,
-                'processed': True,
-                'strategy': 'thorough'
+                "id": item.get("id"),
+                "content": content,
+                "processed": True,
+                "strategy": "thorough",
             }
 
             # Comprehensive quality analysis
@@ -247,17 +235,20 @@ class ThoroughProcessingStrategy(ProcessingStrategy):
                 complexity_score = analyzer.calculate_complexity_score(content)
                 suggestions = analyzer.suggest_refactoring(content)
 
-                result.update({
-                    'quality_gate_passed': quality_check['passes_quality_gate'],
-                    'quality_score': quality_check['quality_score'] / 100.0,
-                    'complexity_metrics': complexity_score,
-                    'improvement_suggestions': suggestions,
-                    'meets_threshold': quality_check['quality_score'] >= context.quality_threshold * 100
-                })
+                result.update(
+                    {
+                        "quality_gate_passed": quality_check["passes_quality_gate"],
+                        "quality_score": quality_check["quality_score"] / 100.0,
+                        "complexity_metrics": complexity_score,
+                        "improvement_suggestions": suggestions,
+                        "meets_threshold": quality_check["quality_score"]
+                        >= context.quality_threshold * 100,
+                    }
+                )
 
             return result
 
-        return {'item': item, 'processed': True, 'strategy': 'thorough'}
+        return {"item": item, "processed": True, "strategy": "thorough"}
 
     def get_name(self) -> str:
         return "Thorough Processing"
@@ -292,7 +283,7 @@ class MemoryEfficientStrategy(ProcessingStrategy):
         def memory_efficient_processor(item):
             return self._memory_efficient_processing(item, memory_manager)
 
-        if hasattr(data, '__iter__') and not isinstance(data, (str, dict)):
+        if hasattr(data, "__iter__") and not isinstance(data, (str, dict)):
             # Process in very small batches
             results = []
             for batch in memory_manager.stream_large_list(list(data), context.batch_size):
@@ -315,22 +306,18 @@ class MemoryEfficientStrategy(ProcessingStrategy):
         """Memory-efficient processing with minimal memory footprint."""
         if isinstance(item, dict):
             # Minimal data retention
-            result = {
-                'id': item.get('id'),
-                'processed': True,
-                'strategy': 'memory_efficient'
-            }
+            result = {"id": item.get("id"), "processed": True, "strategy": "memory_efficient"}
 
             # Only keep essential data
-            if 'body' in item or 'content' in item:
-                content = item.get('body', item.get('content', ''))
+            if "body" in item or "content" in item:
+                content = item.get("body", item.get("content", ""))
                 # Store only content length, not full content
-                result['content_length'] = len(content)
-                result['has_content'] = bool(content.strip())
+                result["content_length"] = len(content)
+                result["has_content"] = bool(content.strip())
 
             return result
 
-        return {'processed': True, 'strategy': 'memory_efficient'}
+        return {"processed": True, "strategy": "memory_efficient"}
 
     def get_name(self) -> str:
         return "Memory Efficient"
@@ -372,10 +359,7 @@ class ProcessingStrategyManager:
         return self._strategies[mode]
 
     def auto_select_strategy(
-        self,
-        data_size: int,
-        available_memory: int,
-        priority: str = "balanced"
+        self, data_size: int, available_memory: int, priority: str = "balanced"
     ) -> ProcessingStrategy:
         """Automatically select the best strategy.
 
@@ -400,10 +384,7 @@ class ProcessingStrategyManager:
             return self._strategies[ProcessingMode.BALANCED]
 
     def process_with_auto_strategy(
-        self,
-        data: Any,
-        context: Optional[ProcessingContext] = None,
-        priority: str = "balanced"
+        self, data: Any, context: Optional[ProcessingContext] = None, priority: str = "balanced"
     ) -> Any:
         """Process data with automatically selected strategy.
 
@@ -424,6 +405,7 @@ class ProcessingStrategyManager:
         # Get available memory (simplified estimation)
         try:
             from ..utils.memory_manager import MemoryManager
+
             memory_manager = MemoryManager()
             memory_stats = memory_manager.get_memory_stats()
             available_memory = memory_stats.available_mb
@@ -442,9 +424,9 @@ class ProcessingStrategyManager:
 
     def _estimate_data_size(self, data: Any) -> int:
         """Estimate data size for strategy selection."""
-        if hasattr(data, '__len__'):
+        if hasattr(data, "__len__"):
             return len(data)
-        elif hasattr(data, '__iter__') and not isinstance(data, (str, dict)):
+        elif hasattr(data, "__iter__") and not isinstance(data, (str, dict)):
             try:
                 # 最大1000要素までカウント
                 count = 0
@@ -487,7 +469,7 @@ strategy_manager = ProcessingStrategyManager()
 def process_with_strategy(
     data: Any,
     mode: Union[ProcessingMode, str] = ProcessingMode.BALANCED,
-    context: Optional[ProcessingContext] = None
+    context: Optional[ProcessingContext] = None,
 ) -> Any:
     """Convenience function to process data with specified strategy.
 
@@ -500,7 +482,9 @@ def process_with_strategy(
         Processed result
     """
     if context is None:
-        context = ProcessingContext(mode=mode if isinstance(mode, ProcessingMode) else ProcessingMode.BALANCED)
+        context = ProcessingContext(
+            mode=mode if isinstance(mode, ProcessingMode) else ProcessingMode.BALANCED
+        )
 
     if mode == "auto":
         return strategy_manager.process_with_auto_strategy(data, context)

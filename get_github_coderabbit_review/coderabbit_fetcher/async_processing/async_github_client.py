@@ -1,12 +1,11 @@
 """Async GitHub client for CodeRabbit fetcher."""
 
 import asyncio
-import aiohttp
 import logging
-from typing import Dict, List, Any, Optional, Union
 import re
-from urllib.parse import urlparse
-import json
+from typing import Any, Dict, List, Optional
+
+import aiohttp
 
 from ..exceptions import GitHubAuthenticationError, InvalidPRUrlError
 
@@ -50,12 +49,12 @@ class AsyncGitHubClient:
             timeout = aiohttp.ClientTimeout(total=self.timeout)
 
             headers = {
-                'Accept': 'application/vnd.github.v3+json',
-                'User-Agent': 'CodeRabbit-Fetcher/1.0'
+                "Accept": "application/vnd.github.v3+json",
+                "User-Agent": "CodeRabbit-Fetcher/1.0",
             }
 
             if self.token:
-                headers['Authorization'] = f'token {self.token}'
+                headers["Authorization"] = f"token {self.token}"
 
             self._session = aiohttp.ClientSession(
                 timeout=timeout,
@@ -64,8 +63,8 @@ class AsyncGitHubClient:
                     limit=100,  # Total connection pool size
                     limit_per_host=30,  # Connections per host
                     ttl_dns_cache=300,  # DNS cache TTL
-                    use_dns_cache=True
-                )
+                    use_dns_cache=True,
+                ),
             )
 
     async def close(self) -> None:
@@ -85,12 +84,7 @@ class AsyncGitHubClient:
         """Cancel all ongoing operations."""
         await self.close()
 
-    async def _make_request(
-        self,
-        method: str,
-        url: str,
-        **kwargs
-    ) -> Dict[str, Any]:
+    async def _make_request(self, method: str, url: str, **kwargs) -> Dict[str, Any]:
         """Make async HTTP request to GitHub API.
 
         Args:
@@ -108,19 +102,17 @@ class AsyncGitHubClient:
         await self._ensure_session()
 
         # Create request task and track it
-        request_task = asyncio.create_task(
-            self._session.request(method, url, **kwargs)
-        )
+        request_task = asyncio.create_task(self._session.request(method, url, **kwargs))
         self._active_requests.add(request_task)
 
         try:
             async with request_task as response:
                 # Update rate limit info
-                self.rate_limit_remaining = int(response.headers.get('X-RateLimit-Remaining', 0))
-                self.rate_limit_reset = int(response.headers.get('X-RateLimit-Reset', 0))
+                self.rate_limit_remaining = int(response.headers.get("X-RateLimit-Remaining", 0))
+                self.rate_limit_reset = int(response.headers.get("X-RateLimit-Reset", 0))
 
                 # Check for rate limiting
-                if response.status == 403 and 'rate limit' in (await response.text()).lower():
+                if response.status == 403 and "rate limit" in (await response.text()).lower():
                     logger.warning("GitHub API rate limit exceeded")
                     # Could implement backoff strategy here
 
@@ -135,10 +127,10 @@ class AsyncGitHubClient:
                     response.raise_for_status()
 
                 # Parse JSON response
-                if response.content_type == 'application/json':
+                if response.content_type == "application/json":
                     return await response.json()
                 else:
-                    return {'content': await response.text()}
+                    return {"content": await response.text()}
 
         except asyncio.CancelledError:
             logger.info("GitHub request was cancelled")
@@ -157,7 +149,7 @@ class AsyncGitHubClient:
         """
         try:
             url = f"{self.base_url}/user"
-            await self._make_request('GET', url)
+            await self._make_request("GET", url)
             return True
         except Exception as e:
             logger.error(f"GitHub authentication validation failed: {e}")
@@ -176,7 +168,7 @@ class AsyncGitHubClient:
             InvalidPRUrlError: If URL is invalid
         """
         # Parse GitHub PR URL
-        pattern = r'https://github\.com/([^/]+)/([^/]+)/pull/(\d+)'
+        pattern = r"https://github\.com/([^/]+)/([^/]+)/pull/(\d+)"
         match = re.match(pattern, pr_url)
 
         if not match:
@@ -186,26 +178,22 @@ class AsyncGitHubClient:
 
         # Fetch PR information
         url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}"
-        pr_data = await self._make_request('GET', url)
+        pr_data = await self._make_request("GET", url)
 
         return {
-            'owner': owner,
-            'repo': repo,
-            'number': int(pr_number),
-            'title': pr_data.get('title', ''),
-            'body': pr_data.get('body', ''),
-            'state': pr_data.get('state', ''),
-            'created_at': pr_data.get('created_at', ''),
-            'updated_at': pr_data.get('updated_at', ''),
-            'url': pr_url
+            "owner": owner,
+            "repo": repo,
+            "number": int(pr_number),
+            "title": pr_data.get("title", ""),
+            "body": pr_data.get("body", ""),
+            "state": pr_data.get("state", ""),
+            "created_at": pr_data.get("created_at", ""),
+            "updated_at": pr_data.get("updated_at", ""),
+            "url": pr_url,
         }
 
     async def get_pr_comments_async(
-        self,
-        owner: str,
-        repo: str,
-        pr_number: int,
-        per_page: int = 100
+        self, owner: str, repo: str, pr_number: int, per_page: int = 100
     ) -> List[Dict[str, Any]]:
         """Get PR comments asynchronously.
 
@@ -223,10 +211,10 @@ class AsyncGitHubClient:
 
         while True:
             url = f"{self.base_url}/repos/{owner}/{repo}/issues/{pr_number}/comments"
-            params = {'page': page, 'per_page': per_page}
+            params = {"page": page, "per_page": per_page}
 
             try:
-                page_comments = await self._make_request('GET', url, params=params)
+                page_comments = await self._make_request("GET", url, params=params)
 
                 if not page_comments:
                     break
@@ -252,11 +240,7 @@ class AsyncGitHubClient:
         return comments
 
     async def get_pr_reviews_async(
-        self,
-        owner: str,
-        repo: str,
-        pr_number: int,
-        per_page: int = 100
+        self, owner: str, repo: str, pr_number: int, per_page: int = 100
     ) -> List[Dict[str, Any]]:
         """Get PR reviews asynchronously.
 
@@ -274,10 +258,10 @@ class AsyncGitHubClient:
 
         while True:
             url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/reviews"
-            params = {'page': page, 'per_page': per_page}
+            params = {"page": page, "per_page": per_page}
 
             try:
-                page_reviews = await self._make_request('GET', url, params=params)
+                page_reviews = await self._make_request("GET", url, params=params)
 
                 if not page_reviews:
                     break
@@ -302,11 +286,7 @@ class AsyncGitHubClient:
         return reviews
 
     async def get_pr_files_async(
-        self,
-        owner: str,
-        repo: str,
-        pr_number: int,
-        per_page: int = 100
+        self, owner: str, repo: str, pr_number: int, per_page: int = 100
     ) -> List[Dict[str, Any]]:
         """Get PR files asynchronously.
 
@@ -324,10 +304,10 @@ class AsyncGitHubClient:
 
         while True:
             url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/files"
-            params = {'page': page, 'per_page': per_page}
+            params = {"page": page, "per_page": per_page}
 
             try:
-                page_files = await self._make_request('GET', url, params=params)
+                page_files = await self._make_request("GET", url, params=params)
 
                 if not page_files:
                     break
@@ -352,11 +332,7 @@ class AsyncGitHubClient:
         return files
 
     async def get_pr_commits_async(
-        self,
-        owner: str,
-        repo: str,
-        pr_number: int,
-        per_page: int = 100
+        self, owner: str, repo: str, pr_number: int, per_page: int = 100
     ) -> List[Dict[str, Any]]:
         """Get PR commits asynchronously.
 
@@ -374,10 +350,10 @@ class AsyncGitHubClient:
 
         while True:
             url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/commits"
-            params = {'page': page, 'per_page': per_page}
+            params = {"page": page, "per_page": per_page}
 
             try:
-                page_commits = await self._make_request('GET', url, params=params)
+                page_commits = await self._make_request("GET", url, params=params)
 
                 if not page_commits:
                     break
@@ -402,11 +378,7 @@ class AsyncGitHubClient:
         return commits
 
     async def get_pr_review_comments_async(
-        self,
-        owner: str,
-        repo: str,
-        pr_number: int,
-        per_page: int = 100
+        self, owner: str, repo: str, pr_number: int, per_page: int = 100
     ) -> List[Dict[str, Any]]:
         """Get PR review comments asynchronously.
 
@@ -424,10 +396,10 @@ class AsyncGitHubClient:
 
         while True:
             url = f"{self.base_url}/repos/{owner}/{repo}/pulls/{pr_number}/comments"
-            params = {'page': page, 'per_page': per_page}
+            params = {"page": page, "per_page": per_page}
 
             try:
-                page_comments = await self._make_request('GET', url, params=params)
+                page_comments = await self._make_request("GET", url, params=params)
 
                 if not page_comments:
                     break
@@ -452,10 +424,7 @@ class AsyncGitHubClient:
         return comments
 
     async def fetch_all_pr_data_async(
-        self,
-        owner: str,
-        repo: str,
-        pr_number: int
+        self, owner: str, repo: str, pr_number: int
     ) -> Dict[str, Any]:
         """Fetch all PR data concurrently.
 
@@ -472,25 +441,14 @@ class AsyncGitHubClient:
         # Create concurrent tasks
         tasks = [
             asyncio.create_task(
-                self.get_pr_comments_async(owner, repo, pr_number),
-                name="comments"
+                self.get_pr_comments_async(owner, repo, pr_number), name="comments"
             ),
+            asyncio.create_task(self.get_pr_reviews_async(owner, repo, pr_number), name="reviews"),
+            asyncio.create_task(self.get_pr_files_async(owner, repo, pr_number), name="files"),
+            asyncio.create_task(self.get_pr_commits_async(owner, repo, pr_number), name="commits"),
             asyncio.create_task(
-                self.get_pr_reviews_async(owner, repo, pr_number),
-                name="reviews"
+                self.get_pr_review_comments_async(owner, repo, pr_number), name="review_comments"
             ),
-            asyncio.create_task(
-                self.get_pr_files_async(owner, repo, pr_number),
-                name="files"
-            ),
-            asyncio.create_task(
-                self.get_pr_commits_async(owner, repo, pr_number),
-                name="commits"
-            ),
-            asyncio.create_task(
-                self.get_pr_review_comments_async(owner, repo, pr_number),
-                name="review_comments"
-            )
         ]
 
         # Execute all tasks concurrently
@@ -523,7 +481,7 @@ class AsyncGitHubClient:
             Rate limit information
         """
         return {
-            'remaining': self.rate_limit_remaining,
-            'reset_timestamp': self.rate_limit_reset,
-            'estimated_requests_per_hour': min(5000, self.rate_limit_remaining * 2)
+            "remaining": self.rate_limit_remaining,
+            "reset_timestamp": self.rate_limit_reset,
+            "estimated_requests_per_hour": min(5000, self.rate_limit_remaining * 2),
         }

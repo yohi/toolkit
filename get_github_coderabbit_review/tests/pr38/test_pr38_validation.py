@@ -69,11 +69,11 @@ class TestPR38Validation:
                     assert result.returncode == 0, f"Command failed: {result.stderr}"
 
                     # 出力ファイルの内容を読み込み
-                    with open(temp_file.name, "r", encoding="utf-8") as f:
+                    with open(temp_file.name, encoding="utf-8") as f:
                         actual_output = f.read()
 
                     # 期待値ファイルの内容を読み込み
-                    with open(self.expected_file, "r", encoding="utf-8") as f:
+                    with open(self.expected_file, encoding="utf-8") as f:
                         expected_output = f.read()
 
                     # 出力の検証
@@ -176,7 +176,7 @@ class TestPR38Validation:
 
                         assert result.returncode == 0
 
-                        with open(temp_file.name, "r", encoding="utf-8") as f:
+                        with open(temp_file.name, encoding="utf-8") as f:
                             outputs.append(f.read())
 
                     finally:
@@ -244,7 +244,7 @@ class TestPR38Validation:
 
                     assert result.returncode == 0
 
-                    with open(temp_file.name, "r", encoding="utf-8") as f:
+                    with open(temp_file.name, encoding="utf-8") as f:
                         output = f.read()
 
                     # アクション可能なアイテムを抽出
@@ -300,7 +300,7 @@ class TestPR38Validation:
 
                     assert result.returncode == 0
 
-                    with open(temp_file.name, "r", encoding="utf-8") as f:
+                    with open(temp_file.name, encoding="utf-8") as f:
                         output = f.read()
 
                     # ファイル変更情報を抽出

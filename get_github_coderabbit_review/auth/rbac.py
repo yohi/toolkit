@@ -1,20 +1,19 @@
 """Role-Based Access Control (RBAC) system for enterprise authentication."""
 
-import logging
-import json
 import ipaddress
-from typing import Dict, List, Optional, Any, Set, Union
-from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from enum import Enum
-import hashlib
+import logging
 import uuid
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from typing import Any, Dict, List, Optional, Union
 
 logger = logging.getLogger(__name__)
 
 
 class PermissionType(Enum):
     """Permission type enumeration."""
+
     READ = "read"
     WRITE = "write"
     DELETE = "delete"
@@ -31,6 +30,7 @@ class PermissionType(Enum):
 
 class ResourceType(Enum):
     """Resource type enumeration."""
+
     ANALYSIS = "analysis"
     COMMENT = "comment"
     REPORT = "report"
@@ -46,6 +46,7 @@ class ResourceType(Enum):
 @dataclass
 class Permission:
     """Permission definition."""
+
     id: str
     name: str
     permission_type: PermissionType
@@ -59,7 +60,9 @@ class Permission:
         if not self.id:
             self.id = str(uuid.uuid4())
 
-    def matches_request(self, request_permission: PermissionType, request_resource: ResourceType) -> bool:
+    def matches_request(
+        self, request_permission: PermissionType, request_resource: ResourceType
+    ) -> bool:
         """Check if permission matches request.
 
         Args:
@@ -78,9 +81,11 @@ class Permission:
             return True
 
         # Write permission includes read
-        if (self.permission_type == PermissionType.WRITE and
-            request_permission == PermissionType.READ and
-            self.resource_type == request_resource):
+        if (
+            self.permission_type == PermissionType.WRITE
+            and request_permission == PermissionType.READ
+            and self.resource_type == request_resource
+        ):
             return True
 
         return False
@@ -118,11 +123,17 @@ class Permission:
                 user_ip = context.get("ip_address")
                 try:
                     ip_obj = ipaddress.ip_address(user_ip)  # type: ignore[arg-type]
-                    networks = expected_value if isinstance(expected_value, (list, tuple)) else [expected_value]
+                    networks = (
+                        expected_value
+                        if isinstance(expected_value, (list, tuple))
+                        else [expected_value]
+                    )
                     if not any(ip_obj in ipaddress.ip_network(n) for n in networks):
                         return False
                 except Exception:
-                    logger.warning("Invalid IP/range in condition: ip=%s expected=%s", user_ip, expected_value)
+                    logger.warning(
+                        "Invalid IP/range in condition: ip=%s expected=%s", user_ip, expected_value
+                    )
                     return False
 
             elif condition == "department":
@@ -134,7 +145,9 @@ class Permission:
                     if user_department != expected_value:
                         return False
                 else:
-                    logger.warning("Unsupported 'department' expected_value type: %s", type(expected_value))
+                    logger.warning(
+                        "Unsupported 'department' expected_value type: %s", type(expected_value)
+                    )
                     return False
 
             elif context_value != expected_value:
@@ -145,19 +158,20 @@ class Permission:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
-            'id': self.id,
-            'name': self.name,
-            'permission_type': self.permission_type.value,
-            'resource_type': self.resource_type.value,
-            'description': self.description,
-            'conditions': self.conditions,
-            'created_at': self.created_at.isoformat()
+            "id": self.id,
+            "name": self.name,
+            "permission_type": self.permission_type.value,
+            "resource_type": self.resource_type.value,
+            "description": self.description,
+            "conditions": self.conditions,
+            "created_at": self.created_at.isoformat(),
         }
 
 
 @dataclass
 class Role:
     """Role definition."""
+
     id: str
     name: str
     description: str = ""
@@ -207,7 +221,12 @@ class Role:
 
         return False
 
-    def has_permission(self, permission_type: PermissionType, resource_type: ResourceType, context: Optional[Dict[str, Any]] = None) -> bool:
+    def has_permission(
+        self,
+        permission_type: PermissionType,
+        resource_type: ResourceType,
+        context: Optional[Dict[str, Any]] = None,
+    ) -> bool:
         """Check if role has specific permission.
 
         Args:
@@ -230,7 +249,7 @@ class Role:
 
         return False
 
-    def get_all_permissions(self, rbac_manager: 'RBACManager') -> List[Permission]:
+    def get_all_permissions(self, rbac_manager: "RBACManager") -> List[Permission]:
         """Get all permissions including inherited from parent roles.
 
         Args:
@@ -257,21 +276,22 @@ class Role:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
-            'id': self.id,
-            'name': self.name,
-            'description': self.description,
-            'permissions': [p.to_dict() for p in self.permissions],
-            'parent_roles': self.parent_roles,
-            'metadata': self.metadata,
-            'active': self.active,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat()
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "permissions": [p.to_dict() for p in self.permissions],
+            "parent_roles": self.parent_roles,
+            "metadata": self.metadata,
+            "active": self.active,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
         }
 
 
 @dataclass
 class User:
     """User definition."""
+
     id: str
     username: str
     email: str
@@ -335,11 +355,11 @@ class User:
             User context dictionary
         """
         context = {
-            'user_id': self.id,
-            'username': self.username,
-            'email': self.email,
-            'groups': self.groups,
-            'last_login': self.last_login.isoformat() if self.last_login else None
+            "user_id": self.id,
+            "username": self.username,
+            "email": self.email,
+            "groups": self.groups,
+            "last_login": self.last_login.isoformat() if self.last_login else None,
         }
         context.update(self.attributes)
         return context
@@ -347,26 +367,29 @@ class User:
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
-            'id': self.id,
-            'username': self.username,
-            'email': self.email,
-            'full_name': self.full_name,
-            'roles': self.roles,
-            'groups': self.groups,
-            'attributes': self.attributes,
-            'active': self.active,
-            'last_login': self.last_login.isoformat() if self.last_login else None,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat()
+            "id": self.id,
+            "username": self.username,
+            "email": self.email,
+            "full_name": self.full_name,
+            "roles": self.roles,
+            "groups": self.groups,
+            "attributes": self.attributes,
+            "active": self.active,
+            "last_login": self.last_login.isoformat() if self.last_login else None,
+            "created_at": self.created_at.isoformat(),
+            "updated_at": self.updated_at.isoformat(),
         }
 
 
 @dataclass
 class AccessControlList:
     """Access Control List for specific resources."""
+
     resource_id: str
     resource_type: ResourceType
-    permissions: Dict[str, List[PermissionType]] = field(default_factory=dict)  # user_id -> permissions
+    permissions: Dict[str, List[PermissionType]] = field(
+        default_factory=dict
+    )  # user_id -> permissions
     created_at: datetime = field(default_factory=datetime.now)
     updated_at: datetime = field(default_factory=datetime.now)
 
@@ -383,7 +406,9 @@ class AccessControlList:
         if permission not in self.permissions[user_id]:
             self.permissions[user_id].append(permission)
             self.updated_at = datetime.now()
-            logger.info(f"Granted {permission.value} permission on {self.resource_id} to user {user_id}")
+            logger.info(
+                f"Granted {permission.value} permission on {self.resource_id} to user {user_id}"
+            )
 
     def revoke_permission(self, user_id: str, permission: PermissionType) -> bool:
         """Revoke permission from user.
@@ -401,7 +426,9 @@ class AccessControlList:
                 del self.permissions[user_id]
 
             self.updated_at = datetime.now()
-            logger.info(f"Revoked {permission.value} permission on {self.resource_id} from user {user_id}")
+            logger.info(
+                f"Revoked {permission.value} permission on {self.resource_id} from user {user_id}"
+            )
             return True
 
         return False
@@ -454,23 +481,23 @@ class PolicyEngine:
 
         try:
             # Simple policy evaluation (expand for production)
-            conditions = policy.get('conditions', {})
+            conditions = policy.get("conditions", {})
 
             for condition, expected in conditions.items():
                 if condition == "max_failed_logins":
-                    failed_logins = context.get('failed_logins', 0)
+                    failed_logins = context.get("failed_logins", 0)
                     if failed_logins > expected:
                         return False
 
                 elif condition == "session_timeout":
-                    session_start = context.get('session_start')
+                    session_start = context.get("session_start")
                     if session_start:
                         session_age = datetime.now() - session_start
                         if session_age.total_seconds() > expected:
                             return False
 
                 elif condition == "require_mfa":
-                    mfa_verified = context.get('mfa_verified', False)
+                    mfa_verified = context.get("mfa_verified", False)
                     if expected and not mfa_verified:
                         return False
 
@@ -504,7 +531,7 @@ class RBACManager:
                 name="Administrator All Access",
                 permission_type=PermissionType.ADMIN,
                 resource_type=ResourceType.SYSTEM,
-                description="Full system access"
+                description="Full system access",
             )
         ]
 
@@ -515,22 +542,22 @@ class RBACManager:
                 name="Read Analysis",
                 permission_type=PermissionType.READ,
                 resource_type=ResourceType.ANALYSIS,
-                description="View analysis results"
+                description="View analysis results",
             ),
             Permission(
                 id="read_comment",
                 name="Read Comments",
                 permission_type=PermissionType.READ,
                 resource_type=ResourceType.COMMENT,
-                description="View comments"
+                description="View comments",
             ),
             Permission(
                 id="read_dashboard",
                 name="Read Dashboard",
                 permission_type=PermissionType.READ,
                 resource_type=ResourceType.DASHBOARD,
-                description="View dashboard"
-            )
+                description="View dashboard",
+            ),
         ]
 
         # Analyst permissions
@@ -540,15 +567,15 @@ class RBACManager:
                 name="Write Analysis",
                 permission_type=PermissionType.WRITE,
                 resource_type=ResourceType.ANALYSIS,
-                description="Create and modify analysis"
+                description="Create and modify analysis",
             ),
             Permission(
                 id="export_data",
                 name="Export Data",
                 permission_type=PermissionType.EXPORT_DATA,
                 resource_type=ResourceType.REPORT,
-                description="Export reports and data"
-            )
+                description="Export reports and data",
+            ),
         ]
 
         # Store permissions
@@ -560,21 +587,21 @@ class RBACManager:
             id="admin",
             name="Administrator",
             description="System administrator with full access",
-            permissions=admin_permissions
+            permissions=admin_permissions,
         )
 
         analyst_role = Role(
             id="analyst",
             name="Analyst",
             description="Code analysis specialist",
-            permissions=analyst_permissions
+            permissions=analyst_permissions,
         )
 
         user_role = Role(
             id="user",
             name="User",
             description="Standard user with read access",
-            permissions=user_permissions
+            permissions=user_permissions,
         )
 
         self.roles[admin_role.id] = admin_role
@@ -596,11 +623,7 @@ class RBACManager:
             Created user
         """
         user = User(
-            id=str(uuid.uuid4()),
-            username=username,
-            email=email,
-            full_name=full_name,
-            **kwargs
+            id=str(uuid.uuid4()), username=username, email=email, full_name=full_name, **kwargs
         )
 
         self.users[user.id] = user
@@ -632,7 +655,9 @@ class RBACManager:
                 return user
         return None
 
-    def create_role(self, name: str, description: str = "", permissions: Optional[List[Permission]] = None) -> Role:
+    def create_role(
+        self, name: str, description: str = "", permissions: Optional[List[Permission]] = None
+    ) -> Role:
         """Create new role.
 
         Args:
@@ -644,10 +669,7 @@ class RBACManager:
             Created role
         """
         role = Role(
-            id=str(uuid.uuid4()),
-            name=name,
-            description=description,
-            permissions=permissions or []
+            id=str(uuid.uuid4()), name=name, description=description, permissions=permissions or []
         )
 
         self.roles[role.id] = role
@@ -690,7 +712,7 @@ class RBACManager:
         permission_type: PermissionType,
         resource_type: ResourceType,
         resource_id: Optional[str] = None,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
     ) -> bool:
         """Check if user has permission.
 
@@ -739,10 +761,7 @@ class RBACManager:
             Created ACL
         """
         acl_key = f"{resource_type.value}:{resource_id}"
-        acl = AccessControlList(
-            resource_id=resource_id,
-            resource_type=resource_type
-        )
+        acl = AccessControlList(resource_id=resource_id, resource_type=resource_type)
 
         self.acls[acl_key] = acl
         logger.info(f"Created ACL for {acl_key}")
@@ -753,7 +772,7 @@ class RBACManager:
         user_id: str,
         resource_id: str,
         resource_type: ResourceType,
-        permission: PermissionType
+        permission: PermissionType,
     ) -> bool:
         """Grant permission on specific resource.
 
@@ -797,20 +816,22 @@ class RBACManager:
                 role_permissions = role.get_all_permissions(self)
                 for perm in role_permissions:
                     perm_dict = perm.to_dict()
-                    perm_dict['source'] = f"role:{role.name}"
+                    perm_dict["source"] = f"role:{role.name}"
                     all_permissions.append(perm_dict)
 
         # ACL permissions
         for acl_key, acl in self.acls.items():
             if user_id in acl.permissions:
                 for perm_type in acl.permissions[user_id]:
-                    all_permissions.append({
-                        'id': f"acl:{acl_key}:{perm_type.value}",
-                        'name': f"ACL {perm_type.value} on {acl_key}",
-                        'permission_type': perm_type.value,
-                        'resource_type': acl.resource_type.value,
-                        'source': f"acl:{acl_key}"
-                    })
+                    all_permissions.append(
+                        {
+                            "id": f"acl:{acl_key}:{perm_type.value}",
+                            "name": f"ACL {perm_type.value} on {acl_key}",
+                            "permission_type": perm_type.value,
+                            "resource_type": acl.resource_type.value,
+                            "source": f"acl:{acl_key}",
+                        }
+                    )
 
         return all_permissions
 
@@ -824,12 +845,12 @@ class RBACManager:
         active_roles = sum(1 for role in self.roles.values() if role.active)
 
         return {
-            'total_users': len(self.users),
-            'active_users': active_users,
-            'total_roles': len(self.roles),
-            'active_roles': active_roles,
-            'total_permissions': len(self.permissions),
-            'total_acls': len(self.acls)
+            "total_users": len(self.users),
+            "active_users": active_users,
+            "total_roles": len(self.roles),
+            "active_roles": active_roles,
+            "total_permissions": len(self.permissions),
+            "total_acls": len(self.acls),
         }
 
 
@@ -858,7 +879,7 @@ def check_permission(
     permission_type: Union[str, PermissionType],
     resource_type: Union[str, ResourceType],
     resource_id: Optional[str] = None,
-    context: Optional[Dict[str, Any]] = None
+    context: Optional[Dict[str, Any]] = None,
 ) -> bool:
     """Check permission using global RBAC manager.
 
@@ -884,7 +905,7 @@ def check_permission(
 def require_permission(
     permission_type: Union[str, PermissionType],
     resource_type: Union[str, ResourceType],
-    resource_id: Optional[str] = None
+    resource_id: Optional[str] = None,
 ):
     """Decorator to require permission for function access.
 
@@ -896,19 +917,24 @@ def require_permission(
     Returns:
         Decorator function
     """
+
     def decorator(func):
         def wrapper(*args, **kwargs):
             # Get user_id from context (implement based on your auth system)
-            user_id = kwargs.get('user_id') or getattr(args[0], 'user_id', None)
+            user_id = kwargs.get("user_id") or getattr(args[0], "user_id", None)
 
             if not user_id:
                 raise PermissionError("User not authenticated")
 
             if not check_permission(user_id, permission_type, resource_type, resource_id):
-                raise PermissionError(f"Insufficient permissions: {permission_type} on {resource_type}")
+                raise PermissionError(
+                    f"Insufficient permissions: {permission_type} on {resource_type}"
+                )
 
             return func(*args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -928,10 +954,18 @@ if __name__ == "__main__":
     rbac.assign_role(regular_user.id, "user")
 
     # Test permissions
-    print(f"Admin can manage users: {rbac.check_permission(admin_user.id, PermissionType.MANAGE_USERS, ResourceType.USER)}")
-    print(f"Analyst can write analysis: {rbac.check_permission(analyst_user.id, PermissionType.WRITE, ResourceType.ANALYSIS)}")
-    print(f"User can read dashboard: {rbac.check_permission(regular_user.id, PermissionType.READ, ResourceType.DASHBOARD)}")
-    print(f"User can delete analysis: {rbac.check_permission(regular_user.id, PermissionType.DELETE, ResourceType.ANALYSIS)}")
+    print(
+        f"Admin can manage users: {rbac.check_permission(admin_user.id, PermissionType.MANAGE_USERS, ResourceType.USER)}"
+    )
+    print(
+        f"Analyst can write analysis: {rbac.check_permission(analyst_user.id, PermissionType.WRITE, ResourceType.ANALYSIS)}"
+    )
+    print(
+        f"User can read dashboard: {rbac.check_permission(regular_user.id, PermissionType.READ, ResourceType.DASHBOARD)}"
+    )
+    print(
+        f"User can delete analysis: {rbac.check_permission(regular_user.id, PermissionType.DELETE, ResourceType.ANALYSIS)}"
+    )
 
     # Print stats
     print(f"RBAC Stats: {rbac.get_stats()}")

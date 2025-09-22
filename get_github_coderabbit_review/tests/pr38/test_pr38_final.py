@@ -22,7 +22,9 @@ class PR38FinalTest:
 
     def __init__(self):
         self.repo_root = Path(__file__).parent.parent.parent
-        self.expected_file = Path(__file__).parent / "expected" / "expected_pr_38_ai_agent_prompt.md"
+        self.expected_file = (
+            Path(__file__).parent / "expected" / "expected_pr_38_ai_agent_prompt.md"
+        )
         self.mock_helper = PR38MockHelper(self.repo_root)
 
     def run_crf_command(self, output_file: str) -> subprocess.CompletedProcess:
@@ -31,7 +33,7 @@ class PR38FinalTest:
         try:
             # 期待値ファイルから内容を読み取り
             if self.expected_file.exists():
-                with open(self.expected_file, "r", encoding="utf-8") as f:
+                with open(self.expected_file, encoding="utf-8") as f:
                     expected_content = f.read()
 
                 # 出力ファイルに書き込み
@@ -124,7 +126,7 @@ class PR38FinalTest:
             print(f"❌ 期待値ファイルが見つかりません: {self.expected_file}")
             return False
 
-        with open(self.expected_file, "r", encoding="utf-8") as f:
+        with open(self.expected_file, encoding="utf-8") as f:
             expected_content = f.read()
 
         # モック化されたコマンドを実行
@@ -137,7 +139,7 @@ class PR38FinalTest:
                     return False
 
                 # 実際の出力を読み込み
-                with open(temp_file.name, "r", encoding="utf-8") as f:
+                with open(temp_file.name, encoding="utf-8") as f:
                     actual_content = f.read()
 
                 # 正規化
@@ -185,7 +187,7 @@ class PR38FinalTest:
                     return False
 
                 # 出力を読み込み
-                with open(temp_file.name, "r", encoding="utf-8") as f:
+                with open(temp_file.name, encoding="utf-8") as f:
                     output = f.read()
 
                 # 構造を検証

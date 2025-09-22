@@ -1,40 +1,22 @@
 """AI integration module for CodeRabbit fetcher."""
 
-from .llm_client import (
-    LLMClient,
-    LLMResponse,
-    LLMConfig,
-    OpenAIClient,
-    AnthropicClient,
-    LocalLLMClient
-)
-
+from .code_analyzer import AICodeAnalyzer, CodeQualityScore, PerformanceAnalysis, SecurityAnalysis
 from .comment_classifier import (
     AICommentClassifier,
-    CommentCategory,
     ClassificationResult,
-    PriorityLevel
+    CommentCategory,
+    PriorityLevel,
 )
-
-from .sentiment_analyzer import (
-    SentimentAnalyzer,
-    SentimentScore,
-    EmotionAnalysis
+from .llm_client import (
+    AnthropicClient,
+    LLMClient,
+    LLMConfig,
+    LLMResponse,
+    LocalLLMClient,
+    OpenAIClient,
 )
-
-from .code_analyzer import (
-    AICodeAnalyzer,
-    CodeQualityScore,
-    SecurityAnalysis,
-    PerformanceAnalysis
-)
-
-from .prompt_templates import (
-    PromptTemplate,
-    ClassificationPrompt,
-    AnalysisPrompt,
-    SummaryPrompt
-)
+from .prompt_templates import AnalysisPrompt, ClassificationPrompt, PromptTemplate, SummaryPrompt
+from .sentiment_analyzer import EmotionAnalysis, SentimentAnalyzer, SentimentScore
 
 __all__ = [
     # LLM Client
@@ -44,27 +26,23 @@ __all__ = [
     "OpenAIClient",
     "AnthropicClient",
     "LocalLLMClient",
-
     # Comment Classification
     "AICommentClassifier",
     "CommentCategory",
     "ClassificationResult",
     "PriorityLevel",
-
     # Sentiment Analysis
     "SentimentAnalyzer",
     "SentimentScore",
     "EmotionAnalysis",
-
     # Code Analysis
     "AICodeAnalyzer",
     "CodeQualityScore",
     "SecurityAnalysis",
     "PerformanceAnalysis",
-
     # Prompt Templates
     "PromptTemplate",
     "ClassificationPrompt",
     "AnalysisPrompt",
-    "SummaryPrompt"
+    "SummaryPrompt",
 ]

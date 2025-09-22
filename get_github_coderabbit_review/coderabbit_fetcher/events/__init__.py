@@ -1,40 +1,28 @@
 """Event system module for CodeRabbit fetcher."""
 
 from ..patterns.observer import (
-    EventType,
     Event,
     EventObserver,
     EventPublisher,
+    EventType,
     LoggingObserver,
-    ProgressObserver,
     PerformanceObserver,
+    ProgressObserver,
     QualityObserver,
     publish_event,
+    setup_default_observers,
     subscribe_observer,
-    setup_default_observers
 )
-
+from .event_aggregator import AggregatedEvent, EventAggregator, EventWindow
 from .event_bus import (
+    AsyncEventHandler,
     EventBus,
     EventHandler,
-    AsyncEventHandler,
     EventMiddleware,
+    async_event_handler,
     event_handler,
-    async_event_handler
 )
-
-from .event_store import (
-    EventStore,
-    EventRecord,
-    InMemoryEventStore,
-    FileEventStore
-)
-
-from .event_aggregator import (
-    EventAggregator,
-    AggregatedEvent,
-    EventWindow
-)
+from .event_store import EventRecord, EventStore, FileEventStore, InMemoryEventStore
 
 __all__ = [
     # Observer Pattern (from patterns module)
@@ -49,7 +37,6 @@ __all__ = [
     "publish_event",
     "subscribe_observer",
     "setup_default_observers",
-
     # Event Bus
     "EventBus",
     "EventHandler",
@@ -57,15 +44,13 @@ __all__ = [
     "EventMiddleware",
     "event_handler",
     "async_event_handler",
-
     # Event Store
     "EventStore",
     "EventRecord",
     "InMemoryEventStore",
     "FileEventStore",
-
     # Event Aggregator
     "EventAggregator",
     "AggregatedEvent",
-    "EventWindow"
+    "EventWindow",
 ]

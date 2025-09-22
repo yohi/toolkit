@@ -1,20 +1,20 @@
 """Observer pattern implementations for CodeRabbit fetcher."""
 
 import logging
+import queue
+import threading
 from abc import ABC, abstractmethod
-from typing import Dict, Any, List, Optional, Callable, Union
-from enum import Enum
 from dataclasses import dataclass, field
 from datetime import datetime
-import threading
-import queue
-import time
+from enum import Enum
+from typing import Any, Dict, List, Optional
 
 logger = logging.getLogger(__name__)
 
 
 class EventType(Enum):
     """Event type enumeration."""
+
     PROCESSING_STARTED = "processing_started"
     PROCESSING_COMPLETED = "processing_completed"
     PROCESSING_FAILED = "processing_failed"
@@ -30,6 +30,7 @@ class EventType(Enum):
 @dataclass
 class Event:
     """Event data structure."""
+
     event_type: EventType
     timestamp: datetime = field(default_factory=datetime.now)
     source: str = ""
@@ -40,12 +41,12 @@ class Event:
     def to_dict(self) -> Dict[str, Any]:
         """Convert event to dictionary."""
         return {
-            'event_type': self.event_type.value,
-            'timestamp': self.timestamp.isoformat(),
-            'source': self.source,
-            'data': self.data,
-            'severity': self.severity,
-            'session_id': self.session_id
+            "event_type": self.event_type.value,
+            "timestamp": self.timestamp.isoformat(),
+            "source": self.source,
+            "data": self.data,
+            "severity": self.severity,
+            "session_id": self.session_id,
         }
 
 
@@ -120,36 +121,42 @@ class ProgressObserver(EventObserver):
         if event.event_type == EventType.PROCESSING_STARTED:
             self.session_start_times[session_id] = event.timestamp
             self.progress_data[session_id] = {
-                'started_at': event.timestamp,
-                'total_items': event.data.get('total_items', 0),
-                'processed_items': 0,
-                'current_phase': event.data.get('phase', 'unknown'),
-                'status': 'running'
+                "started_at": event.timestamp,
+                "total_items": event.data.get("total_items", 0),
+                "processed_items": 0,
+                "current_phase": event.data.get("phase", "unknown"),
+                "status": "running",
             }
 
         elif event.event_type == EventType.PROGRESS_UPDATE:
             if session_id in self.progress_data:
-                self.progress_data[session_id].update({
-                    'processed_items': event.data.get('processed_items', 0),
-                    'current_phase': event.data.get('phase', 'unknown'),
-                    'last_update': event.timestamp
-                })
+                self.progress_data[session_id].update(
+                    {
+                        "processed_items": event.data.get("processed_items", 0),
+                        "current_phase": event.data.get("phase", "unknown"),
+                        "last_update": event.timestamp,
+                    }
+                )
 
         elif event.event_type == EventType.PROCESSING_COMPLETED:
             if session_id in self.progress_data:
-                self.progress_data[session_id].update({
-                    'completed_at': event.timestamp,
-                    'status': 'completed',
-                    'final_results': event.data
-                })
+                self.progress_data[session_id].update(
+                    {
+                        "completed_at": event.timestamp,
+                        "status": "completed",
+                        "final_results": event.data,
+                    }
+                )
 
         elif event.event_type == EventType.PROCESSING_FAILED:
             if session_id in self.progress_data:
-                self.progress_data[session_id].update({
-                    'failed_at': event.timestamp,
-                    'status': 'failed',
-                    'error': event.data.get('error', 'Unknown error')
-                })
+                self.progress_data[session_id].update(
+                    {
+                        "failed_at": event.timestamp,
+                        "status": "failed",
+                        "error": event.data.get("error", "Unknown error"),
+                    }
+                )
 
     def get_progress(self, session_id: str = "default") -> Optional[Dict[str, Any]]:
         """Get progress for session.
@@ -166,22 +173,22 @@ class ProgressObserver(EventObserver):
         progress = self.progress_data[session_id].copy()
 
         # Calculate additional metrics
-        if 'started_at' in progress:
-            elapsed = datetime.now() - progress['started_at']
-            progress['elapsed_seconds'] = elapsed.total_seconds()
+        if "started_at" in progress:
+            elapsed = datetime.now() - progress["started_at"]
+            progress["elapsed_seconds"] = elapsed.total_seconds()
 
-            total_items = progress.get('total_items', 0)
-            processed_items = progress.get('processed_items', 0)
+            total_items = progress.get("total_items", 0)
+            processed_items = progress.get("processed_items", 0)
 
             if total_items > 0:
-                progress['progress_percent'] = (processed_items / total_items) * 100
+                progress["progress_percent"] = (processed_items / total_items) * 100
 
                 if processed_items > 0 and elapsed.total_seconds() > 0:
                     items_per_second = processed_items / elapsed.total_seconds()
                     remaining_items = total_items - processed_items
                     if items_per_second > 0:
                         eta_seconds = remaining_items / items_per_second
-                        progress['eta_seconds'] = eta_seconds
+                        progress["eta_seconds"] = eta_seconds
 
         return progress
 
@@ -193,7 +200,7 @@ class ProgressObserver(EventObserver):
             EventType.PROCESSING_STARTED,
             EventType.PROCESSING_COMPLETED,
             EventType.PROCESSING_FAILED,
-            EventType.PROGRESS_UPDATE
+            EventType.PROGRESS_UPDATE,
         ]
 
 
@@ -203,82 +210,88 @@ class PerformanceObserver(EventObserver):
     def __init__(self):
         """Initialize performance observer."""
         self.metrics: Dict[str, List[float]] = {
-            'processing_times': [],
-            'memory_usage': [],
-            'error_rates': []
+            "processing_times": [],
+            "memory_usage": [],
+            "error_rates": [],
         }
         self.warnings: List[Dict[str, Any]] = []
 
     def update(self, event: Event) -> None:
         """Update performance metrics."""
         if event.event_type == EventType.PROCESSING_COMPLETED:
-            processing_time = event.data.get('processing_time_seconds', 0)
+            processing_time = event.data.get("processing_time_seconds", 0)
             if processing_time > 0:
-                self.metrics['processing_times'].append(processing_time)
+                self.metrics["processing_times"].append(processing_time)
 
                 # Warn about slow processing
                 if processing_time > 30:  # More than 30 seconds
-                    self.warnings.append({
-                        'timestamp': event.timestamp,
-                        'type': 'slow_processing',
-                        'value': processing_time,
-                        'source': event.source
-                    })
+                    self.warnings.append(
+                        {
+                            "timestamp": event.timestamp,
+                            "type": "slow_processing",
+                            "value": processing_time,
+                            "source": event.source,
+                        }
+                    )
 
         elif event.event_type == EventType.MEMORY_WARNING:
-            memory_usage = event.data.get('memory_mb', 0)
+            memory_usage = event.data.get("memory_mb", 0)
             if memory_usage > 0:
-                self.metrics['memory_usage'].append(memory_usage)
-                self.warnings.append({
-                    'timestamp': event.timestamp,
-                    'type': 'high_memory_usage',
-                    'value': memory_usage,
-                    'source': event.source
-                })
+                self.metrics["memory_usage"].append(memory_usage)
+                self.warnings.append(
+                    {
+                        "timestamp": event.timestamp,
+                        "type": "high_memory_usage",
+                        "value": memory_usage,
+                        "source": event.source,
+                    }
+                )
 
         elif event.event_type == EventType.PROCESSING_FAILED:
-            self.metrics['error_rates'].append(1)
-            self.warnings.append({
-                'timestamp': event.timestamp,
-                'type': 'processing_error',
-                'error': event.data.get('error', 'Unknown'),
-                'source': event.source
-            })
+            self.metrics["error_rates"].append(1)
+            self.warnings.append(
+                {
+                    "timestamp": event.timestamp,
+                    "type": "processing_error",
+                    "error": event.data.get("error", "Unknown"),
+                    "source": event.source,
+                }
+            )
 
     def get_performance_summary(self) -> Dict[str, Any]:
         """Get performance summary."""
         summary = {}
 
         # Processing time statistics
-        if self.metrics['processing_times']:
-            times = self.metrics['processing_times']
-            summary['processing_times'] = {
-                'count': len(times),
-                'average': sum(times) / len(times),
-                'min': min(times),
-                'max': max(times),
-                'last_10_average': sum(times[-10:]) / min(len(times), 10)
+        if self.metrics["processing_times"]:
+            times = self.metrics["processing_times"]
+            summary["processing_times"] = {
+                "count": len(times),
+                "average": sum(times) / len(times),
+                "min": min(times),
+                "max": max(times),
+                "last_10_average": sum(times[-10:]) / min(len(times), 10),
             }
 
         # Memory usage statistics
-        if self.metrics['memory_usage']:
-            memory = self.metrics['memory_usage']
-            summary['memory_usage'] = {
-                'count': len(memory),
-                'average': sum(memory) / len(memory),
-                'max': max(memory),
-                'latest': memory[-1] if memory else 0
+        if self.metrics["memory_usage"]:
+            memory = self.metrics["memory_usage"]
+            summary["memory_usage"] = {
+                "count": len(memory),
+                "average": sum(memory) / len(memory),
+                "max": max(memory),
+                "latest": memory[-1] if memory else 0,
             }
 
         # Error rate
-        total_operations = len(self.metrics['processing_times']) + len(self.metrics['error_rates'])
+        total_operations = len(self.metrics["processing_times"]) + len(self.metrics["error_rates"])
         if total_operations > 0:
-            error_rate = len(self.metrics['error_rates']) / total_operations
-            summary['error_rate'] = error_rate
+            error_rate = len(self.metrics["error_rates"]) / total_operations
+            summary["error_rate"] = error_rate
 
         # Recent warnings
-        summary['recent_warnings'] = self.warnings[-5:]  # Last 5 warnings
-        summary['total_warnings'] = len(self.warnings)
+        summary["recent_warnings"] = self.warnings[-5:]  # Last 5 warnings
+        summary["total_warnings"] = len(self.warnings)
 
         return summary
 
@@ -290,7 +303,7 @@ class PerformanceObserver(EventObserver):
             EventType.PROCESSING_COMPLETED,
             EventType.PROCESSING_FAILED,
             EventType.MEMORY_WARNING,
-            EventType.PERFORMANCE_WARNING
+            EventType.PERFORMANCE_WARNING,
         ]
 
 
@@ -300,33 +313,37 @@ class QualityObserver(EventObserver):
     def __init__(self):
         """Initialize quality observer."""
         self.quality_metrics: Dict[str, List[float]] = {
-            'quality_scores': [],
-            'complexity_scores': [],
-            'maintainability_scores': []
+            "quality_scores": [],
+            "complexity_scores": [],
+            "maintainability_scores": [],
         }
         self.quality_failures: List[Dict[str, Any]] = []
 
     def update(self, event: Event) -> None:
         """Update quality metrics."""
         if event.event_type == EventType.QUALITY_CHECK_FAILED:
-            self.quality_failures.append({
-                'timestamp': event.timestamp,
-                'source': event.source,
-                'reason': event.data.get('reason', 'Unknown'),
-                'quality_score': event.data.get('quality_score', 0)
-            })
+            self.quality_failures.append(
+                {
+                    "timestamp": event.timestamp,
+                    "source": event.source,
+                    "reason": event.data.get("reason", "Unknown"),
+                    "quality_score": event.data.get("quality_score", 0),
+                }
+            )
 
         elif event.event_type == EventType.PROCESSING_COMPLETED:
-            quality_data = event.data.get('quality_metrics', {})
+            quality_data = event.data.get("quality_metrics", {})
 
-            if 'quality_score' in quality_data:
-                self.quality_metrics['quality_scores'].append(quality_data['quality_score'])
+            if "quality_score" in quality_data:
+                self.quality_metrics["quality_scores"].append(quality_data["quality_score"])
 
-            if 'complexity_score' in quality_data:
-                self.quality_metrics['complexity_scores'].append(quality_data['complexity_score'])
+            if "complexity_score" in quality_data:
+                self.quality_metrics["complexity_scores"].append(quality_data["complexity_score"])
 
-            if 'maintainability_score' in quality_data:
-                self.quality_metrics['maintainability_scores'].append(quality_data['maintainability_score'])
+            if "maintainability_score" in quality_data:
+                self.quality_metrics["maintainability_scores"].append(
+                    quality_data["maintainability_score"]
+                )
 
     def get_quality_summary(self) -> Dict[str, Any]:
         """Get quality summary."""
@@ -335,16 +352,16 @@ class QualityObserver(EventObserver):
         for metric_name, values in self.quality_metrics.items():
             if values:
                 summary[metric_name] = {
-                    'count': len(values),
-                    'average': sum(values) / len(values),
-                    'min': min(values),
-                    'max': max(values),
-                    'latest': values[-1]
+                    "count": len(values),
+                    "average": sum(values) / len(values),
+                    "min": min(values),
+                    "max": max(values),
+                    "latest": values[-1],
                 }
 
-        summary['quality_failures'] = {
-            'total': len(self.quality_failures),
-            'recent': self.quality_failures[-3:]  # Last 3 failures
+        summary["quality_failures"] = {
+            "total": len(self.quality_failures),
+            "recent": self.quality_failures[-3:],  # Last 3 failures
         }
 
         return summary
@@ -353,10 +370,7 @@ class QualityObserver(EventObserver):
         return "QualityObserver"
 
     def is_interested_in(self, event_type: EventType) -> bool:
-        return event_type in [
-            EventType.QUALITY_CHECK_FAILED,
-            EventType.PROCESSING_COMPLETED
-        ]
+        return event_type in [EventType.QUALITY_CHECK_FAILED, EventType.PROCESSING_COMPLETED]
 
 
 class EventPublisher:
@@ -435,7 +449,7 @@ class EventPublisher:
                     try:
                         if observer.is_interested_in(event.event_type):
                             observer.update(event)
-                    except Exception as e:
+                    except Exception:
                         logger.exception(f"Error notifying observer {observer.get_name()}")
 
             except queue.Empty:
@@ -455,7 +469,7 @@ class EventPublisher:
             try:
                 if observer.is_interested_in(event.event_type):
                     observer.update(event)
-            except Exception as e:
+            except Exception:
                 logger.exception(f"Error notifying observer {observer.get_name()}")
 
     def get_observer_count(self) -> int:
@@ -477,7 +491,7 @@ def publish_event(
     source: str = "",
     data: Optional[Dict[str, Any]] = None,
     severity: str = "info",
-    session_id: Optional[str] = None
+    session_id: Optional[str] = None,
 ) -> None:
     """Convenience function to publish an event.
 
@@ -493,7 +507,7 @@ def publish_event(
         source=source,
         data=data or {},
         severity=severity,
-        session_id=session_id
+        session_id=session_id,
     )
     event_publisher.publish(event)
 
@@ -513,12 +527,7 @@ def get_default_observers() -> List[EventObserver]:
     Returns:
         List of default observer instances
     """
-    return [
-        LoggingObserver(),
-        ProgressObserver(),
-        PerformanceObserver(),
-        QualityObserver()
-    ]
+    return [LoggingObserver(), ProgressObserver(), PerformanceObserver(), QualityObserver()]
 
 
 def setup_default_observers() -> None:

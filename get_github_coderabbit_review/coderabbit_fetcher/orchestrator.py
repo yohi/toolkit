@@ -1,40 +1,45 @@
 """Main orchestration logic for CodeRabbit Comment Fetcher."""
 
+import logging
 import re
 import time
-import logging
-from typing import Dict, List, Optional, Any, Callable
-from pathlib import Path
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
+from .analyzers import ClassifiedComments, CommentClassifier
+from .comment_analyzer import CommentAnalyzer
+from .comment_poster import ResolutionRequestConfig, ResolutionRequestManager
+from .config import (
+    DEFAULT_PROGRESS_STEPS,
+    DEFAULT_RESOLVED_MARKER,
+    DEFAULT_RETRY_ATTEMPTS,
+    DEFAULT_RETRY_DELAY,
+    DEFAULT_TIMEOUT_SECONDS,
+    DEFAULT_TOTAL_OPERATIONS,
+    MIN_TIMEOUT_WARNING_THRESHOLD,
+    SUPPORTED_OUTPUT_FORMATS,
+    ZERO_OR_NEGATIVE_ERROR_MSG,
+)
 from .exceptions import (
     CodeRabbitFetcherError,
+    CommentAnalysisError,
     GitHubAuthenticationError,
     InvalidPRUrlError,
     PersonaFileError,
     PersonaLoadError,
-    CommentAnalysisError
 )
-from .github_client import GitHubClient, GitHubAPIError
-from .comment_analyzer import CommentAnalyzer
-from .analyzers import CommentClassifier, ClassifiedComments
-from .persona_manager import PersonaManager
-from .formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter, LLMInstructionFormatter, AIAgentPromptFormatter
-from .resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
-from .comment_poster import ResolutionRequestManager, ResolutionRequestConfig
+from .formatters import (
+    AIAgentPromptFormatter,
+    JSONFormatter,
+    LLMInstructionFormatter,
+    MarkdownFormatter,
+    PlainTextFormatter,
+)
+from .github_client import GitHubAPIError, GitHubClient
 from .models import AnalyzedComments, CommentMetadata
-from .config import (
-    DEFAULT_RESOLVED_MARKER,
-    DEFAULT_PROGRESS_STEPS,
-    SUPPORTED_OUTPUT_FORMATS,
-    DEFAULT_TOTAL_OPERATIONS,
-    DEFAULT_TIMEOUT_SECONDS,
-    DEFAULT_RETRY_ATTEMPTS,
-    DEFAULT_RETRY_DELAY,
-    MIN_TIMEOUT_WARNING_THRESHOLD,
-    ZERO_OR_NEGATIVE_ERROR_MSG
-)
-
+from .persona_manager import PersonaManager
+from .resolved_marker import ResolvedMarkerConfig, ResolvedMarkerManager
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -43,9 +48,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExecutionConfig:
     """Configuration for main execution flow."""
+
     pr_url: str
     persona_file: Optional[str] = None
-    output_format: str = 'markdown'
+    output_format: str = "markdown"
     output_file: Optional[str] = None
     resolved_marker: str = DEFAULT_RESOLVED_MARKER
     post_resolution_request: bool = False
@@ -61,6 +67,7 @@ class ExecutionConfig:
 @dataclass
 class ExecutionMetrics:
     """Metrics collected during execution."""
+
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
     github_api_calls: int = 0
@@ -92,7 +99,12 @@ class ExecutionMetrics:
 class ProgressTracker:
     """Tracks and reports execution progress."""
 
-    def __init__(self, total_steps: int = 8, progress_callback: Optional[Callable[[str, int, int], None]] = None, quiet_mode: bool = False):
+    def __init__(
+        self,
+        total_steps: int = 8,
+        progress_callback: Optional[Callable[[str, int, int], None]] = None,
+        quiet_mode: bool = False,
+    ):
         """Initialize progress tracker.
 
         Args:
@@ -117,10 +129,14 @@ class ProgressTracker:
 
         # Only log progress if not in quiet mode
         if not self.quiet_mode:
-            logger.info(f"Progress: {self.current_step}/{self.total_steps} ({percentage:.1f}%) - {description}")
+            logger.info(
+                f"Progress: {self.current_step}/{self.total_steps} ({percentage:.1f}%) - {description}"
+            )
 
         if self.progress_callback:
-            self.progress_callback(description or "Processing...", self.current_step, self.total_steps)
+            self.progress_callback(
+                description or "Processing...", self.current_step, self.total_steps
+            )
 
     def complete(self) -> None:
         """Mark progress as complete."""
@@ -229,10 +245,12 @@ class CodeRabbitOrchestrator:
                 "output_info": output_info,
                 "resolution_info": resolution_info,
                 "metrics": self._get_metrics_summary(),
-                "execution_time": self.metrics.total_execution_time
+                "execution_time": self.metrics.total_execution_time,
             }
 
-            logger.info(f"Execution completed successfully in {self.metrics.total_execution_time:.2f}s")
+            logger.info(
+                f"Execution completed successfully in {self.metrics.total_execution_time:.2f}s"
+            )
             return results
 
         except Exception as e:
@@ -251,7 +269,7 @@ class CodeRabbitOrchestrator:
                 "error_type": type(e).__name__,
                 "recovery_info": recovery_info,
                 "metrics": self._get_metrics_summary(),
-                "execution_time": self.metrics.total_execution_time
+                "execution_time": self.metrics.total_execution_time,
             }
 
     def _initialize_components(self) -> None:
@@ -261,14 +279,13 @@ class CodeRabbitOrchestrator:
         try:
             # Initialize formatters
             self.formatters = {
-                'markdown': MarkdownFormatter(
-                    include_metadata=not self.config.quiet,
-                    include_toc=not self.config.quiet
+                "markdown": MarkdownFormatter(
+                    include_metadata=not self.config.quiet, include_toc=not self.config.quiet
                 ),
-                'json': JSONFormatter(),
-                'plain': PlainTextFormatter(),
-                'llm-instruction': LLMInstructionFormatter(),
-                'ai-agent-prompt': AIAgentPromptFormatter()
+                "json": JSONFormatter(),
+                "plain": PlainTextFormatter(),
+                "llm-instruction": LLMInstructionFormatter(),
+                "ai-agent-prompt": AIAgentPromptFormatter(),
             }
 
             # Initialize persona manager
@@ -282,9 +299,13 @@ class CodeRabbitOrchestrator:
             self.comment_analyzer = CommentAnalyzer(marker_config)
 
             # Initialize enhanced comment classifier
-            self.comment_classifier = CommentClassifier(config={
-                'resolution_patterns': [self.config.resolved_marker] if self.config.resolved_marker else []
-            })
+            self.comment_classifier = CommentClassifier(
+                config={
+                    "resolution_patterns": (
+                        [self.config.resolved_marker] if self.config.resolved_marker else []
+                    )
+                }
+            )
 
             self.is_initialized = True
             logger.debug("Component initialization completed")
@@ -321,7 +342,7 @@ class CodeRabbitOrchestrator:
                 "url": self.config.pr_url,
                 "owner": owner,
                 "repo": repo,
-                "pr_number": pr_number
+                "pr_number": pr_number,
             }
 
             logger.info(f"PR URL validated: {owner}/{repo}#{pr_number}")
@@ -373,7 +394,7 @@ class CodeRabbitOrchestrator:
             self.metrics.github_api_calls += 1
 
             # Count comments
-            total_comments = len(pr_data.get('comments', [])) + len(pr_data.get('reviews', []))
+            total_comments = len(pr_data.get("comments", [])) + len(pr_data.get("reviews", []))
             self.metrics.total_comments_processed = total_comments
 
             logger.info(f"PR data fetched in {fetch_time:.2f}s ({total_comments} comments)")
@@ -406,18 +427,24 @@ class CodeRabbitOrchestrator:
                         analyzed_comments.unresolved_threads
                     )
                     analyzed_comments.unresolved_threads = result["unresolved_threads"]
-                    self.metrics.resolved_comments_filtered = result["statistics"]["resolved_threads"]
+                    self.metrics.resolved_comments_filtered = result["statistics"][
+                        "resolved_threads"
+                    ]
 
                     # Update metadata
-                    if hasattr(analyzed_comments, 'metadata'):
-                        analyzed_comments.metadata.resolved_comments = self.metrics.resolved_comments_filtered
+                    if hasattr(analyzed_comments, "metadata"):
+                        analyzed_comments.metadata.resolved_comments = (
+                            self.metrics.resolved_comments_filtered
+                        )
 
             analysis_time = time.time() - start_time
             self.metrics.analysis_time = analysis_time
 
-            logger.info(f"Analysis completed in {analysis_time:.2f}s "
-                       f"({self.metrics.coderabbit_comments_found} CodeRabbit comments, "
-                       f"{self.metrics.resolved_comments_filtered} resolved)")
+            logger.info(
+                f"Analysis completed in {analysis_time:.2f}s "
+                f"({self.metrics.coderabbit_comments_found} CodeRabbit comments, "
+                f"{self.metrics.resolved_comments_filtered} resolved)"
+            )
 
             return analyzed_comments
 
@@ -441,57 +468,63 @@ class CodeRabbitOrchestrator:
 
         # 1. インラインコメント（GitHub経由）→ Actionable comments（解決状態チェック）
         actionable_comments = []
-        pr_comments = pr_data.get('comments', [])
+        pr_comments = pr_data.get("comments", [])
         logger.debug(f"Processing {len(pr_comments)} total PR comments for Actionable")
 
         for comment in pr_comments:
-            user_login = comment.get('user', {}).get('login', '')
+            user_login = comment.get("user", {}).get("login", "")
             # インラインコメント（diff_hunk があるもの）かつCodeRabbitによるもの
-            if (user_login.startswith('coderabbit') and
-                comment.get('diff_hunk') is not None):
+            if user_login.startswith("coderabbit") and comment.get("diff_hunk") is not None:
 
-                comment_body = comment.get('body', '')
+                comment_body = comment.get("body", "")
 
                 # 解決マーカーの確認
                 resolved_markers = [
-                    '✅ Addressed in commit',
-                    '✅ Resolved',
-                    'Addressed in commit',
-                    'Resolved in commit'
+                    "✅ Addressed in commit",
+                    "✅ Resolved",
+                    "Addressed in commit",
+                    "Resolved in commit",
                 ]
 
                 is_resolved = any(marker in comment_body for marker in resolved_markers)
 
                 if not is_resolved:  # 未解決のインラインコメントのみをActionableとして含める
                     from .models.actionable_comment import ActionableComment, CommentType, Priority
+
                     actionable = ActionableComment(
-                        comment_id=str(comment.get('id', 'unknown')),
-                        file_path=comment.get('path', 'unknown'),
-                        line_range=str(comment.get('line', 'unknown')),
+                        comment_id=str(comment.get("id", "unknown")),
+                        file_path=comment.get("path", "unknown"),
+                        line_range=str(comment.get("line", "unknown")),
                         issue_description=comment_body,
                         comment_type=CommentType.GENERAL,  # インラインコメント用
                         priority=Priority.MEDIUM,  # インラインコメントはMEDIUM優先度
                         raw_content=comment_body,
                         proposed_diff="",
-                        is_resolved=False
+                        is_resolved=False,
                     )
                     actionable_comments.append(actionable)
-                    logger.debug(f"Found unresolved CodeRabbit inline comment: {comment.get('path', 'unknown')}:{comment.get('line', 'unknown')}")
+                    logger.debug(
+                        f"Found unresolved CodeRabbit inline comment: {comment.get('path', 'unknown')}:{comment.get('line', 'unknown')}"
+                    )
                 else:
-                    logger.debug(f"Skipped resolved inline comment: {comment.get('path', 'unknown')}:{comment.get('line', 'unknown')}")
+                    logger.debug(
+                        f"Skipped resolved inline comment: {comment.get('path', 'unknown')}:{comment.get('line', 'unknown')}"
+                    )
 
-        logger.info(f"Found {len(actionable_comments)} unresolved CodeRabbit inline comments (Actionable)")
+        logger.info(
+            f"Found {len(actionable_comments)} unresolved CodeRabbit inline comments (Actionable)"
+        )
 
         # 2. レビューサマリー内のNitpick + Outside diff rangeセクション
         review_bodies = []
-        reviews = pr_data.get('reviews', [])
+        reviews = pr_data.get("reviews", [])
         logger.debug(f"Processing {len(reviews)} reviews for Nitpick/Outside diff extraction")
 
         for review in reviews:
-            user_login = review.get('author', {}).get('login', '')
-            review_body = review.get('body', '')
+            user_login = review.get("author", {}).get("login", "")
+            review_body = review.get("body", "")
 
-            if user_login == 'coderabbitai' and review_body:
+            if user_login == "coderabbitai" and review_body:
                 review_bodies.append(review_body)
 
         nitpick_comments = []
@@ -504,40 +537,58 @@ class CodeRabbitOrchestrator:
             outside_diff_comments = classified.outside_diff_comments
 
             # カッコ内数字で期待される件数を確認
-            expected_nitpick = sum(self.comment_classifier._extract_nitpick_counts_from_sections(review_bodies))
-            expected_outside_diff = sum(self.comment_classifier._extract_outside_diff_counts_from_sections(review_bodies))
+            expected_nitpick = sum(
+                self.comment_classifier._extract_nitpick_counts_from_sections(review_bodies)
+            )
+            expected_outside_diff = sum(
+                self.comment_classifier._extract_outside_diff_counts_from_sections(review_bodies)
+            )
 
             logger.info(f"期待Nitpick件数: {expected_nitpick}, 実際抽出数: {len(nitpick_comments)}")
-            logger.info(f"期待Outside Diff件数: {expected_outside_diff}, 実際抽出数: {len(outside_diff_comments)}")
+            logger.info(
+                f"期待Outside Diff件数: {expected_outside_diff}, 実際抽出数: {len(outside_diff_comments)}"
+            )
 
             # 件数調整（期待値に合わせて調整）
             # Note: 実際に抽出されたコメント数を優先し、切り詰めは行わない
             if len(nitpick_comments) != expected_nitpick:
                 if len(nitpick_comments) > expected_nitpick:
                     # 実際の数が多い場合でも、すべてのコメントを保持
-                    logger.info(f"期待Nitpick件数: {expected_nitpick}, 実際抽出数: {len(nitpick_comments)} - すべて保持")
+                    logger.info(
+                        f"期待Nitpick件数: {expected_nitpick}, 実際抽出数: {len(nitpick_comments)} - すべて保持"
+                    )
                 else:
                     # 実際の数が少ない場合は補完
                     additional_needed = expected_nitpick - len(nitpick_comments)
-                    additional_comments = self.comment_classifier._generate_nitpick_comments(additional_needed)
+                    additional_comments = self.comment_classifier._generate_nitpick_comments(
+                        additional_needed
+                    )
                     nitpick_comments.extend(additional_comments)
                     logger.info(f"Nitpickコメント {additional_needed} 件を補完")
 
             if len(outside_diff_comments) != expected_outside_diff:
                 if len(outside_diff_comments) > expected_outside_diff:
                     # 実際の数が多い場合でも、すべてのコメントを保持
-                    logger.info(f"期待Outside Diff件数: {expected_outside_diff}, 実際抽出数: {len(outside_diff_comments)} - すべて保持")
+                    logger.info(
+                        f"期待Outside Diff件数: {expected_outside_diff}, 実際抽出数: {len(outside_diff_comments)} - すべて保持"
+                    )
                 else:
                     # 実際の数が少ない場合は補完
                     additional_needed = expected_outside_diff - len(outside_diff_comments)
-                    additional_comments = self.comment_classifier._generate_outside_diff_comments(additional_needed)
+                    additional_comments = self.comment_classifier._generate_outside_diff_comments(
+                        additional_needed
+                    )
                     outside_diff_comments.extend(additional_comments)
                     logger.info(f"Outside Diffコメント {additional_needed} 件を補完")
 
-            logger.info(f"最終結果: {len(nitpick_comments)} Nitpick, {len(outside_diff_comments)} Outside diff comments")
+            logger.info(
+                f"最終結果: {len(nitpick_comments)} Nitpick, {len(outside_diff_comments)} Outside diff comments"
+            )
 
         # メトリクス更新
-        self.metrics.coderabbit_comments_found = len(actionable_comments) + len(nitpick_comments) + len(outside_diff_comments)
+        self.metrics.coderabbit_comments_found = (
+            len(actionable_comments) + len(nitpick_comments) + len(outside_diff_comments)
+        )
         self.metrics.resolved_comments_filtered = 0  # インラインコメント解決状態は個別チェック済み
 
         # AnalyzedComments形式に変換
@@ -547,14 +598,13 @@ class CodeRabbitOrchestrator:
 
         # 調整済みカウントをメタデータに保存
         adjusted_counts = {
-            'total': len(actionable_comments) + len(nitpick_comments) + len(outside_diff_comments),
-            'actionable': len(actionable_comments),
-            'nitpick': len(nitpick_comments),
-            'outside_diff': len(outside_diff_comments)
+            "total": len(actionable_comments) + len(nitpick_comments) + len(outside_diff_comments),
+            "actionable": len(actionable_comments),
+            "nitpick": len(nitpick_comments),
+            "outside_diff": len(outside_diff_comments),
         }
         analyzed_comments.metadata.adjusted_counts = adjusted_counts
         logger.debug(f"調整済みカウントを設定: {adjusted_counts}")
-
 
         logger.info(
             f"Hybrid classification complete: "
@@ -566,12 +616,8 @@ class CodeRabbitOrchestrator:
         return analyzed_comments
 
     def _create_analyzed_comments_from_hybrid_classification(
-        self,
-        actionable_comments,
-        nitpick_comments,
-        outside_diff_comments,
-        pr_data: Dict[str, Any]
-    ) -> 'AnalyzedComments':
+        self, actionable_comments, nitpick_comments, outside_diff_comments, pr_data: Dict[str, Any]
+    ) -> "AnalyzedComments":
         """
         ハイブリッド分類からAnalyzedCommentsオブジェクトを作成
 
@@ -584,14 +630,13 @@ class CodeRabbitOrchestrator:
         Returns:
             AnalyzedComments: 分析済みコメント
         """
-        from .models import AnalyzedComments, CommentMetadata, ReviewComment
-        from .models.actionable_comment import ActionableComment
-        from .models.review_comment import NitpickComment, OutsideDiffComment
         from urllib.parse import urlparse
+
+        from .models import AnalyzedComments, ReviewComment
 
         # PR URLから情報を抽出
         url_parts = urlparse(self.config.pr_url)
-        path_parts = url_parts.path.strip('/').split('/')
+        path_parts = url_parts.path.strip("/").split("/")
         owner = path_parts[0] if len(path_parts) > 0 else "unknown"
         repo = path_parts[1] if len(path_parts) > 1 else "unknown"
         pr_number = int(path_parts[3]) if len(path_parts) > 3 and path_parts[3].isdigit() else 0
@@ -599,14 +644,18 @@ class CodeRabbitOrchestrator:
         # メタデータ作成
         metadata = CommentMetadata(
             pr_number=pr_number,
-            pr_title=pr_data.get('title', ''),
+            pr_title=pr_data.get("title", ""),
             owner=owner,
             repo=repo,
-            total_comments=len(actionable_comments) + len(nitpick_comments) + len(outside_diff_comments),
-            coderabbit_comments=len(actionable_comments) + len(nitpick_comments) + len(outside_diff_comments),
+            total_comments=len(actionable_comments)
+            + len(nitpick_comments)
+            + len(outside_diff_comments),
+            coderabbit_comments=len(actionable_comments)
+            + len(nitpick_comments)
+            + len(outside_diff_comments),
             resolved_comments=0,
             actionable_comments=len(actionable_comments),
-            processing_time_seconds=0.0
+            processing_time_seconds=0.0,
         )
 
         # ReviewCommentオブジェクトを作成
@@ -621,19 +670,19 @@ class CodeRabbitOrchestrator:
             nitpick_comments=nitpick_comments,
             outside_diff_comments=outside_diff_comments,
             has_high_priority_issues=any(
-                str(comment.priority) in ['critical', 'high']
+                str(comment.priority) in ["critical", "high"]
                 for comment in actionable_comments
-                if hasattr(comment, 'priority')
+                if hasattr(comment, "priority")
             ),
             has_ai_prompts=False,
-            summary=""
+            summary="",
         )
 
         return AnalyzedComments(
             summary_comments=[],
             review_comments=[review_comment],
             unresolved_threads=[],
-            metadata=metadata
+            metadata=metadata,
         )
 
     def _extract_nitpick_section_only(self, review_body: str) -> str:
@@ -650,8 +699,8 @@ class CodeRabbitOrchestrator:
 
         # Nitpickセクションパターン
         nitpick_pattern = re.compile(
-            r'<summary>🧹 Nitpick comments \(\d+\)</summary>(.*?)(?=<summary>|$)',
-            re.MULTILINE | re.DOTALL
+            r"<summary>🧹 Nitpick comments \(\d+\)</summary>(.*?)(?=<summary>|$)",
+            re.MULTILINE | re.DOTALL,
         )
 
         match = nitpick_pattern.search(review_body)
@@ -664,11 +713,8 @@ class CodeRabbitOrchestrator:
         return ""
 
     def _create_analyzed_comments_from_correct_classification(
-        self,
-        actionable_comments,
-        nitpick_comments,
-        pr_data: Dict[str, Any]
-    ) -> 'AnalyzedComments':
+        self, actionable_comments, nitpick_comments, pr_data: Dict[str, Any]
+    ) -> "AnalyzedComments":
         """
         正しい分類からAnalyzedCommentsオブジェクトを作成
 
@@ -680,14 +726,13 @@ class CodeRabbitOrchestrator:
         Returns:
             AnalyzedComments: 分析済みコメント
         """
-        from .models import AnalyzedComments, CommentMetadata, ReviewComment
-        from .models.actionable_comment import ActionableComment
-        from .models.review_comment import NitpickComment
         from urllib.parse import urlparse
+
+        from .models import AnalyzedComments, ReviewComment
 
         # PR URLから情報を抽出
         url_parts = urlparse(self.config.pr_url)
-        path_parts = url_parts.path.strip('/').split('/')
+        path_parts = url_parts.path.strip("/").split("/")
         owner = path_parts[0] if len(path_parts) > 0 else "unknown"
         repo = path_parts[1] if len(path_parts) > 1 else "unknown"
         pr_number = int(path_parts[3]) if len(path_parts) > 3 and path_parts[3].isdigit() else 0
@@ -695,14 +740,14 @@ class CodeRabbitOrchestrator:
         # メタデータ作成
         metadata = CommentMetadata(
             pr_number=pr_number,
-            pr_title=pr_data.get('title', ''),
+            pr_title=pr_data.get("title", ""),
             owner=owner,
             repo=repo,
             total_comments=len(actionable_comments) + len(nitpick_comments),
             coderabbit_comments=len(actionable_comments) + len(nitpick_comments),
             resolved_comments=0,
             actionable_comments=len(actionable_comments),
-            processing_time_seconds=0.0
+            processing_time_seconds=0.0,
         )
 
         # ReviewCommentオブジェクトを作成
@@ -717,29 +762,30 @@ class CodeRabbitOrchestrator:
             nitpick_comments=nitpick_comments,
             outside_diff_comments=[],  # 現在は使用しない
             has_high_priority_issues=any(
-                str(comment.priority) in ['critical', 'high']
+                str(comment.priority) in ["critical", "high"]
                 for comment in actionable_comments
-                if hasattr(comment, 'priority')
+                if hasattr(comment, "priority")
             ),
             has_ai_prompts=False,  # 今回は使用しない
-            summary=""
+            summary="",
         )
 
         return AnalyzedComments(
             summary_comments=[],
             review_comments=[review_comment],
             unresolved_threads=[],
-            metadata=metadata
+            metadata=metadata,
         )
 
     def _create_empty_analyzed_comments(self) -> AnalyzedComments:
         """空のAnalyzedCommentsオブジェクトを作成"""
-        from .models import AnalyzedComments, CommentMetadata, ReviewComment
         from urllib.parse import urlparse
+
+        from .models import AnalyzedComments
 
         # PR URLから情報を抽出
         url_parts = urlparse(self.config.pr_url)
-        path_parts = url_parts.path.strip('/').split('/')
+        path_parts = url_parts.path.strip("/").split("/")
         owner = path_parts[0] if len(path_parts) > 0 else "unknown"
         repo = path_parts[1] if len(path_parts) > 1 else "unknown"
         pr_number = int(path_parts[3]) if len(path_parts) > 3 and path_parts[3].isdigit() else 0
@@ -753,20 +799,15 @@ class CodeRabbitOrchestrator:
             coderabbit_comments=0,
             resolved_comments=0,
             actionable_comments=0,
-            processing_time_seconds=0.0
+            processing_time_seconds=0.0,
         )
 
         return AnalyzedComments(
-            summary_comments=[],
-            review_comments=[],
-            unresolved_threads=[],
-            metadata=metadata
+            summary_comments=[], review_comments=[], unresolved_threads=[], metadata=metadata
         )
 
     def _convert_classified_to_analyzed(
-        self,
-        classified: ClassifiedComments,
-        pr_data: Dict[str, Any]
+        self, classified: ClassifiedComments, pr_data: Dict[str, Any]
     ) -> AnalyzedComments:
         """
         ClassifiedCommentsをAnalyzedCommentsに変換
@@ -778,19 +819,20 @@ class CodeRabbitOrchestrator:
         Returns:
             AnalyzedComments: 既存形式の解析済みコメント
         """
-        from .models import AnalyzedComments, CommentMetadata, ReviewComment
-        from .models.thread_context import ThreadContext
-
         # PR URLから情報を抽出
         from urllib.parse import urlparse
+
+        from .models import AnalyzedComments, ReviewComment
+        from .models.thread_context import ThreadContext
+
         url_parts = urlparse(self.config.pr_url)
-        path_parts = url_parts.path.strip('/').split('/')
+        path_parts = url_parts.path.strip("/").split("/")
         owner = path_parts[0] if len(path_parts) > 0 else "unknown"
         repo = path_parts[1] if len(path_parts) > 1 else "unknown"
         pr_number = int(path_parts[3]) if len(path_parts) > 3 and path_parts[3].isdigit() else 0
 
         # PR情報を取得（利用可能な場合）
-        pr_title = pr_data.get('title', '') if pr_data else ''
+        pr_title = pr_data.get("title", "") if pr_data else ""
 
         # メタデータの構築
         metadata = CommentMetadata(
@@ -800,9 +842,10 @@ class CodeRabbitOrchestrator:
             repo=repo,
             total_comments=classified.total_parsed,
             coderabbit_comments=classified.total_parsed,
-            resolved_comments=classified.total_actionable_found - classified.total_actionable_unresolved,
+            resolved_comments=classified.total_actionable_found
+            - classified.total_actionable_unresolved,
             actionable_comments=classified.total_actionable_unresolved,
-            processing_time_seconds=self.metrics.analysis_time
+            processing_time_seconds=self.metrics.analysis_time,
         )
 
         # ReviewCommentの構築
@@ -812,7 +855,7 @@ class CodeRabbitOrchestrator:
             nitpick_comments=classified.nitpick_comments,
             outside_diff_comments=classified.outside_diff_comments,
             ai_agent_prompts=self._extract_ai_agent_prompts(classified),
-            raw_content=""  # 必要に応じて設定
+            raw_content="",  # 必要に応じて設定
         )
 
         # ThreadContextの構築（未解決スレッド用）
@@ -829,11 +872,13 @@ class CodeRabbitOrchestrator:
                 is_resolved=False,
                 context_summary=actionable.issue_description,
                 ai_summary="",
-                chronological_comments=[{
-                    "user": {"login": "coderabbitai"},
-                    "body": actionable.issue_description,
-                    "created_at": ""
-                }]
+                chronological_comments=[
+                    {
+                        "user": {"login": "coderabbitai"},
+                        "body": actionable.issue_description,
+                        "created_at": "",
+                    }
+                ],
             )
             unresolved_threads.append(thread)
 
@@ -841,7 +886,7 @@ class CodeRabbitOrchestrator:
             summary_comments=self._extract_summary_comments(classified),
             review_comments=[review_comment],
             unresolved_threads=unresolved_threads,
-            metadata=metadata
+            metadata=metadata,
         )
 
     def _extract_ai_agent_prompts(self, classified_comments) -> List:
@@ -858,13 +903,13 @@ class CodeRabbitOrchestrator:
         try:
             # Extract from actionable comments that contain AI agent prompts
             for comment in classified_comments.actionable_comments:
-                if hasattr(comment, 'raw_content') and comment.raw_content:
+                if hasattr(comment, "raw_content") and comment.raw_content:
                     # Look for AI agent prompt patterns
                     ai_patterns = [
                         r"🤖 Prompt for AI Agents",
                         r"Prompt for AI Agents",
                         r"AI Agent Prompt",
-                        r"For AI Agents"
+                        r"For AI Agents",
                     ]
 
                     for pattern in ai_patterns:
@@ -873,15 +918,16 @@ class CodeRabbitOrchestrator:
                             prompt_match = re.search(
                                 rf"{pattern}\s*\n(.*?)(?=\n## |\n\Z)",
                                 comment.raw_content,
-                                re.DOTALL | re.IGNORECASE
+                                re.DOTALL | re.IGNORECASE,
                             )
 
                             if prompt_match:
                                 from .models import AIAgentPrompt
+
                                 ai_prompt = AIAgentPrompt(
                                     prompt_text=prompt_match.group(1).strip(),
                                     context="review_comment",
-                                    raw_content=comment.raw_content
+                                    raw_content=comment.raw_content,
                                 )
                                 ai_prompts.append(ai_prompt)
                                 break
@@ -929,7 +975,7 @@ class CodeRabbitOrchestrator:
                 walkthrough=summary_text,
                 changes_table="",
                 sequence_diagram="",
-                raw_content=summary_text
+                raw_content=summary_text,
             )
 
             summary_comments.append(summary_comment)
@@ -952,32 +998,35 @@ class CodeRabbitOrchestrator:
             logger.debug(f"Using formatter for output format: {self.config.output_format}")
 
             if not formatter:
-                raise CodeRabbitFetcherError(f"Unsupported output format: {self.config.output_format}")
+                raise CodeRabbitFetcherError(
+                    f"Unsupported output format: {self.config.output_format}"
+                )
 
             # Get PR information for formatters that need it
             pr_info = None
-            if self.config.output_format == 'ai-agent-prompt':
+            if self.config.output_format == "ai-agent-prompt":
                 try:
                     pr_info = self.github_client.get_pr_info(self.config.pr_url)
                 except Exception as e:
                     logger.warning(f"Failed to fetch PR info for formatter: {e}")
 
             # Pass appropriate parameters to formatter based on its signature
-            if hasattr(formatter, 'format'):
+            if hasattr(formatter, "format"):
                 import inspect
+
                 sig = inspect.signature(formatter.format)
                 params = list(sig.parameters.keys())
 
                 kwargs = {
-                    'persona': persona,
-                    'analyzed_comments': analyzed_comments,
-                    'quiet': self.config.quiet
+                    "persona": persona,
+                    "analyzed_comments": analyzed_comments,
+                    "quiet": self.config.quiet,
                 }
 
-                if 'github_client' in params:
-                    kwargs['github_client'] = self.github_client
-                if 'pr_info' in params:
-                    kwargs['pr_info'] = pr_info
+                if "github_client" in params:
+                    kwargs["github_client"] = self.github_client
+                if "pr_info" in params:
+                    kwargs["pr_info"] = pr_info
 
                 formatted_content = formatter.format(**kwargs)
             else:
@@ -986,10 +1035,12 @@ class CodeRabbitOrchestrator:
             format_time = time.time() - start_time
 
             self.metrics.formatting_time = format_time
-            self.metrics.output_size_bytes = len(formatted_content.encode('utf-8'))
+            self.metrics.output_size_bytes = len(formatted_content.encode("utf-8"))
 
-            logger.info(f"Output formatted in {format_time:.2f}s "
-                       f"({self.metrics.output_size_bytes} bytes)")
+            logger.info(
+                f"Output formatted in {format_time:.2f}s "
+                f"({self.metrics.output_size_bytes} bytes)"
+            )
 
             return formatted_content
 
@@ -1004,14 +1055,14 @@ class CodeRabbitOrchestrator:
             output_info = {
                 "content_length": len(formatted_content),
                 "output_file": self.config.output_file,
-                "format": self.config.output_format
+                "format": self.config.output_format,
             }
 
             if self.config.output_file:
                 output_path = Path(self.config.output_file)
                 output_path.parent.mkdir(parents=True, exist_ok=True)
 
-                with open(output_path, 'w', encoding='utf-8') as f:
+                with open(output_path, "w", encoding="utf-8") as f:
                     f.write(formatted_content)
 
                 output_info["file_size"] = output_path.stat().st_size
@@ -1025,7 +1076,9 @@ class CodeRabbitOrchestrator:
         except Exception as e:
             raise CodeRabbitFetcherError(f"Failed to write output: {e}") from e
 
-    def _post_resolution_request(self, analyzed_comments: AnalyzedComments) -> Optional[Dict[str, Any]]:
+    def _post_resolution_request(
+        self, analyzed_comments: AnalyzedComments
+    ) -> Optional[Dict[str, Any]]:
         """Post resolution request to CodeRabbit."""
         if not self.config.post_resolution_request:
             return None
@@ -1035,7 +1088,9 @@ class CodeRabbitOrchestrator:
         try:
             # Initialize resolution request manager if needed
             if not self.resolution_request_manager:
-                request_config = ResolutionRequestConfig(resolved_marker=self.config.resolved_marker)
+                request_config = ResolutionRequestConfig(
+                    resolved_marker=self.config.resolved_marker
+                )
                 self.resolution_request_manager = ResolutionRequestManager(
                     self.github_client, request_config
                 )
@@ -1069,15 +1124,17 @@ class CodeRabbitOrchestrator:
         """Generate context for resolution request."""
         context_parts = []
 
-        if hasattr(analyzed_comments, 'metadata'):
+        if hasattr(analyzed_comments, "metadata"):
             metadata = analyzed_comments.metadata
-            context_parts.extend([
-                f"Total comments analyzed: {metadata.total_comments}",
-                f"CodeRabbit comments: {metadata.coderabbit_comments}",
-                f"Actionable comments: {metadata.actionable_comments}"
-            ])
+            context_parts.extend(
+                [
+                    f"Total comments analyzed: {metadata.total_comments}",
+                    f"CodeRabbit comments: {metadata.coderabbit_comments}",
+                    f"Actionable comments: {metadata.actionable_comments}",
+                ]
+            )
 
-        if hasattr(analyzed_comments, 'unresolved_threads'):
+        if hasattr(analyzed_comments, "unresolved_threads"):
             thread_count = len(analyzed_comments.unresolved_threads)
             if thread_count > 0:
                 context_parts.append(f"Unresolved threads: {thread_count}")
@@ -1086,11 +1143,7 @@ class CodeRabbitOrchestrator:
 
     def _attempt_error_recovery(self, error: Exception) -> Dict[str, Any]:
         """Attempt graceful error recovery."""
-        recovery_info = {
-            "attempted": False,
-            "successful": False,
-            "recommendations": []
-        }
+        recovery_info = {"attempted": False, "successful": False, "recommendations": []}
 
         logger.debug(f"Attempting error recovery for: {type(error).__name__}")
 
@@ -1101,7 +1154,7 @@ class CodeRabbitOrchestrator:
                 "1. Install GitHub CLI: https://cli.github.com/",
                 "2. Run: gh auth login",
                 "3. Follow the authentication prompts",
-                "4. Verify with: gh auth status"
+                "4. Verify with: gh auth status",
             ]
 
         # GitHub API errors
@@ -1111,7 +1164,7 @@ class CodeRabbitOrchestrator:
                 "1. Check your internet connection",
                 "2. Verify the PR URL is correct and accessible",
                 "3. Check GitHub API rate limits with: gh api /rate_limit",
-                "4. Try again in a few minutes if rate limited"
+                "4. Try again in a few minutes if rate limited",
             ]
 
         # Invalid PR URL errors
@@ -1120,7 +1173,7 @@ class CodeRabbitOrchestrator:
             recovery_info["recommendations"] = [
                 "1. Verify the PR URL format: https://github.com/owner/repo/pull/123",
                 "2. Ensure the pull request exists and is accessible",
-                "3. Check for typos in the URL"
+                "3. Check for typos in the URL",
             ]
 
         # Persona file errors
@@ -1129,7 +1182,7 @@ class CodeRabbitOrchestrator:
             recovery_info["recommendations"] = [
                 "1. Check that the persona file exists and is readable",
                 "2. Verify file permissions",
-                "3. Try using the default persona (omit --persona-file option)"
+                "3. Try using the default persona (omit --persona-file option)",
             ]
 
         # Generic network/timeout errors
@@ -1138,7 +1191,7 @@ class CodeRabbitOrchestrator:
             recovery_info["recommendations"] = [
                 "1. Check your internet connection",
                 "2. Try again with increased timeout",
-                "3. Verify GitHub is accessible: https://status.github.com/"
+                "3. Verify GitHub is accessible: https://status.github.com/",
             ]
 
         return recovery_info
@@ -1157,7 +1210,7 @@ class CodeRabbitOrchestrator:
             "output_size_bytes": self.metrics.output_size_bytes,
             "errors_count": len(self.metrics.errors_encountered),
             "warnings_count": len(self.metrics.warnings_issued),
-            "success_rate": self.metrics.success_rate
+            "success_rate": self.metrics.success_rate,
         }
 
     def get_detailed_metrics(self) -> ExecutionMetrics:
@@ -1169,8 +1222,9 @@ class CodeRabbitOrchestrator:
         return {
             "current_step": self.progress_tracker.current_step,
             "total_steps": self.progress_tracker.total_steps,
-            "percentage": (self.progress_tracker.current_step / self.progress_tracker.total_steps) * 100,
-            "is_complete": self.progress_tracker.current_step >= self.progress_tracker.total_steps
+            "percentage": (self.progress_tracker.current_step / self.progress_tracker.total_steps)
+            * 100,
+            "is_complete": self.progress_tracker.current_step >= self.progress_tracker.total_steps,
         }
 
     def validate_configuration(self) -> Dict[str, Any]:
@@ -1179,11 +1233,7 @@ class CodeRabbitOrchestrator:
         Returns:
             Dictionary with validation results
         """
-        validation_result = {
-            "valid": True,
-            "issues": [],
-            "warnings": []
-        }
+        validation_result = {"valid": True, "issues": [], "warnings": []}
 
         # Validate PR URL format
         if not self.config.pr_url:
@@ -1196,17 +1246,23 @@ class CodeRabbitOrchestrator:
         # Validate output format
         if self.config.output_format not in SUPPORTED_OUTPUT_FORMATS:
             validation_result["valid"] = False
-            validation_result["issues"].append(f"Invalid output format: {self.config.output_format}")
+            validation_result["issues"].append(
+                f"Invalid output format: {self.config.output_format}"
+            )
 
         # Validate persona file
         if self.config.persona_file:
             persona_path = Path(self.config.persona_file)
             if not persona_path.exists():
                 validation_result["valid"] = False
-                validation_result["issues"].append(f"Persona file not found: {self.config.persona_file}")
+                validation_result["issues"].append(
+                    f"Persona file not found: {self.config.persona_file}"
+                )
             elif not persona_path.is_file():
                 validation_result["valid"] = False
-                validation_result["issues"].append(f"Persona path is not a file: {self.config.persona_file}")
+                validation_result["issues"].append(
+                    f"Persona path is not a file: {self.config.persona_file}"
+                )
             elif not persona_path.stat().st_size > 0:
                 validation_result["warnings"].append("Persona file is empty")
 
