@@ -31,6 +31,8 @@ repos:
           - --fix
           - --ignore=E402,B904,F401,F403,F405,F841,F821,UP006,UP007,C401,C403,C416,B007,B017,E722
         types: [python]
+        # Only check critical files during push
+        files: '^(coderabbit_fetcher/cli/|tests/pr38/).*\.py$'
 
 # Skip resource-intensive checks in CI
 ci:

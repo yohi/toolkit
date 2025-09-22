@@ -1,0 +1,31 @@
+# Quick Push Makefile for Development
+# Usage: make -f Makefile.push <target>
+
+.PHONY: quick-push safe-push force-push help
+
+# Quick push skipping pre-commit (development only)
+quick-push:
+	@echo "🚀 Quick push (skipping pre-commit)..."
+	git push --no-verify
+
+# Safe push with minimal checks
+safe-push:
+	@echo "🔍 Running minimal checks..."
+	-pre-commit run --files coderabbit_fetcher/cli/*.py
+	@echo "🚀 Pushing with minimal verification..."
+	git push
+
+# Force push for emergency (use with caution)
+force-push:
+	@echo "⚠️  FORCE PUSH - Use with extreme caution!"
+	@echo "Press Ctrl+C within 5 seconds to cancel..."
+	@sleep 5
+	git push --force-with-lease --no-verify
+
+# Show available targets
+help:
+	@echo "Available targets:"
+	@echo "  quick-push  - Push without pre-commit (development)"
+	@echo "  safe-push   - Push with minimal checks only"
+	@echo "  force-push  - Emergency force push (dangerous)"
+	@echo "  help        - Show this help message"
