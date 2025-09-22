@@ -1,7 +1,12 @@
 """Unit tests for resolved marker management."""
 
 import pytest
+import sys
+from pathlib import Path
 from unittest.mock import Mock, patch
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from coderabbit_fetcher.resolved_marker import (
     ResolvedMarkerConfig,

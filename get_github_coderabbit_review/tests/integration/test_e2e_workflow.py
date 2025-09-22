@@ -4,8 +4,13 @@ import unittest
 import tempfile
 import os
 import json
+import sys
+from pathlib import Path
 from unittest.mock import patch, MagicMock
 from typing import Dict, Any
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionConfig
 from coderabbit_fetcher.exceptions import (

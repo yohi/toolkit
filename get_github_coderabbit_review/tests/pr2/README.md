@@ -22,7 +22,7 @@ tests/pr2/
 
 ## テスト実行方法
 
-### 単体実行
+### 単体実行（推奨）
 ```bash
 cd tests/pr2
 python test_pr2_quiet_mode.py

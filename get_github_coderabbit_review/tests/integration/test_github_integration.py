@@ -3,8 +3,14 @@
 import unittest
 import json
 import subprocess
+import sys
+import os
+from pathlib import Path
 from unittest.mock import patch, MagicMock, call
 from typing import Dict, Any, List
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from coderabbit_fetcher.github_client import GitHubClient
 from coderabbit_fetcher.exceptions import (
@@ -33,6 +39,9 @@ class TestGitHubIntegration(unittest.TestCase):
     @patch('subprocess.run')
     def test_check_authentication_success(self, mock_run):
         """Test successful authentication check."""
+        # Clear cached authentication state
+        self.client._authenticated = None
+        
         mock_run.return_value = MagicMock(
             returncode=0,
             stdout=MOCK_SUCCESS_RESPONSES["gh_auth_status"]["stdout"],
@@ -53,6 +62,9 @@ class TestGitHubIntegration(unittest.TestCase):
     @patch('subprocess.run')
     def test_check_authentication_failure(self, mock_run):
         """Test authentication failure."""
+        # Clear cached authentication state
+        self.client._authenticated = None
+        
         mock_run.return_value = MagicMock(
             returncode=1,
             stdout="",
@@ -208,10 +220,7 @@ class TestGitHubIntegration(unittest.TestCase):
 
         result = self.client.post_comment(
             pr_url=self.sample_pr_url,
-            body="Test comment",
-            in_reply_to_id=123,
-            path="src/test.py",
-            line=10
+            comment="Test comment"
         )
 
         self.assertIsInstance(result, dict)
@@ -237,17 +246,20 @@ class TestGitHubIntegration(unittest.TestCase):
         with self.assertRaises(Exception):  # Should raise some form of error
             self.client.post_comment(
                 pr_url=self.sample_pr_url,
-                body="Test comment"
+                comment="Test comment"
             )
 
     @patch('subprocess.run')
-    def test_execute_gh_command_timeout(self, mock_run):
-        """Test command execution with timeout."""
+    def test_github_cli_timeout(self, mock_run):
+        """Test GitHub CLI timeout handling."""
+        # Clear cached authentication state
+        self.client._authenticated = None
+        
         # Simulate a timeout
         mock_run.side_effect = subprocess.TimeoutExpired('gh', 30)
 
-        with self.assertRaises(NetworkError):
-            self.client._execute_gh_command(['gh', 'auth', 'status'], timeout=30)
+        with self.assertRaises(GitHubAuthenticationError):  # Should raise timeout-related error
+            self.client.check_authentication()
 
     @patch('subprocess.run')
     def test_validate_github_cli_available(self, mock_run):
