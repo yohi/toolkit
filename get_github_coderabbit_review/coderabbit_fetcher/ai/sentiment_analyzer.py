@@ -569,7 +569,7 @@ class SentimentAnalyzer:
             matches = re.findall(pattern, text, re.IGNORECASE)
             keywords.extend(matches)
 
-        return list(set([kw.lower() for kw in keywords if len(kw) > 2]))
+        return list({kw.lower() for kw in keywords if len(kw) > 2})
 
     def _update_stats(self, result: SentimentScore) -> None:
         """Update analysis statistics."""
