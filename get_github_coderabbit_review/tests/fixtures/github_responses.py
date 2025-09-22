@@ -15,6 +15,7 @@ MOCK_GH_PR_RESPONSE = {
     "repository": {"name": "repo", "owner": {"login": "owner"}},
     "url": "https://github.com/owner/repo/pull/104",
     "baseRepository": {"name": "repo", "owner": {"login": "owner"}},
+    "comments": [],  # Add expected comments key
 }
 
 # Mock GitHub CLI comments response
