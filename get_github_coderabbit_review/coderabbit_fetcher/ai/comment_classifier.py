@@ -202,7 +202,14 @@ class AICommentClassifier:
         Returns:
             Classification result
         """
-        return asyncio.run(self.classify_comment_async(comment_text, context))
+        try:
+            asyncio.get_running_loop()
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                fut = ex.submit(asyncio.run, self.classify_comment_async(comment_text, context))
+                return fut.result()
+        except RuntimeError:
+            return asyncio.run(self.classify_comment_async(comment_text, context))
 
     async def classify_comments_batch_async(
         self,

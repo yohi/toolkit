@@ -697,12 +697,12 @@ class AICodeAnalyzer:
     def _generate_issue_id(self, issue_data: Dict[str, Any]) -> str:
         """Generate unique issue ID."""
         content = f"{issue_data.get('type', '')}{issue_data.get('description', '')}{issue_data.get('line_number', '')}"
-        return hashlib.md5(content.encode()).hexdigest()[:8]
+        return hashlib.blake2s(content.encode(), digest_size=8).hexdigest()
 
     def _generate_analysis_id(self, code: str, file_path: Optional[str] = None) -> str:
         """Generate unique analysis ID."""
-        content = f"{file_path or ''}{len(code)}{hash(code)}"
-        return f"analysis_{hashlib.md5(content.encode()).hexdigest()[:12]}"
+        content = f"{file_path or ''}:{len(code)}:{hashlib.blake2s(code.encode(), digest_size=12).hexdigest()}"
+        return f"analysis_{hashlib.blake2s(content.encode(), digest_size=12).hexdigest()}"
 
     def _detect_language(self, code: str, file_path: Optional[str] = None) -> str:
         """Detect programming language."""

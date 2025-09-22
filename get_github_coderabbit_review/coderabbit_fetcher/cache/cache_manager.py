@@ -208,30 +208,35 @@ class CacheManager:
             if isinstance(key, str):
                 key = self._parse_key_string(key)
 
-            provider = self._get_provider(provider_name)
+            with self._lock:
+                provider = self._get_provider(provider_name)
             entry = provider.get(key)
 
             if entry is None:
-                self.stats['misses'] += 1
+                with self._lock:
+                    self.stats['misses'] += 1
                 logger.debug(f"Cache miss for key: {key.to_string()}")
                 return default
 
             if entry.is_expired():
                 provider.delete(key)
-                self.stats['misses'] += 1
+                with self._lock:
+                    self.stats['misses'] += 1
                 logger.debug(f"Cache expired for key: {key.to_string()}")
                 return default
 
             entry.touch()
             provider.set(entry)  # Update access info
-            self.stats['hits'] += 1
+            with self._lock:
+                self.stats['hits'] += 1
             logger.debug(f"Cache hit for key: {key.to_string()}")
 
             return entry.value
 
-        except Exception as e:
-            self.stats['errors'] += 1
-            logger.error(f"Error getting cache key {key}: {e}")
+        except Exception:
+            with self._lock:
+                self.stats['errors'] += 1
+            logger.exception(f"Error getting cache key {key}")
             return default
 
     def set(
@@ -272,14 +277,16 @@ class CacheManager:
 
             success = provider.set(entry)
             if success:
-                self.stats['sets'] += 1
+                with self._lock:
+                    self.stats['sets'] += 1
                 logger.debug(f"Cache set for key: {key.to_string()}")
 
             return success
 
-        except Exception as e:
-            self.stats['errors'] += 1
-            logger.error(f"Error setting cache key {key}: {e}")
+        except Exception:
+            with self._lock:
+                self.stats['errors'] += 1
+            logger.exception("Error setting cache key")
             return False
 
     def delete(self, key: Union[CacheKey, str], provider_name: Optional[str] = None) -> bool:
@@ -300,14 +307,16 @@ class CacheManager:
             success = provider.delete(key)
 
             if success:
-                self.stats['deletes'] += 1
+                with self._lock:
+                    self.stats['deletes'] += 1
                 logger.debug(f"Cache delete for key: {key.to_string()}")
 
             return success
 
-        except Exception as e:
-            self.stats['errors'] += 1
-            logger.error(f"Error deleting cache key {key}: {e}")
+        except Exception:
+            with self._lock:
+                self.stats['errors'] += 1
+            logger.exception("Error deleting cache key")
             return False
 
     def exists(self, key: Union[CacheKey, str], provider_name: Optional[str] = None) -> bool:

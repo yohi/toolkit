@@ -47,13 +47,13 @@ class CommentParser:
             List of ActionableComment objects
         """
         actionable_comments = []
-        
+
         try:
             # Find sections containing actionable comments
             actionable_patterns = [
-                r"## 🛠️ Refactor Suggestions?\s*\n(.*?)(?=\n## |\n\z)",
-                r"## ⚠️ Potential Issues?\s*\n(.*?)(?=\n## |\n\z)",
-                r"## 📝 Committable Suggestions?\s*\n(.*?)(?=\n## |\n\z)",
+                r"## 🛠️ Refactor Suggestions?\s*\n(.*?)(?=\n## |\n\Z)",
+                r"## ⚠️ Potential Issues?\s*\n(.*?)(?=\n## |\n\Z)",
+                r"## 📝 Committable Suggestions?\s*\n(.*?)(?=\n## |\n\Z)",
             ]
 
             for pattern in actionable_patterns:
@@ -84,11 +84,11 @@ class CommentParser:
             # Find nitpick sections
             for pattern in self.nitpick_patterns:
                 matches = re.finditer(
-                    rf"{pattern}\s*\n(.*?)(?=\n## |\n\z)",
+                    rf"{pattern}\s*\n(.*?)(?=\n## |\n\Z)",
                     content,
                     re.DOTALL | re.IGNORECASE
                 )
-                
+
                 for match in matches:
                     section_content = match.group(1)
                     comments = self._parse_nitpick_section(section_content)
@@ -114,11 +114,11 @@ class CommentParser:
         try:
             for pattern in self.outside_diff_patterns:
                 matches = re.finditer(
-                    rf"{pattern}\s*\n(.*?)(?=\n## |\n\z)",
+                    rf"{pattern}\s*\n(.*?)(?=\n## |\n\Z)",
                     content,
                     re.DOTALL | re.IGNORECASE
                 )
-                
+
                 for match in matches:
                     section_content = match.group(1)
                     comments = self._parse_outside_diff_section(section_content)
@@ -144,11 +144,11 @@ class CommentParser:
         try:
             for pattern in self.ai_agent_patterns:
                 matches = re.finditer(
-                    rf"{pattern}\s*\n(.*?)(?=\n## |\n\z)",
+                    rf"{pattern}\s*\n(.*?)(?=\n## |\n\Z)",
                     content,
                     re.DOTALL | re.IGNORECASE
                 )
-                
+
                 for match in matches:
                     section_content = match.group(1)
                     prompts = self._parse_ai_agent_section(section_content)
@@ -163,60 +163,60 @@ class CommentParser:
     def _parse_actionable_section(self, section_content: str) -> List[ActionableComment]:
         """Parse actionable comment section content."""
         comments = []
-        
+
         # Split by common delimiters for individual comments
         comment_blocks = re.split(r'\n\n(?=\*\*|\d+\.)', section_content)
-        
+
         for block in comment_blocks:
             if block.strip():
                 comment = self._create_actionable_comment(block)
                 if comment:
                     comments.append(comment)
-        
+
         return comments
 
     def _parse_nitpick_section(self, section_content: str) -> List[NitpickComment]:
         """Parse nitpick comment section content."""
         comments = []
-        
+
         # Split by bullet points or numbered items
         comment_blocks = re.split(r'\n(?=\*|-|\d+\.)', section_content)
-        
+
         for block in comment_blocks:
             if block.strip():
                 comment = self._create_nitpick_comment(block)
                 if comment:
                     comments.append(comment)
-        
+
         return comments
 
     def _parse_outside_diff_section(self, section_content: str) -> List[OutsideDiffComment]:
         """Parse outside diff comment section content."""
         comments = []
-        
+
         # Split by file references or bullet points
         comment_blocks = re.split(r'\n(?=\*|-|\d+\.|\w+\.\w+:)', section_content)
-        
+
         for block in comment_blocks:
             if block.strip():
                 comment = self._create_outside_diff_comment(block)
                 if comment:
                     comments.append(comment)
-        
+
         return comments
 
     def _parse_ai_agent_section(self, section_content: str) -> List[AIAgentPrompt]:
         """Parse AI agent prompt section content."""
         prompts = []
-        
+
         # AI agent prompts are usually in code blocks or details elements
         prompt_blocks = re.findall(r'```[\s\S]*?```|<details>[\s\S]*?</details>', section_content)
-        
+
         for block in prompt_blocks:
             prompt = self._create_ai_agent_prompt(block)
             if prompt:
                 prompts.append(prompt)
-        
+
         return prompts
 
     def _create_actionable_comment(self, content: str) -> Optional[ActionableComment]:
@@ -226,7 +226,7 @@ class CommentParser:
             file_info = self._extract_file_info(content)
             description = self._extract_description(content)
             suggestion = self._extract_suggestion(content)
-            
+
             if description:
                 return ActionableComment(
                     id=f"actionable_{hash(content) % 10000}",
@@ -238,7 +238,7 @@ class CommentParser:
                 )
         except Exception as e:
             logger.debug(f"Failed to create actionable comment: {e}")
-        
+
         return None
 
     def _create_nitpick_comment(self, content: str) -> Optional[NitpickComment]:
@@ -246,7 +246,7 @@ class CommentParser:
         try:
             file_info = self._extract_file_info(content)
             suggestion = self._extract_suggestion(content)
-            
+
             if suggestion:
                 return NitpickComment(
                     suggestion=suggestion,
@@ -256,7 +256,7 @@ class CommentParser:
                 )
         except Exception as e:
             logger.debug(f"Failed to create nitpick comment: {e}")
-        
+
         return None
 
     def _create_outside_diff_comment(self, content: str) -> Optional[OutsideDiffComment]:
@@ -264,7 +264,7 @@ class CommentParser:
         try:
             file_info = self._extract_file_info(content)
             suggestion = self._extract_suggestion(content)
-            
+
             if suggestion:
                 return OutsideDiffComment(
                     suggestion=suggestion,
@@ -274,7 +274,7 @@ class CommentParser:
                 )
         except Exception as e:
             logger.debug(f"Failed to create outside diff comment: {e}")
-        
+
         return None
 
     def _create_ai_agent_prompt(self, content: str) -> Optional[AIAgentPrompt]:
@@ -283,7 +283,7 @@ class CommentParser:
             # Extract prompt content from code blocks or details
             prompt_text = re.sub(r'```[\w]*\n?|```|\</?details\>|\</?summary\>.*?\<\/summary\>', '', content)
             prompt_text = prompt_text.strip()
-            
+
             if prompt_text:
                 return AIAgentPrompt(
                     prompt_text=prompt_text,
@@ -292,32 +292,32 @@ class CommentParser:
                 )
         except Exception as e:
             logger.debug(f"Failed to create AI agent prompt: {e}")
-        
+
         return None
 
     def _extract_file_info(self, content: str) -> Dict[str, Any]:
         """Extract file path and line information from content."""
         info = {'path': '', 'line': 0, 'line_range': ''}
-        
+
         # Look for file patterns like "file.py:123" or "path/file.py (lines 45-67)"
         file_pattern = r'([^\s]+\.(py|js|ts|java|cpp|c|h|md|txt|json|yaml|yml))(?::(\d+))?'
         match = re.search(file_pattern, content)
-        
+
         if match:
             info['path'] = match.group(1)
             if match.group(3):
                 info['line'] = int(match.group(3))
-        
+
         # Look for line range patterns
         line_range_pattern = r'lines?\s+(\d+)-(\d+)|lines?\s+(\d+)'
         range_match = re.search(line_range_pattern, content, re.IGNORECASE)
-        
+
         if range_match:
             if range_match.group(1) and range_match.group(2):
                 info['line_range'] = f"{range_match.group(1)}-{range_match.group(2)}"
             elif range_match.group(3):
                 info['line'] = int(range_match.group(3))
-        
+
         return info
 
     def _extract_description(self, content: str) -> str:
@@ -326,7 +326,7 @@ class CommentParser:
         description = re.sub(r'\*\*([^*]+)\*\*', r'\1', content)
         description = re.sub(r'[*-]\s*', '', description)
         description = description.split('\n')[0].strip()
-        
+
         return description[:200] if description else ""
 
     def _extract_suggestion(self, content: str) -> str:
@@ -337,11 +337,11 @@ class CommentParser:
             r'(?:You could|Try|How about):\s*(.*?)(?:\n|$)',
             r'```[\w]*\n(.*?)\n```',
         ]
-        
+
         for pattern in suggestion_patterns:
             match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
             if match:
                 return match.group(1).strip()
-        
+
         # Fallback to the content itself if no specific suggestion found
         return content.strip()[:300]

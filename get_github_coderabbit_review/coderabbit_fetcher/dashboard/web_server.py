@@ -3,6 +3,7 @@
 import logging
 import asyncio
 import json
+import os
 from typing import Dict, List, Optional, Any, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -33,7 +34,7 @@ class DashboardConfig:
     auto_refresh_interval: int = 5  # seconds
     max_history_points: int = 100
     enable_authentication: bool = False
-    secret_key: str = "dashboard-secret-key"
+    secret_key: str = field(default_factory=lambda: os.environ.get('DASHBOARD_SECRET_KEY', 'dev-secret-key'))
     static_folder: str = "dashboard/static"
     template_folder: str = "dashboard/templates"
     cors_enabled: bool = True
@@ -83,6 +84,14 @@ class DashboardServer:
             raise ImportError("Flask and Flask-SocketIO are required for dashboard. Install with: pip install flask flask-socketio")
 
         self.config = config
+
+        # Security warning for default secret key
+        if config.secret_key == 'dev-secret-key':
+            logger.warning(
+                "Using default development secret key for dashboard. "
+                "Set DASHBOARD_SECRET_KEY environment variable for production!"
+            )
+
         self.app = None
         self.socketio = None
         self.running = False

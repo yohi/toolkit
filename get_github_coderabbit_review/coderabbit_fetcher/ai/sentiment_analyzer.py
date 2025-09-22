@@ -293,16 +293,14 @@ class SentimentAnalyzer:
         Returns:
             Sentiment analysis result
         """
-        # Run async method
         try:
-            loop = asyncio.get_event_loop()
+            asyncio.get_running_loop()
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                fut = ex.submit(asyncio.run, self.analyze_sentiment_async(text, context))
+                return fut.result()
         except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        return loop.run_until_complete(
-            self.analyze_sentiment_async(text, context)
-        )
+            return asyncio.run(self.analyze_sentiment_async(text, context))
 
     async def analyze_batch_async(
         self,

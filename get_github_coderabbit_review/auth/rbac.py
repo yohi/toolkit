@@ -2,6 +2,7 @@
 
 import logging
 import json
+import ipaddress
 from typing import Dict, List, Optional, Any, Set, Union
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
@@ -108,9 +109,15 @@ class Permission:
                         return False
 
             elif condition == "ip_range":
-                # Simple IP range check (expand for production)
-                user_ip = context.get("ip_address", "")
-                if expected_value not in user_ip:
+                # CIDR-aware IP range check
+                user_ip = context.get("ip_address")
+                try:
+                    ip_obj = ipaddress.ip_address(user_ip)  # type: ignore[arg-type]
+                    networks = expected_value if isinstance(expected_value, (list, tuple)) else [expected_value]
+                    if not any(ip_obj in ipaddress.ip_network(n) for n in networks):
+                        return False
+                except Exception:
+                    logger.warning("Invalid IP/range in condition: ip=%s expected=%s", user_ip, expected_value)
                     return False
 
             elif condition == "department":
@@ -430,7 +437,7 @@ class PolicyEngine:
         """
         policy = self.policies.get(policy_id)
         if not policy:
-            logger.warning(f"Policy not found: {policy_id}")
+            logger.warning("Policy not found: %s", policy_id)
             return False
 
         try:
@@ -457,8 +464,8 @@ class PolicyEngine:
 
             return True
 
-        except Exception as e:
-            logger.error(f"Policy evaluation error: {e}")
+        except Exception:
+            logger.exception("Policy evaluation error")
             return False
 
 

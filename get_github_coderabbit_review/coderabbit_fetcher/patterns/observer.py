@@ -368,6 +368,7 @@ class EventPublisher:
         self.event_queue = queue.Queue()
         self.processing_thread: Optional[threading.Thread] = None
         self.is_running = False
+        self._lock = threading.RLock()
 
     def subscribe(self, observer: EventObserver) -> None:
         """Subscribe an observer to events.
@@ -375,9 +376,10 @@ class EventPublisher:
         Args:
             observer: Observer to subscribe
         """
-        if observer not in self.observers:
-            self.observers.append(observer)
-            logger.debug(f"Subscribed observer: {observer.get_name()}")
+        with self._lock:
+            if observer not in self.observers:
+                self.observers.append(observer)
+                logger.debug(f"Subscribed observer: {observer.get_name()}")
 
     def unsubscribe(self, observer: EventObserver) -> None:
         """Unsubscribe an observer from events.
@@ -385,9 +387,10 @@ class EventPublisher:
         Args:
             observer: Observer to unsubscribe
         """
-        if observer in self.observers:
-            self.observers.remove(observer)
-            logger.debug(f"Unsubscribed observer: {observer.get_name()}")
+        with self._lock:
+            if observer in self.observers:
+                self.observers.remove(observer)
+                logger.debug(f"Unsubscribed observer: {observer.get_name()}")
 
     def publish(self, event: Event) -> None:
         """Publish an event to all interested observers.
@@ -425,13 +428,15 @@ class EventPublisher:
                 if event is None:  # Stop signal
                     break
 
-                # Notify interested observers
-                for observer in self.observers:
+                # Notify interested observers (iterate over a snapshot)
+                with self._lock:
+                    observers_snapshot = list(self.observers)
+                for observer in observers_snapshot:
                     try:
                         if observer.is_interested_in(event.event_type):
                             observer.update(event)
                     except Exception as e:
-                        logger.error(f"Error notifying observer {observer.get_name()}: {e}")
+                        logger.exception(f"Error notifying observer {observer.get_name()}")
 
             except queue.Empty:
                 continue
@@ -444,12 +449,14 @@ class EventPublisher:
         Args:
             event: Event to publish
         """
-        for observer in self.observers:
+        with self._lock:
+            observers_snapshot = list(self.observers)
+        for observer in observers_snapshot:
             try:
                 if observer.is_interested_in(event.event_type):
                     observer.update(event)
             except Exception as e:
-                logger.error(f"Error notifying observer {observer.get_name()}: {e}")
+                logger.exception(f"Error notifying observer {observer.get_name()}")
 
     def get_observer_count(self) -> int:
         """Get number of subscribed observers."""
@@ -457,7 +464,8 @@ class EventPublisher:
 
     def get_observers(self) -> List[str]:
         """Get list of observer names."""
-        return [observer.get_name() for observer in self.observers]
+        with self._lock:
+            return [observer.get_name() for observer in self.observers]
 
 
 # Global event publisher instance

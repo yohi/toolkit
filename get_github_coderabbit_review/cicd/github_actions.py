@@ -59,6 +59,7 @@ class JobConfig:
     timeout_minutes: Optional[int] = None
     strategy: Optional[Dict[str, Any]] = None
     services: Optional[Dict[str, Any]] = None
+    if_condition: Optional[str] = None
 
     def add_step(self, step: StepConfig) -> None:
         """Add step to job."""
@@ -82,6 +83,8 @@ class JobConfig:
             job["strategy"] = self.strategy
         if self.services:
             job["services"] = self.services
+        if self.if_condition:
+            job["if"] = self.if_condition
 
         return job
 

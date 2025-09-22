@@ -276,12 +276,16 @@ class RedisCache(CacheProvider):
             return False
 
         try:
-            # Get all keys with our prefix
+            # Get all keys with our prefix using SCAN for production safety
             pattern = f"{self.config.key_prefix}*"
-            keys = self._redis_client.keys(pattern)
-
-            if keys:
-                self._redis_client.delete(*keys)
+            batch = []
+            for k in self._redis_client.scan_iter(pattern, count=1000):
+                batch.append(k)
+                if len(batch) >= 1000:
+                    self._redis_client.delete(*batch)
+                    batch.clear()
+            if batch:
+                self._redis_client.delete(*batch)
 
             return True
 
@@ -324,10 +328,9 @@ class RedisCache(CacheProvider):
                     'uptime_in_seconds': redis_info.get('uptime_in_seconds')
                 }
 
-                # Count our keys
+                # Count our keys using SCAN for production safety
                 pattern = f"{self.config.key_prefix}*"
-                key_count = len(self._redis_client.keys(pattern))
-                stats['key_count'] = key_count
+                stats['key_count'] = sum(1 for _ in self._redis_client.scan_iter(pattern, count=1000))
 
             except Exception as e:
                 logger.warning(f"Error getting Redis server info: {e}")
@@ -349,14 +352,17 @@ class RedisCache(CacheProvider):
 
         try:
             pattern = f"{self.config.key_prefix}{namespace}:*"
-            keys = self._redis_client.keys(pattern)
-
-            if keys:
-                deleted = self._redis_client.delete(*keys)
-                logger.info(f"Flushed {deleted} keys from namespace: {namespace}")
-                return deleted
-
-            return 0
+            deleted = 0
+            batch = []
+            for k in self._redis_client.scan_iter(pattern, count=1000):
+                batch.append(k)
+                if len(batch) >= 1000:
+                    deleted += self._redis_client.delete(*batch)
+                    batch.clear()
+            if batch:
+                deleted += self._redis_client.delete(*batch)
+            logger.info(f"Flushed {deleted} keys from namespace: {namespace}")
+            return deleted
 
         except Exception as e:
             logger.error(f"Error flushing namespace {namespace}: {e}")
@@ -376,7 +382,7 @@ class RedisCache(CacheProvider):
 
         try:
             pattern = f"{self.config.key_prefix}{namespace}:*"
-            redis_keys = self._redis_client.keys(pattern)
+            redis_keys = list(self._redis_client.scan_iter(pattern, count=1000))
 
             # Remove prefix from keys
             prefix_len = len(self.config.key_prefix)

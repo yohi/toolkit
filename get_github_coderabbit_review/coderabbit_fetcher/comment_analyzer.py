@@ -141,6 +141,8 @@ class CommentAnalyzer:
                 logger.debug(
                     f"Assigned {len(deduplicated_actionables)} deduplicated actionables to first review comment"
                 )
+            # Sync stats with deduplicated result
+            self.stats.actionable_comments = len(deduplicated_actionables)
 
             # Apply resolved marker filtering
             filtered_threads = self._filter_resolved_threads(processed_threads)
@@ -202,6 +204,11 @@ class CommentAnalyzer:
                 # Add individual review comments
                 if "comments" in review:
                     for comment in review["comments"]:
+                        # Normalize GraphQL/REST shapes for downstream filters
+                        if "user" not in comment and "author" in comment:
+                            comment["user"] = comment.get("author") or {}
+                        if "created_at" not in comment and "submittedAt" in comment:
+                            comment["created_at"] = comment.get("submittedAt")
                         comment["comment_type"] = "review_comment"
                         all_comments.append(comment)
 

@@ -207,26 +207,18 @@ class AsyncCommentAnalyzer:
 
         logger.info(f"Processing {len(comments)} comments in {total_batches} batches")
 
-        # Create batch processing tasks
-        tasks = []
-        for i, batch in enumerate(batches):
-            task = asyncio.create_task(
-                self._process_single_batch(batch, i + 1, total_batches, session_id),
-                name=f"batch_{i + 1}"
-            )
-            tasks.append(task)
-
         # Process batches with controlled concurrency
         semaphore = asyncio.Semaphore(self.max_workers)
 
-        async def process_with_semaphore(task):
+        async def run_batch(i: int, batch):
             async with semaphore:
-                return await task
+                return await self._process_single_batch(batch, i + 1, total_batches, session_id)
 
-        # Execute all batch tasks
+        # Execute all batch tasks (bounded)
         try:
             results = await asyncio.gather(
-                *[process_with_semaphore(task) for task in tasks],
+                *[asyncio.create_task(run_batch(i, batch), name=f"batch_{i + 1}")
+                  for i, batch in enumerate(batches)],
                 return_exceptions=True
             )
 

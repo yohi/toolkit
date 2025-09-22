@@ -69,6 +69,7 @@ class LLMClient(ABC):
 
         # Rate limiting
         self._request_times: List[float] = []
+        self._rate_limit_lock = asyncio.Lock()
 
         # Statistics
         self.stats = {
@@ -115,16 +116,16 @@ class LLMClient(ABC):
         Returns:
             LLM response
         """
-        # Run async method in event loop
         try:
-            loop = asyncio.get_event_loop()
+            # 既に実行中のイベントループがある場合はスレッドで実行
+            asyncio.get_running_loop()
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
+                fut = ex.submit(asyncio.run, self.generate_async(prompt, system_prompt, **kwargs))
+                return fut.result()
         except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-
-        return loop.run_until_complete(
-            self.generate_async(prompt, system_prompt, **kwargs)
-        )
+            # 実行中ループが無い場合のみ同期実行
+            return asyncio.run(self.generate_async(prompt, system_prompt, **kwargs))
 
     async def _check_cache(self, cache_key: str) -> Optional[LLMResponse]:
         """Check cache for response."""
@@ -190,40 +191,18 @@ class LLMClient(ABC):
 
     async def _enforce_rate_limit(self) -> None:
         """Enforce rate limiting."""
-        current_time = time.time()
-
-        # Remove requests older than 1 minute
-def __init__(self, config: LLMConfig, cache_manager: Optional[CacheManager] = None):
-    """Initialize LLM client."""
-    self.config = config
-    self.cache_manager = cache_manager
-
-    # Rate limiting
-    self._request_times: List[float] = []
-    self._rate_limit_lock = asyncio.Lock()
-
-    # Statistics
-    self.stats = {
-
-async def _enforce_rate_limit(self) -> None:
-    """Enforce rate limiting."""
-    async with self._rate_limit_lock:
-        current_time = time.time()
-        
-        # Remove requests older than 1 minute
-        self._request_times = [
-            t for t in self._request_times
-            if current_time - t < 60
-        ]
-
-        # Check rate limit
-        if len(self._request_times) >= self.config.rate_limit_per_minute:
-            wait_time = 60 - (current_time - self._request_times[0])
-            if wait_time > 0:
-                logger.info(f"Rate limit reached, waiting {wait_time:.1f}s")
-                await asyncio.sleep(wait_time)
-
-        self._request_times.append(current_time)
+        current_time = time.monotonic()
+        async with self._rate_limit_lock:
+            # Remove requests older than 1 minute
+            self._request_times = [t for t in self._request_times if current_time - t < 60]
+            # Check rate limit
+            if len(self._request_times) >= self.config.rate_limit_per_minute:
+                wait_time = 60 - (current_time - self._request_times[0])
+                if wait_time > 0:
+                    logger.info(f"Rate limit reached, waiting {wait_time:.1f}s")
+                    await asyncio.sleep(wait_time)
+                    current_time = time.monotonic()
+            self._request_times.append(current_time)
 
     def get_stats(self) -> Dict[str, Any]:
         """Get client statistics."""

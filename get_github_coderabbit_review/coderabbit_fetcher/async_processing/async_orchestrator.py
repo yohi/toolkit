@@ -339,7 +339,7 @@ class AsyncCodeRabbitOrchestrator:
     ) -> Dict[str, Any]:
         """Finalize execution results."""
 
-        execution_time = (self.end_time or datetime.now() - self.start_time).total_seconds()
+        execution_time = ((self.end_time or datetime.now()) - self.start_time).total_seconds()
 
         results = {
             'success': True,
