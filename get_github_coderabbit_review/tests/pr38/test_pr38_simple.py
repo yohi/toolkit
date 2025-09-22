@@ -4,7 +4,9 @@ PR38の出力検証テスト（pytest依存なし版）
 """
 
 import os
+import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -24,6 +26,22 @@ class SimplePR38Test:
             Path(__file__).parent / "expected" / "expected_pr_38_ai_agent_prompt.md"
         )
         self.mock_helper = PR38MockHelper(self.repo_root)
+        self.python_executable = self._find_python_executable()
+
+    def _find_python_executable(self) -> str:
+        """環境に適したPython実行可能ファイルを検出"""
+        # 1. python3を優先的に検索
+        python3_path = shutil.which("python3")
+        if python3_path:
+            return python3_path
+
+        # 2. pythonを検索
+        python_path = shutil.which("python")
+        if python_path:
+            return python_path
+
+        # 3. sys.executableをフォールバック（Cursor環境でも-mが使える場合）
+        return sys.executable
 
     def run_crf_with_mock(self) -> str:
         """モックを使ってcrfコマンドを実行し、出力を返す"""
@@ -61,7 +79,7 @@ class SimplePR38Test:
             with tempfile.NamedTemporaryFile(mode="w+", suffix=".md", delete=False) as temp_file:
                 try:
                     cmd = [
-                        "/home/linuxbrew/.linuxbrew/bin/python3",
+                        self.python_executable,
                         "-m",
                         "coderabbit_fetcher.cli.main",
                         "https://github.com/yohi/dots/pull/38",
