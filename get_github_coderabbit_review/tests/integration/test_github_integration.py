@@ -87,7 +87,8 @@ class TestGitHubIntegration(unittest.TestCase):
         result = self.client.fetch_pr_comments(self.sample_pr_url)
 
         self.assertIsInstance(result, dict)
-        self.assertIn("pr_data", result)
+        # GitHubClient.fetch_pr_comments returns the PR data directly, not wrapped in pr_data
+        self.assertIn("number", result)  # PR data should contain number field
         self.assertIn("comments", result)
         # Check both comments and reviewComments depending on the test setup
         total_comments = len(result.get("comments", [])) + len(result.get("reviewComments", []))
