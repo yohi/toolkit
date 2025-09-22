@@ -1,0 +1,37 @@
+# Minimal pre-commit configuration
+default_language_version:
+  python: python3.13
+
+repos:
+  # Essential hooks only
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+      - id: check-added-large-files
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+
+  # Black code formatter
+  - repo: https://github.com/psf/black
+    rev: 24.10.0
+    hooks:
+      - id: black
+        language_version: python3.13
+        args: [--line-length=100]
+
+  # Ruff with selective ignoring (for gradual improvement)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.7.4
+    hooks:
+      - id: ruff
+        args:
+          - --fix
+          - --ignore=E402,B904,F401,F403,F405,F841,F821,UP006,UP007,C401,C403,C416,B007,B017,E722
+        types: [python]
+
+# Skip resource-intensive checks in CI
+ci:
+  skip: [mypy]
