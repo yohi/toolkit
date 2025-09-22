@@ -1452,7 +1452,7 @@ class ReviewProcessor:
         Returns:
             List of ActionableComment objects
         """
-        items = []
+        items: list[Any] = []
         section_type = section.get("type", "unknown")
 
         if section_type == "issue_with_description":

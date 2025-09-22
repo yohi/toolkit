@@ -277,7 +277,7 @@ def run_validate_marker_command(marker: str) -> int:
         from ..resolved_marker import ResolvedMarkerConfig, ResolvedMarkerManager
 
         config = ResolvedMarkerConfig(default_marker=marker)
-        validation = config.validate_marker()
+        validation = config.validate_marker(marker)
 
         if validation["valid"]:
             print("✅ Marker is valid")

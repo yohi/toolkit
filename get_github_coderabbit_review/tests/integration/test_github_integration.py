@@ -16,7 +16,7 @@ from coderabbit_fetcher.exceptions import (
     NetworkError,
     RateLimitError,
 )
-from coderabbit_fetcher.github_client import GitHubClient
+from coderabbit_fetcher.github.client import GitHubClient
 
 from tests.fixtures.github_responses import (
     MOCK_GH_COMMENTS_RESPONSE,
