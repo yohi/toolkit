@@ -15,7 +15,7 @@ class TestPR38ExactMatch:
     @pytest.fixture
     def expected_content(self):
         """Load expected PR #38 prompt content."""
-        expected_file = Path(__file__).parent.parent.parent / "expected_pr_38_ai_agent_prompt.md"
+        expected_file = Path(__file__).parent.parent / "pr38" / "expected" / "expected_pr_38_ai_agent_prompt.md"
         with open(expected_file, 'r', encoding='utf-8') as f:
             return f.read()
 

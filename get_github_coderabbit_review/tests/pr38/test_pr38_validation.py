@@ -24,7 +24,7 @@ class TestPR38Validation:
     def setup_class(cls):
         """テストクラスの初期化"""
         cls.repo_root = Path(__file__).parent.parent.parent
-        cls.expected_file = cls.repo_root / "expected_pr_38_ai_agent_prompt.md"
+        cls.expected_file = Path(__file__).parent / "expected" / "expected_pr_38_ai_agent_prompt.md"
         cls.mock_helper = PR38MockHelper(cls.repo_root)
 
     def test_pr38_output_validation(self):

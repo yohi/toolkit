@@ -84,7 +84,7 @@ python pr38/test_pr38_simple.py
 
 ## 期待値ファイル
 
-期待値ファイル `expected_pr_38_ai_agent_prompt.md` はプロジェクトルートに配置されています。
+期待値ファイルは各テストディレクトリの `expected/` サブディレクトリに配置されています（例：`tests/pr38/expected/expected_pr_38_ai_agent_prompt.md`）。
 
 ## 検証項目
 

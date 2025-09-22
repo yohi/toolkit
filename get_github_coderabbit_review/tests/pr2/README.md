@@ -12,7 +12,8 @@
 tests/pr2/
 ├── README.md                           # このファイル
 ├── test_pr2_quiet_mode.py             # メインテストファイル
-├── expected_pr_2_ai_agent_prompt.md   # 期待値ファイル
+├── expected/                          # 期待値ファイルディレクトリ
+│   └── expected_pr_2_ai_agent_prompt.md   # 期待値ファイル
 └── mock_data/                         # モックデータディレクトリ
     ├── pr2_basic_info.json            # PR基本情報
     ├── pr2_files.json                 # 変更ファイル一覧
@@ -49,7 +50,7 @@ python test_runner.py --type integration
 
 ## 期待値について
 
-`expected_pr_2_ai_agent_prompt.md`は、実際の実行結果をベースに作成された短縮版の期待値ファイルです。完全な出力との比較ではなく、重要な構造要素の存在確認に使用されます。
+`expected/expected_pr_2_ai_agent_prompt.md`は、実際の実行結果をベースに作成された短縮版の期待値ファイルです。完全な出力との比較ではなく、重要な構造要素の存在確認に使用されます。
 
 ## 注意点
 

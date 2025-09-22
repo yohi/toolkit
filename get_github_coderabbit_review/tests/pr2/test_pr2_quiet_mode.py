@@ -34,7 +34,7 @@ class TestPR2QuietModeMocked(unittest.TestCase):
         self.mock_helper = PR2MockHelper(self.project_root)
 
         # 期待値ファイルを読み込み
-        expected_file = self.test_dir / "expected_pr_2_ai_agent_prompt.md"
+        expected_file = self.test_dir / "expected" / "expected_pr_2_ai_agent_prompt.md"
         if expected_file.exists():
             with open(expected_file, "r", encoding="utf-8") as f:
                 self.expected_output = f.read()

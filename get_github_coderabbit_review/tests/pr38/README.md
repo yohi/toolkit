@@ -158,9 +158,9 @@ You are a senior software engineer...
 
 2. **期待値ファイルが見つからない**
    ```
-   FileNotFoundError: expected_pr_38_ai_agent_prompt.md
+   FileNotFoundError: tests/pr38/expected/expected_pr_38_ai_agent_prompt.md
    ```
-   **解決**: プロジェクトルートに期待値ファイルがあることを確認
+   **解決**: tests/pr38/expected/ディレクトリに期待値ファイルがあることを確認
 
 3. **GitHub CLI認証エラー**
    ```

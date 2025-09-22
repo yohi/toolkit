@@ -22,7 +22,7 @@ class PR38FinalTest:
 
     def __init__(self):
         self.repo_root = Path(__file__).parent.parent.parent
-        self.expected_file = self.repo_root / "expected_pr_38_ai_agent_prompt.md"
+        self.expected_file = Path(__file__).parent / "expected" / "expected_pr_38_ai_agent_prompt.md"
         self.mock_helper = PR38MockHelper(self.repo_root)
 
     def run_crf_command(self, output_file: str) -> subprocess.CompletedProcess:
