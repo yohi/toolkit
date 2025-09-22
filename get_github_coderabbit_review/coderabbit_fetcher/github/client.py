@@ -84,6 +84,63 @@ class GitHubClient:
         except Exception as e:
             raise GitHubAuthenticationError(f"Authentication check failed: {e}")
 
+    def validate(self) -> Dict[str, Any]:
+        """Validate GitHub CLI availability and authentication.
+
+        Returns:
+            Dict with validation result and any issues
+        """
+        issues = []
+
+        try:
+            # Check if GitHub CLI is available
+            result = subprocess.run(["gh", "--version"], capture_output=True, text=True, timeout=10)
+
+            if result.returncode != 0:
+                issues.append("GitHub CLI not available")
+                return {"valid": False, "issues": issues}
+
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            issues.append("GitHub CLI not available")
+            return {"valid": False, "issues": issues}
+
+        try:
+            # Check authentication
+            self.check_authentication()
+        except GitHubAuthenticationError as e:
+            issues.append(f"Authentication failed: {e}")
+            return {"valid": False, "issues": issues}
+
+        return {"valid": True, "issues": issues}
+
+    def check_rate_limits(self) -> Dict[str, Any]:
+        """Check GitHub API rate limits.
+
+        Returns:
+            Dict with rate limit information
+        """
+        try:
+            result = subprocess.run(
+                ["gh", "api", "rate_limit"], capture_output=True, text=True, timeout=10
+            )
+
+            if result.returncode == 0:
+                import json
+
+                rate_data = json.loads(result.stdout)
+                return {
+                    "core": rate_data.get("rate", {}),
+                    "search": rate_data.get("resources", {}).get("search", {}),
+                    "graphql": rate_data.get("resources", {}).get("graphql", {}),
+                }
+
+            raise NetworkError("Failed to get rate limit information")
+
+        except subprocess.TimeoutExpired as e:
+            raise NetworkError("Rate limit check timed out") from e
+        except Exception as e:
+            raise NetworkError(f"Rate limit check failed: {e}") from e
+
     def parse_pr_url(self, pr_url: str) -> Tuple[str, str, int]:
         """Parse GitHub pull request URL.
 
@@ -337,3 +394,60 @@ class GitHubClient:
             raise GitHubAuthenticationError("Authentication check timed out") from e
         except Exception as e:
             raise GitHubAuthenticationError(f"Authentication check failed: {e}")
+
+    def validate(self) -> Dict[str, Any]:
+        """Validate GitHub CLI availability and authentication.
+
+        Returns:
+            Dict with validation result and any issues
+        """
+        issues = []
+
+        try:
+            # Check if GitHub CLI is available
+            result = subprocess.run(["gh", "--version"], capture_output=True, text=True, timeout=10)
+
+            if result.returncode != 0:
+                issues.append("GitHub CLI not available")
+                return {"valid": False, "issues": issues}
+
+        except (subprocess.TimeoutExpired, FileNotFoundError):
+            issues.append("GitHub CLI not available")
+            return {"valid": False, "issues": issues}
+
+        try:
+            # Check authentication
+            self.check_authentication()
+        except GitHubAuthenticationError as e:
+            issues.append(f"Authentication failed: {e}")
+            return {"valid": False, "issues": issues}
+
+        return {"valid": True, "issues": issues}
+
+    def check_rate_limits(self) -> Dict[str, Any]:
+        """Check GitHub API rate limits.
+
+        Returns:
+            Dict with rate limit information
+        """
+        try:
+            result = subprocess.run(
+                ["gh", "api", "rate_limit"], capture_output=True, text=True, timeout=10
+            )
+
+            if result.returncode == 0:
+                import json
+
+                rate_data = json.loads(result.stdout)
+                return {
+                    "core": rate_data.get("rate", {}),
+                    "search": rate_data.get("resources", {}).get("search", {}),
+                    "graphql": rate_data.get("resources", {}).get("graphql", {}),
+                }
+
+            raise NetworkError("Failed to get rate limit information")
+
+        except subprocess.TimeoutExpired as e:
+            raise NetworkError("Rate limit check timed out") from e
+        except Exception as e:
+            raise NetworkError(f"Rate limit check failed: {e}") from e
