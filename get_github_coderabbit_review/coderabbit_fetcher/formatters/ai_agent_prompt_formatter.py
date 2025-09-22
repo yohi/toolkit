@@ -288,32 +288,48 @@ Quality, Security, Standards, Specificity, Impact-awareness
         self, analyzed_comments: AnalyzedComments, quiet: bool = False
     ) -> str:
         """Format CodeRabbit review summary section."""
-        # Count different types of comments
-        actionable_comments = 0
-        nitpick_comments = 0
-        outside_diff_comments = 0
+        # Enhanced Classification結果を優先的に使用
+        if (
+            hasattr(analyzed_comments.metadata, "adjusted_counts")
+            and analyzed_comments.metadata.adjusted_counts
+        ):
+            adjusted_counts = analyzed_comments.metadata.adjusted_counts
+            actionable_comments = adjusted_counts["actionable"]
+            nitpick_comments = adjusted_counts["nitpick"]
+            outside_diff_comments = adjusted_counts["outside_diff"]
+            total_comments = adjusted_counts["total"]
 
-        # Count from review comments
-        for review in analyzed_comments.review_comments:
-            actionable_comments += len(review.actionable_comments)
-            nitpick_comments += len(review.nitpick_comments)
-            outside_diff_comments += len(review.outside_diff_comments)
             if not quiet:
                 print(
-                    f"DEBUG: Review has {len(review.outside_diff_comments)} outside_diff_comments"
+                    f"DEBUG: Using Enhanced Classification counts - actionable: {actionable_comments}, nitpick: {nitpick_comments}, outside_diff: {outside_diff_comments}"
                 )
+        else:
+            # Fallback to legacy counting method
+            actionable_comments = 0
+            nitpick_comments = 0
+            outside_diff_comments = 0
 
-        # Count from thread contexts (these are typically actionable)
-        for thread in analyzed_comments.unresolved_threads:
-            actionable_comments += 1
+            # Count from review comments
+            for review in analyzed_comments.review_comments:
+                actionable_comments += len(review.actionable_comments)
+                nitpick_comments += len(review.nitpick_comments)
+                outside_diff_comments += len(review.outside_diff_comments)
+                if not quiet:
+                    print(
+                        f"DEBUG: Review has {len(review.outside_diff_comments)} outside_diff_comments"
+                    )
 
-        # Total comments is the sum of all individual comments
-        total_comments = actionable_comments + nitpick_comments + outside_diff_comments
+            # Count from thread contexts (these are typically actionable)
+            for thread in analyzed_comments.unresolved_threads:
+                actionable_comments += 1
 
-        if not quiet:
-            print(
-                f"DEBUG: Final counts - actionable: {actionable_comments}, nitpick: {nitpick_comments}, outside_diff: {outside_diff_comments}"
-            )
+            # Total comments is the sum of all individual comments
+            total_comments = actionable_comments + nitpick_comments + outside_diff_comments
+
+            if not quiet:
+                print(
+                    f"DEBUG: Legacy counting - actionable: {actionable_comments}, nitpick: {nitpick_comments}, outside_diff: {outside_diff_comments}"
+                )
 
         return f"""<coderabbit_review_summary>
   <total_comments>{total_comments}</total_comments>

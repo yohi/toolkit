@@ -382,11 +382,30 @@ class CommentClassifier:
             "please consolidate",
         ]
 
-        # 解決済みマーカーが含まれている場合はNone（除外）
-        if any(
+        # CodeRabbitのActionableマーカーをチェック（先に実行）
+        actionable_markers = [
+            "⚠️ potential issue",
+            "🛠️ refactor suggestion",
+            "🔧 improvement",
+            "⚠️ warning",
+            "potential issue",
+            "refactor suggestion",
+            "improvement needed",
+        ]
+
+        has_actionable_marker = any(marker in content_lower for marker in actionable_markers)
+
+        # CodeRabbitの自動解決マーカー（✅ Addressed in commit等）は、
+        # Actionableコメントの場合は除外せず、元の指摘内容を保持する
+        has_strong_resolved_marker = any(
             indicator in content_lower or indicator in title_lower
-            for indicator in resolved_indicators
-        ):
+            for indicator in ["✅ addressed", "resolved", "fixed", "completed"]
+        )
+
+        # ⚠️ Potential issueなどの明確なActionableマーカーがある場合は解決マーカーを無視
+        if has_actionable_marker:
+            self.logger.debug(f"Actionableマーカー検出により解決マーカーを無視: {comment.title}")
+        elif has_strong_resolved_marker:
             self.logger.debug(f"解決済みマーカーにより除外: {comment.title}")
             return None
 
@@ -492,8 +511,8 @@ class CommentClassifier:
             for keyword in critical_actionable_keywords
         )
 
-        # 肯定的コメントでなく、かつクリティカルキーワードがある場合のみActionable
-        if not is_positive_comment and has_actionable_keywords:
+        # CodeRabbitのActionableマーカーがあるか、クリティカルキーワードがある場合のみActionable
+        if not is_positive_comment and (has_actionable_marker or has_actionable_keywords):
             priority = self._determine_priority(comment.content)
             return ActionableComment(
                 comment_id=f"{comment.file_path}:{comment.line_range}",

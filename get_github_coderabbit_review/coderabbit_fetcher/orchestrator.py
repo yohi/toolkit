@@ -585,6 +585,13 @@ class CodeRabbitOrchestrator:
                 f"最終結果: {len(nitpick_comments)} Nitpick, {len(outside_diff_comments)} Outside diff comments"
             )
 
+        # Comment Classifierで分類されたActionableコメントを使用（解決済み判定を尊重）
+        if classified and classified.actionable_comments:
+            actionable_comments = classified.actionable_comments
+            logger.info(
+                f"Enhanced: Using Comment Classifier actionable results: {len(actionable_comments)} comments"
+            )
+
         # メトリクス更新
         self.metrics.coderabbit_comments_found = (
             len(actionable_comments) + len(nitpick_comments) + len(outside_diff_comments)
