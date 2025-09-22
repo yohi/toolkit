@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
 from .exceptions import CodeRabbitFetcherError
+from .utils.memory_manager import MemoryManager, memory_efficient_processing
+from .utils.streaming_processor import CommentStreamProcessor
 from .models import (
     ActionableComment,
     AnalyzedComments,
@@ -65,6 +67,11 @@ class CommentAnalyzer:
         # Statistics tracking
         self.stats = CommentStats()
 
+        # Performance optimization components
+        self.memory_manager = MemoryManager(max_memory_mb=300)
+        self.stream_processor = CommentStreamProcessor(max_workers=3, batch_size=25)
+
+    @memory_efficient_processing
     def analyze_comments(self, pr_data: Dict[str, Any]) -> AnalyzedComments:
         """Analyze pull request data and extract CodeRabbit comments.
 

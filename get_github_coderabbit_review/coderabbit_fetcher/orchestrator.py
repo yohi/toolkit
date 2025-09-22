@@ -1,5 +1,6 @@
 """Main orchestration logic for CodeRabbit Comment Fetcher."""
 
+import re
 import time
 import logging
 from typing import Dict, List, Optional, Any, Callable
@@ -810,7 +811,7 @@ class CodeRabbitOrchestrator:
             actionable_comments=classified.actionable_comments,
             nitpick_comments=classified.nitpick_comments,
             outside_diff_comments=classified.outside_diff_comments,
-            ai_agent_prompts=[],  # TODO: AI エージェントプロンプト抽出
+            ai_agent_prompts=self._extract_ai_agent_prompts(classified),
             raw_content=""  # 必要に応じて設定
         )
 
@@ -837,11 +838,107 @@ class CodeRabbitOrchestrator:
             unresolved_threads.append(thread)
 
         return AnalyzedComments(
-            summary_comments=[],  # TODO: サマリーコメント抽出
+            summary_comments=self._extract_summary_comments(classified),
             review_comments=[review_comment],
             unresolved_threads=unresolved_threads,
             metadata=metadata
         )
+
+    def _extract_ai_agent_prompts(self, classified_comments) -> List:
+        """Extract AI agent prompts from classified comments.
+
+        Args:
+            classified_comments: Classified comments object
+
+        Returns:
+            List of AI agent prompts
+        """
+        ai_prompts = []
+
+        try:
+            # Extract from actionable comments that contain AI agent prompts
+            for comment in classified_comments.actionable_comments:
+                if hasattr(comment, 'raw_content') and comment.raw_content:
+                    # Look for AI agent prompt patterns
+                    ai_patterns = [
+                        r"🤖 Prompt for AI Agents",
+                        r"Prompt for AI Agents",
+                        r"AI Agent Prompt",
+                        r"For AI Agents"
+                    ]
+
+                    for pattern in ai_patterns:
+                        if re.search(pattern, comment.raw_content, re.IGNORECASE):
+                            # Extract the prompt content
+                            prompt_match = re.search(
+                                rf"{pattern}\s*\n(.*?)(?=\n## |\n\z)",
+                                comment.raw_content,
+                                re.DOTALL | re.IGNORECASE
+                            )
+
+                            if prompt_match:
+                                from .models import AIAgentPrompt
+                                ai_prompt = AIAgentPrompt(
+                                    prompt_text=prompt_match.group(1).strip(),
+                                    context="review_comment",
+                                    raw_content=comment.raw_content
+                                )
+                                ai_prompts.append(ai_prompt)
+                                break
+
+            logger.debug(f"Extracted {len(ai_prompts)} AI agent prompts")
+
+        except Exception as e:
+            logger.warning(f"Failed to extract AI agent prompts: {e}")
+
+        return ai_prompts
+
+    def _extract_summary_comments(self, classified_comments) -> List:
+        """Extract summary comments from classified comments.
+
+        Args:
+            classified_comments: Classified comments object
+
+        Returns:
+            List of summary comments
+        """
+        summary_comments = []
+
+        try:
+            # Create a summary comment from the classified data
+            from .models import SummaryComment
+
+            # Analyze the overall comment statistics
+            total_actionable = len(classified_comments.actionable_comments)
+            total_nitpicks = len(classified_comments.nitpick_comments)
+            total_outside_diff = len(classified_comments.outside_diff_comments)
+
+            # Create summary content
+            summary_text = f"""CodeRabbit Analysis Summary:
+- Total Actionable Comments: {total_actionable}
+- Nitpick Comments: {total_nitpicks}
+- Outside Diff Comments: {total_outside_diff}
+- Total Comments Processed: {classified_comments.total_parsed}
+- Resolution Statistics: {getattr(classified_comments, 'resolution_statistics', {})}
+"""
+
+            summary_comment = SummaryComment(
+                new_features=[],
+                documentation_changes=[],
+                test_changes=[],
+                walkthrough=summary_text,
+                changes_table="",
+                sequence_diagram="",
+                raw_content=summary_text
+            )
+
+            summary_comments.append(summary_comment)
+            logger.debug(f"Created summary comment with {total_actionable} actionable items")
+
+        except Exception as e:
+            logger.warning(f"Failed to extract summary comments: {e}")
+
+        return summary_comments
 
     def _format_output(self, persona: str, analyzed_comments: AnalyzedComments) -> str:
         """Format analyzed comments for output."""
