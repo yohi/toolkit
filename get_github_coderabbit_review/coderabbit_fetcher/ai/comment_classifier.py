@@ -168,14 +168,15 @@ class AICommentClassifier:
             return result
 
         except Exception as e:
-            logger.error(f"Error classifying comment: {e}")
+            # 軽量なエラーログに変更
+            logger.debug(f"Classification failed: {type(e).__name__}")
 
-            # Return safe default
+            # Return safe default (error details from reasoning for debugging)
             return ClassificationResult(
                 category=CommentCategory.UNKNOWN,
                 priority=PriorityLevel.MEDIUM,
                 confidence=0.0,
-                reasoning=f"Classification error: {e}",
+                reasoning=f"Classification error: {type(e).__name__}",
             )
 
     def classify_comment(

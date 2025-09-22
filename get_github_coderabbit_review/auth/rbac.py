@@ -1,5 +1,6 @@
 """Role-Based Access Control (RBAC) system for enterprise authentication."""
 
+import functools
 import ipaddress
 import logging
 import uuid
@@ -919,6 +920,7 @@ def require_permission(
     """
 
     def decorator(func):
+        @functools.wraps(func)
         def wrapper(*args, **kwargs):
             # Get user_id from context (implement based on your auth system)
             user_id = kwargs.get("user_id") or getattr(args[0], "user_id", None)
@@ -926,7 +928,9 @@ def require_permission(
             if not user_id:
                 raise PermissionError("User not authenticated")
 
-            if not check_permission(user_id, permission_type, resource_type, resource_id):
+            # allow callers to pass request-scoped info: ip_address, department など
+            perm_ctx = kwargs.get("permission_context") or kwargs.get("context") or {}
+            if not check_permission(user_id, permission_type, resource_type, resource_id, perm_ctx):
                 raise PermissionError(
                     f"Insufficient permissions: {permission_type} on {resource_type}"
                 )

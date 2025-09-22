@@ -417,16 +417,19 @@ class AICodeAnalyzer:
         analysis_types: Optional[List[AnalysisType]] = None,
     ) -> ComprehensiveAnalysis:
         """Analyze code synchronously."""
-        # Run async method
         try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
+            asyncio.get_running_loop()
+            # 実行中のループがある場合はスレッドで実行
+            import concurrent.futures
 
-        return loop.run_until_complete(
-            self.analyze_code_async(code, file_path, language, analysis_types)
-        )
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+                future = executor.submit(
+                    asyncio.run, self.analyze_code_async(code, file_path, language, analysis_types)
+                )
+                return future.result()
+        except RuntimeError:
+            # ループがない場合は直接実行
+            return asyncio.run(self.analyze_code_async(code, file_path, language, analysis_types))
 
     async def _analyze_security(
         self, code: str, language: str, file_path: Optional[str] = None

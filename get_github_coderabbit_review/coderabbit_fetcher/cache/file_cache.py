@@ -25,7 +25,8 @@ class FileCacheConfig:
     cache_dir: str = None  # Will default to system temp dir + "coderabbit_cache"
     max_file_size_mb: int = 100
     max_total_size_mb: int = 1000
-    serialization: str = "json"  # json, pickle
+    serialization: str = "json"  # "json" or "pickle" (pickleは危険)
+    allow_pickle: bool = False  # pickleの明示的許可が必要
     compression: bool = False
     file_mode: int = 0o644
     dir_mode: int = 0o755
@@ -66,7 +67,11 @@ class FileCache(CacheProvider):
     def _get_file_path(self, key: CacheKey) -> Path:
         """Get file path for cache key."""
         # Create subdirectories based on namespace for organization
-        namespace_dir = self.cache_dir / key.namespace
+        # 防御的: path traversal 回避（ディレクトリ要素を除去）
+        safe_namespace = Path(key.namespace).name
+        if not safe_namespace:  # 空の場合のフォールバック
+            safe_namespace = "default"
+        namespace_dir = self.cache_dir / safe_namespace
         namespace_dir.mkdir(parents=True, exist_ok=True, mode=self.config.dir_mode)
 
         # Use hash to create safe filename
@@ -89,6 +94,10 @@ class FileCache(CacheProvider):
             }
 
             if self.config.serialization == "pickle":
+                if not self.config.allow_pickle:
+                    raise CacheError(
+                        "Pickle serialization is disabled by default (set allow_pickle=True to enable)."
+                    )
                 serialized = pickle.dumps(data)
             else:
                 serialized = json.dumps(data, default=str).encode("utf-8")
@@ -115,6 +124,10 @@ class FileCache(CacheProvider):
                 data = gzip.decompress(data)
 
             if self.config.serialization == "pickle":
+                if not self.config.allow_pickle:
+                    raise CacheError(
+                        "Pickle deserialization is disabled by default (set allow_pickle=True to enable)."
+                    )
                 entry_data = pickle.loads(data)
             else:
                 entry_data = json.loads(data.decode("utf-8"))

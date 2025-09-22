@@ -691,22 +691,30 @@ class GitHubActionsIntegration:
         Returns:
             Sorted list of (job_id, job) tuples
         """
-        # Simple topological sort for job dependencies
-        sorted_jobs = []
+        # Simple topological sort with cycle detection
+        sorted_jobs: List[Tuple[str, JobConfig]] = []
         processed = set()
+        visiting = set()
 
         def process_job(job_id: str, job: JobConfig):
             if job_id in processed:
                 return
+            if job_id in visiting:
+                raise ValueError(f"Cycle detected in job dependencies at '{job_id}'")
+
+            visiting.add(job_id)
 
             # Process dependencies first
             if job.needs:
                 for dep_job_id in job.needs:
                     if dep_job_id in jobs:
                         process_job(dep_job_id, jobs[dep_job_id])
+                    else:
+                        logger.warning(f"Job '{job_id}' depends on unknown job '{dep_job_id}'")
 
             sorted_jobs.append((job_id, job))
             processed.add(job_id)
+            visiting.remove(job_id)
 
         for job_id, job in jobs.items():
             process_job(job_id, job)

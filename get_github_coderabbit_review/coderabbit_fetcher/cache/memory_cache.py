@@ -2,6 +2,7 @@
 
 import logging
 import threading
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional
 
@@ -40,7 +41,7 @@ class MemoryCache(CacheProvider):
         else:
             self._lock = threading.RLock()  # Always use lock for safety
 
-        self.stats = {"hits": 0, "misses": 0, "sets": 0, "deletes": 0, "evictions": 0, "size": 0}
+        self.stats = Counter(hits=0, misses=0, sets=0, deletes=0, evictions=0, size=0)
 
     def get(self, key: CacheKey) -> Optional[CacheEntry]:
         """Get entry from memory cache."""

@@ -101,12 +101,13 @@ class AsyncGitHubClient:
         """
         await self._ensure_session()
 
-        # Create request task and track it
-        request_task = asyncio.create_task(self._session.request(method, url, **kwargs))
-        self._active_requests.add(request_task)
+        # Track current task for cancellation
+        current_task = asyncio.current_task()
+        if current_task:
+            self._active_requests.add(current_task)
 
         try:
-            async with request_task as response:
+            async with self._session.request(method, url, **kwargs) as response:
                 # Update rate limit info
                 self.rate_limit_remaining = int(response.headers.get("X-RateLimit-Remaining", 0))
                 self.rate_limit_reset = int(response.headers.get("X-RateLimit-Reset", 0))
@@ -135,11 +136,12 @@ class AsyncGitHubClient:
         except asyncio.CancelledError:
             logger.info("GitHub request was cancelled")
             raise
-        except Exception as e:
-            logger.error(f"Error making GitHub request: {e}")
+        except Exception:
+            logger.exception("Error making GitHub request")
             raise
         finally:
-            self._active_requests.discard(request_task)
+            if current_task:
+                self._active_requests.discard(current_task)
 
     async def validate_auth_async(self) -> bool:
         """Validate GitHub authentication asynchronously.
