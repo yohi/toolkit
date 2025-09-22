@@ -312,7 +312,7 @@ def run_version_command() -> int:
         from importlib.metadata import version as get_version
 
         version = get_version("coderabbit-comment-fetcher")
-    except:
+    except Exception:
         version = "development"
 
     print(f"CodeRabbit Comment Fetcher v{version}")

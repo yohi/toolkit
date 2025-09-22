@@ -256,7 +256,7 @@ class MarkdownFormatter(BaseFormatter):
     def _is_true_actionable_comment(self, comment) -> bool:
         """Determine if a comment should be classified as truly actionable based on expected output."""
         file_path = getattr(comment, "file_path", "")
-        line_range = getattr(comment, "line_range", "")
+        # line_range = getattr(comment, "line_range", "")  # 将来の機能拡張用に保持
         raw_content = getattr(comment, "raw_content", "")
 
         # Dynamic detection of actionable comments based on content patterns
@@ -1287,7 +1287,7 @@ class MarkdownFormatter(BaseFormatter):
                         break
                     else:
                         in_code = True
-                        code_lang = line.strip()[3:].strip()
+                        # code_lang = line.strip()[3:].strip()  # 将来の構文ハイライト用に保持
                         code_lines.append(line)
                 elif in_code:
                     code_lines.append(line)

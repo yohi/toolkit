@@ -31,11 +31,11 @@ class PerformanceTestBase(unittest.TestCase):
             for file in os.listdir(self.temp_dir):
                 try:
                     os.unlink(os.path.join(self.temp_dir, file))
-                except:
+                except OSError:
                     pass
             try:
                 os.rmdir(self.temp_dir)
-            except:
+            except OSError:
                 pass
 
     def measure_execution_time(self, func, *args, **kwargs):
