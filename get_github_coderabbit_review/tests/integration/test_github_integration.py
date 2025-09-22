@@ -150,7 +150,7 @@ class TestGitHubIntegration(unittest.TestCase):
 
         for url in valid_urls:
             with self.subTest(url=url):
-                owner, repo, pr_number = self.client._parse_pr_url(url)
+                owner, repo, pr_number = self.client.parse_pr_url(url)
                 self.assertIsInstance(owner, str)
                 self.assertIsInstance(repo, str)
                 self.assertIsInstance(pr_number, int)
@@ -170,7 +170,7 @@ class TestGitHubIntegration(unittest.TestCase):
         for url in invalid_urls:
             with self.subTest(url=url):
                 with self.assertRaises(InvalidPRUrlError):
-                    self.client._parse_pr_url(url)
+                    self.client.parse_pr_url(url)
 
     @patch("subprocess.run")
     def test_check_rate_limits(self, mock_run):

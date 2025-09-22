@@ -11,7 +11,7 @@ from ..models import AnalyzedComments
 class MetadataEnhancer:
     """Generates enhanced metadata for CodeRabbit analysis prompts."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize metadata enhancer."""
         pass
 
@@ -167,7 +167,7 @@ class MetadataEnhancer:
 
     def _analyze_primary_issues(self, analyzed_comments: AnalyzedComments) -> str:
         """Analyze primary issues from comment content."""
-        issue_categories = Counter()
+        issue_categories: Counter[str] = Counter()
 
         if hasattr(analyzed_comments, "review_comments"):
             for review in analyzed_comments.review_comments:
@@ -313,7 +313,7 @@ class MetadataEnhancer:
         self, analyzed_comments: AnalyzedComments, pr_info: Dict[str, Any]
     ) -> str:
         """Calculate file distribution statistics."""
-        file_counts = Counter()
+        file_counts: Counter[str] = Counter()
 
         if hasattr(analyzed_comments, "review_comments"):
             for review in analyzed_comments.review_comments:

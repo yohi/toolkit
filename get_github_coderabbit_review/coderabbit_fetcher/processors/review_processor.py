@@ -26,7 +26,7 @@ class ReviewProcessor:
     - OutputFormatter: Formats output for different use cases
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the review processor with specialized components."""
         self.parser = CommentParser()
         self.analyzer = ContentAnalyzer()
@@ -88,7 +88,7 @@ class ReviewProcessor:
         Returns:
             List of ActionableComment objects
         """
-        actionable_comments = []
+        actionable_comments: list[ActionableComment] = []
         logger.debug(f"extract_actionable_comments called with content length: {len(content)}")
         logger.debug(f"Content preview: {content[:200]}...")
 
@@ -312,7 +312,7 @@ class ReviewProcessor:
             description = body
 
             # Try to extract the title (usually after _⚠️ Potential issue_ etc.)
-            for _i, line in enumerate(lines):
+            for i, line in enumerate(lines):
                 if line.startswith("**") and line.endswith("**") and len(line) > 4:
                     title = line.strip("*").strip()
                     # Rest of the content as description
