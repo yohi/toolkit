@@ -19,7 +19,7 @@ class ResolvedMarkerConfig:
     default_marker: str = "🔒 CODERABBIT_RESOLVED 🔒"
 
     # Additional patterns to detect various resolution formats
-    additional_patterns: List[str] = None
+    additional_patterns: Optional[List[str]] = None
 
     # Case sensitive matching (recommended for security)
     case_sensitive: bool = True
@@ -27,7 +27,7 @@ class ResolvedMarkerConfig:
     # Require exact match (no partial matches)
     exact_match: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize additional patterns if not provided."""
         if self.additional_patterns is None:
             self.additional_patterns = [
@@ -88,7 +88,7 @@ class ResolvedMarkerDetector:
             config: Optional configuration, uses default if not provided
         """
         self.config = config or ResolvedMarkerConfig()
-        self._compiled_patterns = self.config.get_compiled_patterns()
+        self._compiled_patterns: List[re.Pattern[str]] = self.config.get_compiled_patterns()
 
     def is_comment_resolved(self, comment: Dict[str, Any]) -> bool:
         """Check if a single comment contains resolved markers.
