@@ -24,6 +24,31 @@ from ..patterns.observer import Event, EventObserver, EventType, subscribe_obser
 logger = logging.getLogger(__name__)
 
 
+def _generate_secure_key() -> str:
+    """Generate a secure random key for Flask sessions.
+
+    Returns:
+        Base64-encoded 32-byte random key
+
+    Raises:
+        RuntimeError: If secure key generation fails
+    """
+    try:
+        import secrets
+        import base64
+
+        # Generate 32 random bytes and encode as base64
+        random_bytes = secrets.token_bytes(32)
+        return base64.b64encode(random_bytes).decode("utf-8")
+    except ImportError:
+        # Fallback for older Python versions
+        import os
+        import base64
+
+        random_bytes = os.urandom(32)
+        return base64.b64encode(random_bytes).decode("utf-8")
+
+
 @dataclass
 class DashboardConfig:
     """Dashboard configuration."""
@@ -35,7 +60,7 @@ class DashboardConfig:
     max_history_points: int = 100
     enable_authentication: bool = False
     secret_key: str = field(
-        default_factory=lambda: os.environ.get("DASHBOARD_SECRET_KEY", "dev-secret-key")
+        default_factory=lambda: os.environ.get("DASHBOARD_SECRET_KEY") or _generate_secure_key()
     )
     static_folder: str = "dashboard/static"
     template_folder: str = "dashboard/templates"
