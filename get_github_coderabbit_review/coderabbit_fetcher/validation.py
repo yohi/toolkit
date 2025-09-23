@@ -6,7 +6,7 @@ import re
 import sys
 import time
 import urllib.parse
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import wraps
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Union
@@ -19,10 +19,10 @@ class ValidationResult:
     """Result of validation operation."""
 
     valid: bool
-    issues: List[str] = None
-    warnings: List[str] = None
-    suggestions: List[str] = None
-    details: Dict[str, Any] = None
+    issues: List[str] = field(default_factory=list)
+    warnings: List[str] = field(default_factory=list)
+    suggestions: List[str] = field(default_factory=list)
+    details: Dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self):
         if self.issues is None:

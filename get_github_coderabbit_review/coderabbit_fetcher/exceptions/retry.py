@@ -40,7 +40,7 @@ class RateLimitError(RetryableError):
         message: str,
         retry_after: Optional[float] = None,
         limit_type: Optional[str] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         details = kwargs.get("details", {})
         if limit_type:
@@ -72,7 +72,7 @@ class RetryExhaustedError(CodeRabbitFetcherError):
         attempts: int,
         last_error: Exception,
         error_history: Optional[List[Exception]] = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         details = kwargs.get("details", {})
         details.update(
@@ -103,7 +103,7 @@ class TimeoutError(RetryableError):
         message: str,
         timeout_seconds: Optional[float] = None,
         operation: Optional[str] = None,
-        **kwargs,
+        **kwargs: Any,
     ):
         details = kwargs.get("details", {})
         if timeout_seconds is not None:

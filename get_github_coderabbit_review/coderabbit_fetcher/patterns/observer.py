@@ -260,7 +260,7 @@ class PerformanceObserver(EventObserver):
 
     def get_performance_summary(self) -> Dict[str, Any]:
         """Get performance summary."""
-        summary = {}
+        summary: Dict[str, Any] = {}
 
         # Processing time statistics
         if self.metrics["processing_times"]:
@@ -347,7 +347,7 @@ class QualityObserver(EventObserver):
 
     def get_quality_summary(self) -> Dict[str, Any]:
         """Get quality summary."""
-        summary = {}
+        summary: Dict[str, Any] = {}
 
         for metric_name, values in self.quality_metrics.items():
             if values:

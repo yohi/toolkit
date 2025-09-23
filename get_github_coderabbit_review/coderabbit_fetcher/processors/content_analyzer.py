@@ -124,7 +124,7 @@ class ContentAnalyzer:
         else:
             return "general"
 
-    def extract_code_blocks(self, content: str) -> List[Dict[str, str]]:
+    def extract_code_blocks(self, content: str) -> List[Dict[str, Any]]:
         """Extract code blocks from comment content.
 
         Args:

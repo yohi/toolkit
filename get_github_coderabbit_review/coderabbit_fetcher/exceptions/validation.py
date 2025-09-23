@@ -13,7 +13,7 @@ class ValidationError(CodeRabbitFetcherError):
         message: str,
         field: Optional[str] = None,
         validation_errors: Optional[List[str]] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         details = kwargs.get("details", {})
         if field:
@@ -101,7 +101,7 @@ class ParameterValidationError(ValidationError):
         parameter: Optional[str] = None,
         expected_type: Optional[str] = None,
         provided_value: Optional[Any] = None,
-        **kwargs,
+        **kwargs: Any,
     ) -> None:
         details = kwargs.get("details", {})
         if parameter:
