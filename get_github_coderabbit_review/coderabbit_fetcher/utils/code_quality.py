@@ -180,7 +180,7 @@ class CodeQualityAnalyzer:
             )
 
         # Duplicate code patterns
-        line_patterns = {}
+        line_patterns: dict[str, int] = {}
         for line in non_empty_lines:
             clean_line = re.sub(r"\s+", " ", line.strip())
             if len(clean_line) > 20:  # Only check substantial lines

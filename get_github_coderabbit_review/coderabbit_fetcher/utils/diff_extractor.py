@@ -83,7 +83,7 @@ class DiffExtractor:
         Returns:
             List of dictionaries containing code block info: {code, language, type}
         """
-        code_blocks = []
+        code_blocks: list[dict[str, Any]] = []
 
         if not content:
             return code_blocks

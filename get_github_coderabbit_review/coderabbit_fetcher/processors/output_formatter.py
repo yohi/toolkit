@@ -135,7 +135,7 @@ class OutputFormatter:
         Returns:
             Dictionary with priority levels as keys and comment lists as values
         """
-        grouped = {"HIGH": [], "MEDIUM": [], "LOW": []}
+        grouped: dict[str, list[Any]] = {"HIGH": [], "MEDIUM": [], "LOW": []}
 
         for comment in comments:
             priority = comment.get("priority", "MEDIUM")
@@ -153,7 +153,7 @@ class OutputFormatter:
         Returns:
             Dictionary with file paths as keys and comment lists as values
         """
-        grouped = {}
+        grouped: dict[str, list[Any]] = {}
 
         for comment in comments:
             file_path = comment.get("file_path", "unknown")

@@ -8,19 +8,19 @@ from .base import CodeRabbitFetcherError
 class RetryableError(CodeRabbitFetcherError):
     """Base class for errors that can be retried."""
 
-    def __init__(self, message: str, retry_after: Optional[float] = None, **kwargs):
+    def __init__(self, message: str, retry_after: Optional[float] = None, **kwargs) -> None:
         details = kwargs.get("details", {})
         if retry_after is not None:
             details["retry_after_seconds"] = retry_after
 
-        super().__init__(message, details=details, **kwargs)
+        super().__init__(message, details=str(details) if details else None)
         self.retry_after = retry_after
 
 
 class TransientError(RetryableError):
     """Exception for transient errors that should be retried."""
 
-    def __init__(self, message: str, **kwargs):
+    def __init__(self, message: str, **kwargs) -> None:
         super().__init__(
             message,
             suggestions=[
@@ -41,7 +41,7 @@ class RateLimitError(RetryableError):
         retry_after: Optional[float] = None,
         limit_type: Optional[str] = None,
         **kwargs,
-    ):
+    ) -> None:
         details = kwargs.get("details", {})
         if limit_type:
             details["limit_type"] = limit_type
@@ -88,18 +88,7 @@ class RetryExhaustedError(CodeRabbitFetcherError):
                 {"type": type(err).__name__, "message": str(err)} for err in error_history
             ]
 
-        super().__init__(
-            message,
-            details=details,
-            suggestions=[
-                "Check the underlying issue causing failures",
-                "Increase retry attempts if appropriate",
-                "Verify network connectivity and permissions",
-                "Review error history for patterns",
-            ],
-            recoverable=False,
-            **kwargs,
-        )
+        super().__init__(message, details=str(details) if details else None)
 
         self.attempts = attempts
         self.last_error = last_error
@@ -137,7 +126,7 @@ class TimeoutError(RetryableError):
 class CircuitBreakerError(CodeRabbitFetcherError):
     """Exception raised when circuit breaker is open."""
 
-    def __init__(self, message: str, failure_count: int, threshold: int, **kwargs):
+    def __init__(self, message: str, failure_count: int, threshold: int, **kwargs) -> None:
         details = kwargs.get("details", {})
         details.update(
             {
@@ -147,14 +136,4 @@ class CircuitBreakerError(CodeRabbitFetcherError):
             }
         )
 
-        super().__init__(
-            message,
-            details=details,
-            suggestions=[
-                "Wait for circuit breaker to reset",
-                "Check underlying service health",
-                "Review recent error patterns",
-            ],
-            recoverable=True,
-            **kwargs,
-        )
+        super().__init__(message, details=str(details) if details else None)
