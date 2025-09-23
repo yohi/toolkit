@@ -59,8 +59,8 @@ Examples:
         """,
     )
 
-    # Required argument
-    parser.add_argument("pr_url", help="GitHub pull request URL")
+    # PR URL (optional for utility commands like --version)
+    parser.add_argument("pr_url", nargs="?", help="GitHub pull request URL")
 
     # Optional arguments
     parser.add_argument(
@@ -129,6 +129,10 @@ def run_fetch_command(args) -> int:
         output_format = args.output_format
         if args.quiet and args.output_format == "markdown":
             output_format = "ai-agent-prompt"
+
+        # Check if pr_url is required for the operation
+        if not args.pr_url and not (args.version or args.validate):
+            parser.error("pr_url is required unless using --version or --validate")
 
         config = ExecutionConfig(
             pr_url=args.pr_url,

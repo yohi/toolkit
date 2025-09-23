@@ -3,7 +3,7 @@
 import asyncio
 import logging
 import time
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
 from ..exceptions import CodeRabbitFetcherError
@@ -336,7 +336,9 @@ class AsyncCodeRabbitOrchestrator:
     ) -> Dict[str, Any]:
         """Finalize execution results."""
 
-        execution_time = ((self.end_time or datetime.now()) - self.start_time).total_seconds()
+        execution_time = (
+            self.end_time or datetime.now(timezone.utc) - self.start_time
+        ).total_seconds()
 
         results = {
             "success": True,

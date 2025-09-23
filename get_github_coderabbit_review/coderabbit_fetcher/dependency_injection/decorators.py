@@ -9,6 +9,31 @@ from .container import DIContainer, ServiceScope, get_container
 
 logger = logging.getLogger(__name__)
 
+
+def _safe_typename(type_obj) -> str:
+    """Safely get type name handling typing generics and complex types.
+
+    Args:
+        type_obj: Type object to get name from
+
+    Returns:
+        Safe string representation of type name
+    """
+    try:
+        if hasattr(type_obj, "__name__"):
+            return type_obj.__name__
+        elif hasattr(type_obj, "__origin__"):
+            # Handle typing generics like Optional[str], Union[int, str]
+            origin = type_obj.__origin__
+            if hasattr(origin, "__name__"):
+                return origin.__name__
+            return str(origin)
+        else:
+            return str(type_obj)
+    except Exception:
+        return "<unknown_type>"
+
+
 T = TypeVar("T")
 
 
@@ -55,14 +80,16 @@ def injectable(cls: Type[T]) -> Type[T]:
             try:
                 dependency = container.get(param.annotation)
                 kwargs[param_name] = dependency
-                logger.debug(f"Auto-injected {param.annotation.__name__} into {cls.__name__}")
+                logger.debug(
+                    f"Auto-injected {_safe_typename(param.annotation)} into {cls.__name__}"
+                )
             except Exception as e:
                 # Use default value if available
                 if param.default != param.empty:
                     continue
                 else:
                     logger.warning(
-                        f"Failed to inject {param.annotation.__name__} into {cls.__name__}: {e}"
+                        f"Failed to inject {_safe_typename(param.annotation)} into {cls.__name__}: {e}"
                     )
 
         # Call original constructor
@@ -96,10 +123,10 @@ def inject(**dependencies: Type) -> Callable:
                     try:
                         dependency = container.get(param_type)
                         kwargs[param_name] = dependency
-                        logger.debug(f"Injected {param_type.__name__} as {param_name}")
+                        logger.debug(f"Injected {_safe_typename(param_type)} as {param_name}")
                     except Exception as e:
                         logger.warning(
-                            f"Failed to inject {param_type.__name__} as {param_name}: {e}"
+                            f"Failed to inject {_safe_typename(param_type)} as {param_name}: {e}"
                         )
 
             return func(*args, **kwargs)
@@ -146,7 +173,7 @@ def service(
             cls = injectable(cls)
 
         logger.info(
-            f"Registered service {cls.__name__} as {service_type.__name__} with scope {scope.value}"
+            f"Registered service {cls.__name__} as {_safe_typename(service_type)} with scope {scope.value}"
         )
         return cls
 
@@ -231,7 +258,7 @@ def auto_wire(func: Callable) -> Callable:
             try:
                 dependency = container.get(param.annotation)
                 kwargs[param_name] = dependency
-                logger.debug(f"Auto-wired {param.annotation.__name__} as {param_name}")
+                logger.debug(f"Auto-wired {_safe_typename(param.annotation)} as {param_name}")
             except Exception as e:
                 # Use default value if available
                 if param.default != param.empty:
