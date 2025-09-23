@@ -218,7 +218,7 @@ class AsyncGitHubClient:
         Returns:
             List of comments
         """
-        comments = []
+        comments: list[Any] = []
         page = 1
 
         while True:

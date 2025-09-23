@@ -221,7 +221,7 @@ class SummaryProcessor:
         Returns:
             List of ChangeEntry objects
         """
-        changes = []
+        changes: list[Any] = []
 
         # Look for markdown tables - simpler approach
         # Find lines that look like table rows

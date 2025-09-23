@@ -635,8 +635,8 @@ class SentimentAnalyzer:
         avg_clarity = sum(r.clarity for r in results) / len(results)
 
         # Count sentiment distributions
-        sentiment_counts = {}
-        tone_counts = {}
+        sentiment_counts: dict[str, int] = {}
+        tone_counts: dict[str, int] = {}
 
         for result in results:
             sentiment_counts[result.sentiment_label.value] = (

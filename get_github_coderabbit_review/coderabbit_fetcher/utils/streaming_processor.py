@@ -366,7 +366,7 @@ class CommentStreamProcessor(StreamingProcessor):
                 return "general"
 
         # Group comments by type
-        comments_by_type = {}
+        comments_by_type: dict[str, list[Any]] = {}
         for comment in comments:
             comment_type = categorize_comment(comment)
             if comment_type not in comments_by_type:

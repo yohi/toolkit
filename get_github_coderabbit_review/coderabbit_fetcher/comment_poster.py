@@ -259,7 +259,7 @@ class CommentPoster:
         Returns:
             Dictionary with validation results
         """
-        validation_result = {
+        validation_result: Dict[str, Any] = {
             "valid": True,
             "issues": [],
             "warnings": [],

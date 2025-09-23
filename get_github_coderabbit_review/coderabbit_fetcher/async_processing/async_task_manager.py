@@ -561,7 +561,7 @@ class AsyncTaskManager:
             summary["success_rate"] = self.stats["completed_tasks"] / self.stats["total_tasks"]
 
         # Task breakdown by status
-        status_counts = {}
+        status_counts: dict[str, int] = {}
         for task in self.tasks.values():
             status = task.status.value
             status_counts[status] = status_counts.get(status, 0) + 1
@@ -569,7 +569,7 @@ class AsyncTaskManager:
         summary["status_breakdown"] = status_counts
 
         # Priority breakdown
-        priority_counts = {}
+        priority_counts: dict[str, int] = {}
         for task in self.tasks.values():
             priority = task.priority.value
             priority_counts[f"priority_{priority}"] = (
