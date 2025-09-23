@@ -2,7 +2,7 @@
 
 import logging
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 from typing import Any, Dict, Optional, Union
 
@@ -78,19 +78,22 @@ class FastProcessingStrategy(ProcessingStrategy):
         """Process data with fast strategy."""
         logger.info("Using fast processing strategy")
 
-        # Optimize for speed
-        context.batch_size = min(context.batch_size * 2, 100)
-        context.max_workers = min(context.max_workers * 2, 8)
-        context.quality_threshold = 0.6  # Lower quality threshold for speed
+        # Optimize for speed - use replace to avoid modifying original context
+        optimized_context = replace(
+            context,
+            batch_size=min(context.batch_size * 2, 100),
+            max_workers=min(context.max_workers * 2, 8),
+            quality_threshold=0.6,  # Lower quality threshold for speed
+        )
 
-        return self._process_with_optimizations(data, context)
+        return self._process_with_optimizations(data, optimized_context)
 
-    def _process_with_optimizations(self, data: Any, context: ProcessingContext) -> Any:
+    def _process_with_optimizations(self, data: Any, optimized_context: ProcessingContext) -> Any:
         """Process with speed optimizations."""
         from ..utils.streaming_processor import CommentStreamProcessor
 
         processor = CommentStreamProcessor(
-            max_workers=context.max_workers, batch_size=context.batch_size
+            max_workers=optimized_context.max_workers, batch_size=optimized_context.batch_size
         )
 
         def fast_processor(item):
