@@ -10,6 +10,7 @@ from typing import Any, Callable, Dict, List, Optional
 from .analyzers import ClassifiedComments, CommentClassifier
 from .comment_analyzer import CommentAnalyzer
 from .comment_poster import ResolutionRequestConfig, ResolutionRequestManager
+from .exceptions.persona import PersonaLoadError
 from .config import (
     DEFAULT_PROGRESS_STEPS,
     DEFAULT_RESOLVED_MARKER,
@@ -336,6 +337,8 @@ class CodeRabbitOrchestrator:
         logger.debug(f"Validating PR URL: {self.config.pr_url}")
 
         try:
+            if self.github_client is None:
+                raise CodeRabbitFetcherError("GitHub client not initialized")
             owner, repo, pr_number = self.github_client.parse_pr_url(self.config.pr_url)
 
             pr_info = {
@@ -364,6 +367,8 @@ class CodeRabbitOrchestrator:
             PersonaFileError: If persona loading fails
         """
         try:
+            if self.persona_manager is None:
+                raise PersonaLoadError("Persona manager not initialized")
             if self.config.persona_file:
                 logger.debug(f"Loading persona from file: {self.config.persona_file}")
                 persona = self.persona_manager.load_from_file(self.config.persona_file)

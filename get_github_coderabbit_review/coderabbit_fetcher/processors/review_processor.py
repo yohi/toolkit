@@ -663,7 +663,7 @@ class ReviewProcessor:
 
     def extract_additional_comments(self, content: str) -> List:
         """Extract additional comments as a separate category."""
-        additional_comments: list[AdditionalComment] = []
+        additional_comments: list[Any] = []
 
         # Find the Additional comments section
         additional_start = content.find("<summary>🔇 Additional comments (")

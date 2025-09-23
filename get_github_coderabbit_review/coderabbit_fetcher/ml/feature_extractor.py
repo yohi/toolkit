@@ -546,7 +546,7 @@ class FeatureExtractor:
         target_line_idx = -1
 
         # Find the target line in diff context
-        for _i, line in enumerate(lines):
+        for i, line in enumerate(lines):
             if str(line_number) in line:
                 target_line_idx = i
                 break

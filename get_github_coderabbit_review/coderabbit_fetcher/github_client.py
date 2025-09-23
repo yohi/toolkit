@@ -524,7 +524,7 @@ class GitHubClient:
         Returns:
             Dictionary with validation results
         """
-        validation_result = {
+        validation_result: Dict[str, Any] = {
             "gh_installed": False,
             "gh_version": None,
             "authenticated": False,
