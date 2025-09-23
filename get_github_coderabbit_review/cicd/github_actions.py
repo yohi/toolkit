@@ -206,8 +206,16 @@ class ActionRunner:
                 result["error"] = stderr.decode()
                 result["exit_code"] = process.returncode
 
-                if process.returncode != 0 and not step.continue_on_error:
-                    result["status"] = "failure"
+                # Handle continue_on_error properly - record failure but allow continuation
+                if process.returncode != 0:
+                    if step.continue_on_error:
+                        result["status"] = "success"  # Job continues but failure is recorded
+                        result["step_failed"] = True
+                        logger.warning(
+                            f"Step '{step.name}' failed but continuing due to continue_on_error"
+                        )
+                    else:
+                        result["status"] = "failure"
 
             elif step.uses:
                 # Handle predefined actions
@@ -216,7 +224,7 @@ class ActionRunner:
         except Exception as e:
             result["status"] = "error"
             result["error"] = str(e)
-            logger.exception("Step execution error")
+            logger.exception(f"Step execution error for '{step.name}': {e}")
 
         end_time = datetime.now()
         result["end_time"] = end_time.isoformat()

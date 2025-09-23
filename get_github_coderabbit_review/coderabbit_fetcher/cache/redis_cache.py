@@ -30,9 +30,11 @@ class RedisConfig:
     retry_on_timeout: bool = True
     decode_responses: bool = True
     max_connections: int = 50
-    serialization: str = "json"  # json, pickle
+    serialization: str = "json"  # json, pickle (pickleは危険)
+    allow_pickle: bool = False  # pickleの明示的許可が必要
     compression: bool = False
     key_prefix: str = "coderabbit:"
+    touch_on_get: bool = True  # Whether to update access time on get operations
 
 
 class RedisCache(CacheProvider):
@@ -87,11 +89,14 @@ class RedisCache(CacheProvider):
 
             logger.info(f"Connected to Redis at {self.config.host}:{self.config.port}")
 
-        except ImportError:
+        except ImportError as e:
             logger.error("Redis library not installed. Install with: pip install redis")
             self._available = False
+        except (ConnectionError, TimeoutError) as e:
+            logger.exception(f"Redis connection error: {e}")
+            self._available = False
         except Exception as e:
-            logger.error(f"Failed to connect to Redis: {e}")
+            logger.exception(f"Unexpected error connecting to Redis: {e}")
             self._available = False
 
     def _ensure_connected(self) -> bool:
@@ -125,6 +130,10 @@ class RedisCache(CacheProvider):
             }
 
             if self.config.serialization == "pickle":
+                if not self.config.allow_pickle:
+                    raise CacheError(
+                        "Pickle serialization is disabled by default (set allow_pickle=True to enable)."
+                    )
                 return pickle.dumps(data)
             else:
                 return json.dumps(data, default=str)
@@ -137,6 +146,10 @@ class RedisCache(CacheProvider):
         """Deserialize cache entry from storage."""
         try:
             if self.config.serialization == "pickle":
+                if not self.config.allow_pickle:
+                    raise CacheError(
+                        "Pickle deserialization is disabled by default (set allow_pickle=True to enable)."
+                    )
                 entry_data = pickle.loads(data)
             else:
                 entry_data = json.loads(data)
@@ -199,9 +212,10 @@ class RedisCache(CacheProvider):
                 self.stats["misses"] += 1
                 return None
 
-            # Update access information
-            entry.touch()
-            self.set(entry)  # Update in Redis
+            # Update access information only if enabled
+            if self.config.touch_on_get:
+                entry.touch()
+                self.set(entry)  # Update in Redis
 
             self.stats["hits"] += 1
             return entry

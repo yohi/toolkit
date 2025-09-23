@@ -5,7 +5,7 @@ import ipaddress
 import logging
 import uuid
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Dict, List, Optional, Union
 
@@ -748,11 +748,20 @@ class RBACManager:
         if context:
             eval_context.update(context)
 
-        # Check role-based permissions
+        # Check role-based permissions including inheritance
         for role_id in user.roles:
             role = self.get_role(role_id)
-            if role and role.has_permission(permission_type, resource_type, eval_context):
-                return self._policy_allows(eval_context)
+            if role:
+                # Check direct permissions
+                if role.has_permission(permission_type, resource_type, eval_context):
+                    return self._policy_allows(eval_context)
+
+                # Check inherited permissions from parent roles
+                all_permissions = role.get_all_permissions(self)
+                for permission in all_permissions:
+                    if permission.matches_request(permission_type, resource_type):
+                        if permission.evaluate_conditions(eval_context):
+                            return self._policy_allows(eval_context)
 
         # Check ACL permissions for specific resources
         if resource_id:
