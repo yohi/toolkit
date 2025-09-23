@@ -3,7 +3,7 @@
 import logging
 import threading
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Type, TypeVar
 
 if TYPE_CHECKING:
     from .container import DIContainer

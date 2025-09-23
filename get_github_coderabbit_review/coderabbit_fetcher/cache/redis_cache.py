@@ -89,7 +89,7 @@ class RedisCache(CacheProvider):
 
             logger.info(f"Connected to Redis at {self.config.host}:{self.config.port}")
 
-        except ImportError as e:
+        except ImportError:
             logger.error("Redis library not installed. Install with: pip install redis")
             self._available = False
         except (ConnectionError, TimeoutError) as e:
