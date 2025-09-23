@@ -497,7 +497,7 @@ def create_error_aggregation_function() -> Callable[[List[Event]], Dict[str, Any
         if not events:
             return {}
 
-        error_types = defaultdict(int)
+        error_types: defaultdict[str, int] = defaultdict(int)
         error_messages = set()
         sources = set()
 

@@ -339,7 +339,7 @@ class FileCache(CacheProvider):
             try:
                 file_count = 0
                 total_size = 0
-                namespace_counts = {}
+                namespace_counts: dict[str, int] = {}
 
                 for root, dirs, files in os.walk(self.cache_dir):
                     for file in files:

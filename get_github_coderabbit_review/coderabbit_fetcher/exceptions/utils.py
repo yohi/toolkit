@@ -69,7 +69,6 @@ def create_error_summary(exceptions: List[Exception]) -> Dict[str, Any]:
         "most_common_error": None,
         "first_error": None,
         "last_error": None,
-        "error_timeline": [],
     }
 
     for i, exc in enumerate(exceptions):

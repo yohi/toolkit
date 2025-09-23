@@ -10,7 +10,6 @@ from typing import Any, Callable, Dict, List, Optional
 from .analyzers import ClassifiedComments, CommentClassifier
 from .comment_analyzer import CommentAnalyzer
 from .comment_poster import ResolutionRequestConfig, ResolutionRequestManager
-from .exceptions.persona import PersonaLoadError
 from .config import (
     DEFAULT_PROGRESS_STEPS,
     DEFAULT_RESOLVED_MARKER,
@@ -30,6 +29,7 @@ from .exceptions import (
     PersonaFileError,
     PersonaLoadError,
 )
+from .exceptions.persona import PersonaLoadError
 from .formatters import (
     AIAgentPromptFormatter,
     JSONFormatter,

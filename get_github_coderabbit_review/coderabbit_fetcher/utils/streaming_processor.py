@@ -348,7 +348,7 @@ class CommentStreamProcessor(StreamingProcessor):
         Returns:
             Dictionary mapping comment types to processed results
         """
-        results = {comment_type: [] for comment_type in processors.keys()}
+        results: dict[str, list[Any]] = {comment_type: [] for comment_type in processors.keys()}
 
         def categorize_comment(comment: Dict[str, Any]) -> str:
             """Categorize comment by type."""
