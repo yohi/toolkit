@@ -379,7 +379,7 @@ class EventPublisher:
     def __init__(self):
         """Initialize event publisher."""
         self.observers: List[EventObserver] = []
-        self.event_queue = queue.Queue()
+        self.event_queue: queue.Queue[Any] = queue.Queue()
         self.processing_thread: Optional[threading.Thread] = None
         self.is_running = False
         self._lock = threading.RLock()

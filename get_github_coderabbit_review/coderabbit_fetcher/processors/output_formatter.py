@@ -172,7 +172,7 @@ class OutputFormatter:
         Returns:
             Dictionary with comment types as keys and comment lists as values
         """
-        grouped = {}
+        grouped: dict[str, list[Any]] = {}
 
         for comment in comments:
             comment_type = comment.get("type", "general")

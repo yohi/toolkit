@@ -204,7 +204,7 @@ class EventAggregator:
 
             aggregated = self.get_aggregated_events(event_type, start_time, end_time)
 
-            counts = defaultdict(int)
+            counts: defaultdict[str, int] = defaultdict(int)
 
             for agg_event in aggregated:
                 key = agg_event.event_type.value
@@ -381,7 +381,7 @@ class EventAggregator:
             # Basic aggregation
             sources = {event.source for event in events}
             session_ids = {event.session_id for event in events if event.session_id}
-            severity_counts = defaultdict(int)
+            severity_counts: defaultdict[str, int] = defaultdict(int)
 
             for event in events:
                 severity_counts[event.severity] += 1
@@ -429,8 +429,8 @@ class EventAggregator:
             return {}
 
         # Count common data keys
-        key_counts = defaultdict(int)
-        value_samples = defaultdict(set)
+        key_counts: defaultdict[str, int] = defaultdict(int)
+        value_samples: defaultdict[str, set[Any]] = defaultdict(set)
 
         for event in events:
             for key, value in event.data.items():
