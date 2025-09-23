@@ -421,15 +421,19 @@ class AICodeAnalyzer:
     ) -> ComprehensiveAnalysis:
         """Analyze code synchronously."""
         try:
-            asyncio.get_running_loop()
+            loop = asyncio.get_running_loop()
             # 実行中のループがある場合はスレッドで実行
             import concurrent.futures
 
+            # Run in executor to avoid creating new event loop
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-                future = executor.submit(
-                    asyncio.run, self.analyze_code_async(code, file_path, language, analysis_types)
+                fut = loop.run_in_executor(
+                    executor,
+                    lambda: asyncio.new_event_loop().run_until_complete(
+                        self.analyze_code_async(code, file_path, language, analysis_types)
+                    ),
                 )
-                return future.result()
+                return loop.run_until_complete(fut)
         except RuntimeError:
             # ループがない場合は直接実行
             return asyncio.run(self.analyze_code_async(code, file_path, language, analysis_types))

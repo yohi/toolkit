@@ -290,12 +290,18 @@ class SentimentAnalyzer:
             Sentiment analysis result
         """
         try:
-            asyncio.get_running_loop()
+            loop = asyncio.get_running_loop()
             import concurrent.futures
 
+            # Run in executor to avoid creating new event loop
             with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                fut = ex.submit(asyncio.run, self.analyze_sentiment_async(text, context))
-                return fut.result()
+                fut = loop.run_in_executor(
+                    ex,
+                    lambda: asyncio.new_event_loop().run_until_complete(
+                        self.analyze_sentiment_async(text, context)
+                    ),
+                )
+                return loop.run_until_complete(fut)
         except RuntimeError:
             return asyncio.run(self.analyze_sentiment_async(text, context))
 
