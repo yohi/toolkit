@@ -24,15 +24,8 @@ class ValidationResult:
     suggestions: List[str] = field(default_factory=list)
     details: Dict[str, Any] = field(default_factory=dict)
 
-    def __post_init__(self):
-        if self.issues is None:
-            self.issues = []
-        if self.warnings is None:
-            self.warnings = []
-        if self.suggestions is None:
-            self.suggestions = []
-        if self.details is None:
-            self.details = {}
+    def __post_init__(self) -> None:
+        pass  # dataclass field(default_factory) handles initialization
 
     def add_issue(self, message: str) -> None:
         """Add a validation issue."""
@@ -67,7 +60,7 @@ class URLValidator:
 
     GITHUB_DOMAIN_PATTERN = re.compile(r"^(https?://)?(www\.)?github\.com$")
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.timeout = 10  # seconds for connectivity checks
 
     def validate_pr_url(self, url: str) -> ValidationResult:
@@ -198,7 +191,7 @@ class URLValidator:
 class FileValidator:
     """Comprehensive file and path validation."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.max_file_size = 10 * 1024 * 1024  # 10MB
         self.allowed_persona_extensions = {".txt", ".md", ".text"}
 
@@ -350,7 +343,7 @@ class FileValidator:
 class OptionsValidator:
     """Validate command-line options and configuration."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.valid_formats = {"markdown", "json", "plain"}
         self.valid_log_levels = {"DEBUG", "INFO", "WARNING", "ERROR"}
 
@@ -564,7 +557,7 @@ def timeout_handler(timeout_seconds: float) -> Callable:
 class ValidationSuite:
     """Comprehensive validation suite for all inputs."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.url_validator = URLValidator()
         self.file_validator = FileValidator()
         self.options_validator = OptionsValidator()
