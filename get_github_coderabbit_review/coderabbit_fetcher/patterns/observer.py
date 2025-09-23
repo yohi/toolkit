@@ -109,7 +109,7 @@ class LoggingObserver(EventObserver):
 class ProgressObserver(EventObserver):
     """Observer that tracks processing progress."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize progress observer."""
         self.progress_data: Dict[str, Dict[str, Any]] = {}
         self.session_start_times: Dict[str, datetime] = {}
@@ -207,7 +207,7 @@ class ProgressObserver(EventObserver):
 class PerformanceObserver(EventObserver):
     """Observer that monitors performance metrics."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize performance observer."""
         self.metrics: Dict[str, List[float]] = {
             "processing_times": [],
@@ -310,7 +310,7 @@ class PerformanceObserver(EventObserver):
 class QualityObserver(EventObserver):
     """Observer that monitors code quality metrics."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize quality observer."""
         self.quality_metrics: Dict[str, List[float]] = {
             "quality_scores": [],
@@ -376,7 +376,7 @@ class QualityObserver(EventObserver):
 class EventPublisher:
     """Event publisher that notifies observers."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize event publisher."""
         self.observers: List[EventObserver] = []
         self.event_queue: queue.Queue[Any] = queue.Queue()

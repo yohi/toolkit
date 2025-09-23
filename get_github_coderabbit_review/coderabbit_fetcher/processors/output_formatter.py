@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 class OutputFormatter:
     """Handles formatting of processed comments for various output types."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the output formatter."""
         self.priority_emojis = {"HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}
 

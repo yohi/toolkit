@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 class ContentAnalyzer:
     """Analyzes comment content for patterns, complexity, and relationships."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the content analyzer."""
         self.security_keywords = [
             "security",
