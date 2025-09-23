@@ -1725,7 +1725,7 @@ class LLMInstructionFormatter(BaseFormatter):
             Extracted line number or None
         """
         if not description:
-            return None
+            return ""
 
         # Look for line number patterns in the description
         # Pattern like "26-33行", "around lines 26-33", "lines 26 to 33"
@@ -1766,7 +1766,7 @@ class LLMInstructionFormatter(BaseFormatter):
                 if len(groups) >= 2:
                     return f"{groups[0]}-{groups[1]}"
 
-        return None
+        return ""
 
     def _detect_language_from_file(self, file_path: str) -> str:
         """Detect programming language from file path.

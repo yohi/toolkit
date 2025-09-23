@@ -400,11 +400,11 @@ class AICommentClassifier:
                 return results
 
             # Fallback to individual parsing
-            return None
+            return []
 
         except Exception as e:
             logger.error(f"Error parsing batch AI response: {e}")
-            return None
+            return []
 
     def _parse_text_response(self, text: str, comment_text: str) -> ClassificationResult:
         """Parse text response from AI."""

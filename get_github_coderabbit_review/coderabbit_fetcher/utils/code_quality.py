@@ -9,7 +9,7 @@ from typing import Any, Callable, Dict, List
 logger = logging.getLogger(__name__)
 
 
-def complexity_reducer(max_lines: int = 50, max_params: int = 5):
+def complexity_reducer(max_lines: int = 50, max_params: int = 5) -> Callable:
     """Decorator to enforce complexity limits on functions.
 
     Args:
@@ -68,7 +68,7 @@ def validate_input_types(**type_hints):
     return decorator
 
 
-def safe_execute(default_return=None, log_errors: bool = True):
+def safe_execute(default_return=None, log_errors: bool = True) -> Callable:
     """Decorator for safe execution with error handling.
 
     Args:
@@ -299,7 +299,9 @@ def extract_method(large_function_content: str, method_name: str) -> Dict[str, s
     return {"original": modified_original, "extracted": extracted_method}
 
 
-def performance_monitor(log_slow_operations: bool = True, threshold_seconds: float = 1.0):
+def performance_monitor(
+    log_slow_operations: bool = True, threshold_seconds: float = 1.0
+) -> Callable:
     """Decorator to monitor function performance.
 
     Args:
