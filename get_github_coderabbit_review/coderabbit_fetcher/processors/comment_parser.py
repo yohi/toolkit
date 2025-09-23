@@ -50,9 +50,9 @@ class CommentParser:
         try:
             # Find sections containing actionable comments
             actionable_patterns = [
-                r"## 🛠️ Refactor Suggestions?\s*\n(.*?)(?=\n## |\n\Z)",
-                r"## ⚠️ Potential Issues?\s*\n(.*?)(?=\n## |\n\Z)",
-                r"## 📝 Committable Suggestions?\s*\n(.*?)(?=\n## |\n\Z)",
+                r"## 🛠️ Refactor Suggestions?\s*\n(.*?)(?=\n## |\Z)",
+                r"## ⚠️ Potential Issues?\s*\n(.*?)(?=\n## |\Z)",
+                r"## 📝 Committable Suggestions?\s*\n(.*?)(?=\n## |\Z)",
             ]
 
             for pattern in actionable_patterns:

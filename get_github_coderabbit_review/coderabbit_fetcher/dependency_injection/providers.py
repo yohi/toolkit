@@ -1,8 +1,12 @@
 """Service provider implementations for dependency injection."""
 
 import logging
+import threading
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Dict, Optional, Type, TypeVar
+from typing import Any, Callable, Dict, List, Optional, Type, TypeVar, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .container import DIContainer
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +40,6 @@ class AbstractProvider(ABC):
 
 class ClassProvider(AbstractProvider):
     """Provider that creates instances from a class."""
-
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .container import DIContainer
 
     def __init__(
         self,
@@ -243,13 +241,18 @@ class LazyProvider(AbstractProvider):
         self.provider = provider
         self._instance: Optional[T] = None
         self._created = False
+        self._lock = threading.RLock()  # Thread safety for lazy initialization
 
     def provide(self) -> T:
-        """Provide instance lazily."""
+        """Provide instance lazily with double-checked locking."""
+        # First check without lock for performance
         if not self._created:
-            self._instance = self.provider.provide()
-            self._created = True
-            logger.debug(f"Lazily created instance of {self.service_type.__name__}")
+            with self._lock:
+                # Double-check inside lock to prevent race conditions
+                if not self._created:
+                    self._instance = self.provider.provide()
+                    self._created = True
+                    logger.debug(f"Lazily created instance of {self.service_type.__name__}")
 
         return self._instance
 
@@ -280,23 +283,25 @@ class PooledProvider(AbstractProvider):
         self.service_type = service_type
         self.provider = provider
         self.pool_size = pool_size
-        self._pool: list[T] = []
+        self._pool: List[T] = []
         self._in_use: set[T] = set()
+        self._lock = threading.RLock()  # Thread safety for pool operations
 
     def provide(self) -> T:
         """Provide instance from pool."""
-        # Try to get from pool
-        if self._pool:
-            instance = self._pool.pop()
-            self._in_use.add(instance)
-            logger.debug(f"Provided instance from pool for {self.service_type.__name__}")
-            return instance
+        with self._lock:
+            # Try to get from pool
+            if self._pool:
+                instance = self._pool.pop()
+                self._in_use.add(instance)
+                logger.debug(f"Provided instance from pool for {self.service_type.__name__}")
+                return instance
 
-        # Create new instance if pool is empty
-        instance = self.provider.provide()
-        self._in_use.add(instance)
-        logger.debug(f"Created new pooled instance for {self.service_type.__name__}")
-        return instance
+            # Create new instance if pool is empty
+            instance = self.provider.provide()
+            self._in_use.add(instance)
+            logger.debug(f"Created new pooled instance for {self.service_type.__name__}")
+            return instance
 
     def return_to_pool(self, instance: T) -> None:
         """Return instance to pool.
@@ -304,12 +309,13 @@ class PooledProvider(AbstractProvider):
         Args:
             instance: Instance to return
         """
-        if instance in self._in_use:
-            self._in_use.remove(instance)
+        with self._lock:
+            if instance in self._in_use:
+                self._in_use.remove(instance)
 
-            if len(self._pool) < self.pool_size:
-                self._pool.append(instance)
-                logger.debug(f"Returned instance to pool for {self.service_type.__name__}")
+                if len(self._pool) < self.pool_size:
+                    self._pool.append(instance)
+                    logger.debug(f"Returned instance to pool for {self.service_type.__name__}")
 
     def can_provide(self, service_type: Type) -> bool:
         """Check if can provide service type."""

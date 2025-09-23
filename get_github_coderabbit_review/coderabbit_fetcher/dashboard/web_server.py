@@ -215,10 +215,32 @@ class DashboardServer:
                     }
                 )
             elif format == "csv":
-                # Simple CSV export (in production, use proper CSV library)
-                csv_data = "timestamp,processing_count,ai_requests,cache_hits,errors\\n"
+                # Proper CSV export with escaping
+                import csv
+                import io
+
+                output = io.StringIO()
+                writer = csv.writer(output)
+
+                # Write header
+                writer.writerow(
+                    ["timestamp", "processing_count", "ai_requests", "cache_hits", "errors"]
+                )
+
+                # Write data with proper escaping
                 for metric in self.metrics_history:
-                    csv_data += f"{metric.timestamp},{metric.processing_count},{metric.ai_requests},{metric.cache_hits},{metric.errors}\\n"
+                    writer.writerow(
+                        [
+                            metric.timestamp,
+                            metric.processing_count,
+                            metric.ai_requests,
+                            metric.cache_hits,
+                            metric.errors,
+                        ]
+                    )
+
+                csv_data = output.getvalue()
+                output.close()
 
                 return csv_data, 200, {"Content-Type": "text/csv"}
 
