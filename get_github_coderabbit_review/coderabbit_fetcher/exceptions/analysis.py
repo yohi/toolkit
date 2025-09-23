@@ -8,7 +8,7 @@ from .base import CodeRabbitFetcherError
 class CommentAnalysisError(CodeRabbitFetcherError):
     """Exception raised when comment analysis fails."""
 
-    def __init__(self, message: str, analysis_stage: Optional[str] = None, **kwargs):
+    def __init__(self, message: str, analysis_stage: Optional[str] = None, **kwargs: Any) -> None:
         details = kwargs.get("details", {})
         if analysis_stage:
             details["analysis_stage"] = analysis_stage

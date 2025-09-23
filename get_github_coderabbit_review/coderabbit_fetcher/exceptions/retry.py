@@ -20,7 +20,7 @@ class RetryableError(CodeRabbitFetcherError):
 class TransientError(RetryableError):
     """Exception for transient errors that should be retried."""
 
-    def __init__(self, message: str, **kwargs) -> None:
+    def __init__(self, message: str, **kwargs: Any) -> None:
         super().__init__(
             message,
             suggestions=[
@@ -126,7 +126,7 @@ class TimeoutError(RetryableError):
 class CircuitBreakerError(CodeRabbitFetcherError):
     """Exception raised when circuit breaker is open."""
 
-    def __init__(self, message: str, failure_count: int, threshold: int, **kwargs) -> None:
+    def __init__(self, message: str, failure_count: int, threshold: int, **kwargs: Any) -> None:
         details = kwargs.get("details", {})
         details.update(
             {
