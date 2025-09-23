@@ -174,7 +174,7 @@ class CommentPoster:
         try:
             comment_message = self.config.generate_message(additional_context)
         except InvalidCommentError as e:
-            raise CommentPostingError(f"Failed to generate comment: {e}")
+            raise CommentPostingError(f"Failed to generate comment: {e}") from e
 
         # Validate comment content
         self._validate_comment_content(comment_message)
@@ -358,7 +358,7 @@ class CommentPoster:
         try:
             parsed = urlparse(pr_url)
         except Exception as e:
-            raise PRUrlValidationError(f"Invalid URL format: {e}")
+            raise PRUrlValidationError(f"Invalid URL format: {e}") from e
 
         # Check scheme
         if parsed.scheme not in ["http", "https"]:
@@ -386,7 +386,7 @@ class CommentPoster:
             if pr_number <= 0:
                 raise ValueError("PR number must be positive")
         except ValueError:
-            raise PRUrlValidationError("Invalid pull request number")
+            raise PRUrlValidationError("Invalid pull request number") from None
 
     def _validate_comment_content(self, content: str, raise_on_error: bool = True) -> List[str]:
         """Validate comment content.

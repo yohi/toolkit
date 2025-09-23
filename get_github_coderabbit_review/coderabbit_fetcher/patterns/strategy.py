@@ -138,9 +138,6 @@ class BalancedProcessingStrategy(ProcessingStrategy):
 
         # Use memory manager for efficiency
         memory_manager = MemoryManager(max_memory_mb=context.max_memory_mb)
-        processor = CommentStreamProcessor(
-            max_workers=context.max_workers, batch_size=context.batch_size
-        )
 
         def balanced_processor(item):
             return self._balanced_processing(item, context)

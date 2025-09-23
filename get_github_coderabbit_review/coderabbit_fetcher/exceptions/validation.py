@@ -21,15 +21,6 @@ class ValidationError(CodeRabbitFetcherError):
         if validation_errors:
             details["validation_errors"] = validation_errors
 
-        suggestions = kwargs.get(
-            "suggestions",
-            [
-                "Check input parameters and values",
-                "Refer to help documentation",
-                "Use --help for usage information",
-            ],
-        )
-
         super().__init__(message, details=str(details) if details else None)
 
 

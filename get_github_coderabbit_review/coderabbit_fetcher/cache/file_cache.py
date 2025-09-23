@@ -62,7 +62,7 @@ class FileCache(CacheProvider):
             self.cache_dir.mkdir(parents=True, exist_ok=True, mode=self.config.dir_mode)
         except Exception as e:
             logger.error(f"Failed to create cache directory {self.cache_dir}: {e}")
-            raise CacheError(f"Cache directory creation failed: {e}")
+            raise CacheError(f"Cache directory creation failed: {e}") from e
 
     def _get_file_path(self, key: CacheKey) -> Path:
         """Get file path for cache key."""
@@ -112,7 +112,7 @@ class FileCache(CacheProvider):
 
         except Exception as e:
             logger.error(f"Error serializing cache entry: {e}")
-            raise CacheError(f"Serialization failed: {e}")
+            raise CacheError(f"Serialization failed: {e}") from e
 
     def _deserialize_entry(self, data: bytes) -> CacheEntry:
         """Deserialize cache entry from file storage."""
@@ -162,7 +162,7 @@ class FileCache(CacheProvider):
 
         except Exception as e:
             logger.error(f"Error deserializing cache entry: {e}")
-            raise CacheError(f"Deserialization failed: {e}")
+            raise CacheError(f"Deserialization failed: {e}") from e
 
     def _read_file_with_lock(self, file_path: Path) -> Optional[bytes]:
         """Read file with file locking."""
@@ -341,7 +341,7 @@ class FileCache(CacheProvider):
                 total_size = 0
                 namespace_counts: dict[str, int] = {}
 
-                for root, dirs, files in os.walk(self.cache_dir):
+                for root, _dirs, files in os.walk(self.cache_dir):
                     for file in files:
                         if file.endswith(".cache"):
                             file_count += 1
@@ -381,7 +381,7 @@ class FileCache(CacheProvider):
             removed_count = 0
 
             try:
-                for root, dirs, files in os.walk(self.cache_dir):
+                for root, _dirs, files in os.walk(self.cache_dir):
                     for file in files:
                         if file.endswith(".cache"):
                             file_path = Path(root) / file
