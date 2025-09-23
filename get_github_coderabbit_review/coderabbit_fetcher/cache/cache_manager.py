@@ -140,7 +140,13 @@ class CacheManager:
         self.config = config or CacheConfig()
         self.providers: Dict[str, CacheProvider] = {}
         self.default_provider: Optional[str] = None
-        self.stats = {"hits": 0, "misses": 0, "sets": 0, "deletes": 0, "errors": 0}
+        self.stats: Dict[str, Union[int, float, Dict[str, Any]]] = {
+            "hits": 0,
+            "misses": 0,
+            "sets": 0,
+            "deletes": 0,
+            "errors": 0,
+        }
         self._lock = threading.RLock()
         self._cleanup_thread: Optional[threading.Thread] = None
         self._running = False

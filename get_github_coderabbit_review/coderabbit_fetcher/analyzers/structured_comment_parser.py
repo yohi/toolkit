@@ -34,7 +34,7 @@ class ParsedComment:
     section_type: CommentSection
     raw_text: str
     is_duplicate: bool = False  # "Also applies to:" による重複
-    applies_to_lines: List[str] = None  # 重複適用行番号
+    applies_to_lines: Optional[List[str]] = None  # 重複適用行番号
 
 
 class StructuredCommentParser:
