@@ -65,7 +65,7 @@ class ServiceProvider(ABC):
 class SingletonProvider(ServiceProvider):
     """Singleton service provider."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize singleton provider."""
         self._instances: Dict[Type, Any] = {}
         self._lock = threading.RLock()

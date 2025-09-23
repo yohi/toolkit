@@ -137,7 +137,7 @@ class CommentFeatureSet:
 class FeatureExtractor:
     """Feature extractor for comment classification."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize feature extractor."""
         self._init_word_lists()
         self._init_patterns()
