@@ -36,7 +36,7 @@ class ValidationError(CodeRabbitFetcherError):
 class ConfigurationValidationError(ValidationError):
     """Exception raised when configuration validation fails."""
 
-    def __init__(self, message: str, config_section: Optional[str] = None, **kwargs) -> None:
+    def __init__(self, message: str, config_section: Optional[str] = None, **kwargs: Any) -> None:
         details = kwargs.get("details", {})
         if config_section:
             details["config_section"] = config_section
@@ -55,7 +55,7 @@ class ConfigurationValidationError(ValidationError):
 class URLValidationError(ValidationError):
     """Exception raised when URL validation fails."""
 
-    def __init__(self, message: str, url: Optional[str] = None, **kwargs) -> None:
+    def __init__(self, message: str, url: Optional[str] = None, **kwargs: Any) -> None:
         details = kwargs.get("details", {})
         if url:
             details["provided_url"] = url
@@ -75,7 +75,7 @@ class URLValidationError(ValidationError):
 class FileValidationError(ValidationError):
     """Exception raised when file validation fails."""
 
-    def __init__(self, message: str, file_path: Optional[str] = None, **kwargs) -> None:
+    def __init__(self, message: str, file_path: Optional[str] = None, **kwargs: Any) -> None:
         details = kwargs.get("details", {})
         if file_path:
             details["file_path"] = file_path

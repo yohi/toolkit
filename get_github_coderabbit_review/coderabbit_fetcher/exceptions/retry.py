@@ -8,7 +8,7 @@ from .base import CodeRabbitFetcherError
 class RetryableError(CodeRabbitFetcherError):
     """Base class for errors that can be retried."""
 
-    def __init__(self, message: str, retry_after: Optional[float] = None, **kwargs) -> None:
+    def __init__(self, message: str, retry_after: Optional[float] = None, **kwargs: Any) -> None:
         details = kwargs.get("details", {})
         if retry_after is not None:
             details["retry_after_seconds"] = retry_after
