@@ -1,6 +1,6 @@
 """Comment analysis and processing exceptions."""
 
-from typing import Optional
+from typing import Any, Optional
 
 from .base import CodeRabbitFetcherError
 
