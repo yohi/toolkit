@@ -1,5 +1,7 @@
 """Persona-related exceptions."""
 
+from typing import Optional
+
 from .base import CodeRabbitFetcherError
 
 
