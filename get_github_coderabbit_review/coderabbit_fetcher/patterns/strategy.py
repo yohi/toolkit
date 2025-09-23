@@ -134,6 +134,7 @@ class BalancedProcessingStrategy(ProcessingStrategy):
     def _process_with_balance(self, data: Any, context: ProcessingContext) -> Any:
         """Process with balanced approach."""
         from ..utils.memory_manager import MemoryManager
+        from ..utils.streaming_processor import CommentStreamProcessor
 
         # Use memory manager for efficiency
         memory_manager = MemoryManager(max_memory_mb=context.max_memory_mb)
