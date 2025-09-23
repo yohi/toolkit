@@ -4,7 +4,7 @@ import logging
 import threading
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Dict, List, Optional, Set
 
 from ..patterns.observer import Event, EventType
@@ -199,7 +199,7 @@ class EventAggregator:
             Dictionary of event counts
         """
         with self._lock:
-            end_time = datetime.now()
+            end_time = datetime.now(tz=timezone.utc)
             start_time = end_time - timedelta(minutes=time_range_minutes)
 
             aggregated = self.get_aggregated_events(event_type, start_time, end_time)
@@ -225,7 +225,7 @@ class EventAggregator:
             Rate statistics
         """
         with self._lock:
-            end_time = datetime.now()
+            end_time = datetime.now(tz=timezone.utc)
             start_time = end_time - timedelta(minutes=time_range_minutes)
 
             aggregated = self.get_aggregated_events(event_type, start_time, end_time)
@@ -269,7 +269,7 @@ class EventAggregator:
             Number of aggregated events cleared
         """
         with self._lock:
-            cutoff_time = datetime.now() - timedelta(minutes=older_than_minutes)
+            cutoff_time = datetime.now(tz=timezone.utc) - timedelta(minutes=older_than_minutes)
             cleared_count = 0
 
             for event_type in list(self._aggregated_events.keys()):

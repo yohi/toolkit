@@ -106,9 +106,8 @@ class TransientProvider(ServiceProvider):
 
     def provide(self, container: "DIContainer", binding: ServiceBinding) -> Any:
         """Provide new instance each time."""
-        if binding.instance is not None:
-            return binding.instance
-        elif binding.factory is not None:
+        # Transient scope should always create new instances, ignore binding.instance
+        if binding.factory is not None:
             return container._invoke_factory(binding.factory)
         elif binding.implementation_type is not None:
             return container._create_instance(binding.implementation_type)

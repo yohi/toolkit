@@ -1,7 +1,7 @@
 """Base formatter abstract class for CodeRabbit comment output."""
 
 from abc import ABC, abstractmethod
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, List
 
 from ..models import (
@@ -19,7 +19,7 @@ class BaseFormatter(ABC):
 
     def __init__(self):
         """Initialize base formatter."""
-        self.timestamp = datetime.now()
+        self.timestamp = datetime.now(tz=timezone.utc)
 
     @abstractmethod
     def format(self, persona: str, analyzed_comments: AnalyzedComments, quiet: bool = False) -> str:
