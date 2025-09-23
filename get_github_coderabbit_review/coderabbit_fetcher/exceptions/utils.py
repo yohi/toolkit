@@ -65,6 +65,7 @@ def create_error_summary(exceptions: List[Exception]) -> Dict[str, Any]:
         "error_types": {},
         "recoverable_count": 0,
         "critical_count": 0,
+        "error_timeline": [],
         "suggestions": set(),
         "most_common_error": None,
         "first_error": None,

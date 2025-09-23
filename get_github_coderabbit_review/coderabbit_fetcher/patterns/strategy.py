@@ -313,7 +313,7 @@ class MemoryEfficientStrategy(ProcessingStrategy):
                 content = item.get("body", item.get("content", ""))
                 # Store only content length, not full content
                 result["content_length"] = len(content)
-                result["has_content"] = bool(content.strip())
+                result["has_content"] = bool(content.strip() if content else False)
 
             return result
 

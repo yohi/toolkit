@@ -343,7 +343,7 @@ class EventBus:
                     reg
                     for reg in self._handlers
                     if any(
-                        reg.handler.can_handle(event_type)
+                        hasattr(reg.handler, "can_handle") and reg.handler.can_handle(event_type)
                         for event_type in [processed_event.event_type]
                     )
                 ]
@@ -353,13 +353,15 @@ class EventBus:
                     try:
                         if registration.is_async:
                             # Run async handler in thread pool
-                            future = self._executor.submit(
-                                self._run_async_handler, registration.handler, processed_event
-                            )
-                            result = future.result(timeout=30)  # 30 second timeout
+                            if hasattr(registration.handler, "handle_async"):
+                                future = self._executor.submit(
+                                    self._run_async_handler, registration.handler, processed_event
+                                )
+                                result = future.result(timeout=30)  # 30 second timeout
                         else:
                             # Run sync handler
-                            result = registration.handler.handle(processed_event)
+                            if hasattr(registration.handler, "handle"):
+                                result = registration.handler.handle(processed_event)
 
                         # Apply middleware - after
                         for middleware in self._middleware:
@@ -418,7 +420,7 @@ class EventBus:
                 reg
                 for reg in self._handlers
                 if any(
-                    reg.handler.can_handle(event_type)
+                    hasattr(reg.handler, "can_handle") and reg.handler.can_handle(event_type)
                     for event_type in [processed_event.event_type]
                 )
             ]

@@ -79,7 +79,7 @@ class ThreadContext(BaseCodeRabbitModel):
             Human-readable summary of the thread context
         """
         total_comments = 1 + len(self.replies)
-        main_author = self.main_comment.get("user", {}).get("login", "unknown")
+        main_author = (self.main_comment or {}).get("user", {}).get("login", "unknown")
 
         summary_parts = [
             f"Thread with {total_comments} comment(s)",
@@ -113,7 +113,7 @@ class ThreadContext(BaseCodeRabbitModel):
         Returns:
             Number of unique users who commented
         """
-        authors = {self.main_comment.get("user", {}).get("login")}
+        authors = {(self.main_comment or {}).get("user", {}).get("login")}
         authors.update(reply.get("user", {}).get("login") for reply in self.replies)
         # Remove None values
         authors.discard(None)

@@ -207,7 +207,7 @@ class AsyncBatchProcessor:
 
         def analyze_files(files):
             """Analyze files synchronously."""
-            analysis = {
+            analysis: Dict[str, Any] = {
                 "file_types": {},
                 "total_additions": 0,
                 "total_deletions": 0,
@@ -295,7 +295,7 @@ class AsyncBatchProcessor:
 
         def analyze_commits(commits):
             """Analyze commits synchronously."""
-            analysis = {
+            analysis: Dict[str, Any] = {
                 "commit_count": len(commits),
                 "authors": {},
                 "commit_messages": [],
