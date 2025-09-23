@@ -10,8 +10,8 @@ from typing import Any, Callable, Dict, List, Optional
 
 # Optional dependencies for web server
 try:
-    from flask import Flask, jsonify, render_template, request, send_from_directory
-    from flask_socketio import SocketIO, emit, join_room, leave_room
+    from flask import Flask, jsonify, render_template, send_from_directory
+    from flask_socketio import SocketIO, emit, join_room
 
     FLASK_AVAILABLE = True
 except ImportError:
@@ -34,16 +34,16 @@ def _generate_secure_key() -> str:
         RuntimeError: If secure key generation fails
     """
     try:
-        import secrets
         import base64
+        import secrets
 
         # Generate 32 random bytes and encode as base64
         random_bytes = secrets.token_bytes(32)
         return base64.b64encode(random_bytes).decode("utf-8")
     except ImportError:
         # Fallback for older Python versions
-        import os
         import base64
+        import os
 
         random_bytes = os.urandom(32)
         return base64.b64encode(random_bytes).decode("utf-8")

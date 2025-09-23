@@ -102,7 +102,7 @@ class FastProcessingStrategy(ProcessingStrategy):
 
         if hasattr(data, "__iter__") and not isinstance(data, (str, dict)):
             return processor.process_streaming(
-                list(data), fast_processor, parallel=context.parallel_enabled
+                list(data), fast_processor, parallel=optimized_context.parallel_enabled
             )
         else:
             return fast_processor(data)

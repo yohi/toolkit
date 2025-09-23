@@ -131,8 +131,10 @@ def run_fetch_command(args) -> int:
             output_format = "ai-agent-prompt"
 
         # Check if pr_url is required for the operation
-        if not args.pr_url and not (args.version or args.validate):
-            parser.error("pr_url is required unless using --version or --validate")
+        if not args.pr_url and not (
+            getattr(args, "version", False) or getattr(args, "validate", False)
+        ):
+            raise ValueError("pr_url is required unless using --version or --validate")
 
         config = ExecutionConfig(
             pr_url=args.pr_url,
