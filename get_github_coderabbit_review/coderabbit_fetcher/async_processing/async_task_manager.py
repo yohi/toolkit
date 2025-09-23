@@ -433,7 +433,7 @@ class AsyncTaskManager:
                 # If dependency failed or was cancelled, this task cannot proceed
                 if dep_task.status in [TaskStatus.FAILED, TaskStatus.CANCELLED]:
                     logger.error(
-                        f"Task {task.task_id} cannot proceed: dependency {dep_id} {dep_task.status.value}"
+                        f"Task {task.id} cannot proceed: dependency {dep_id} {dep_task.status.value}"
                     )
                     return False
                 # Otherwise, dependency is just not complete yet
@@ -482,7 +482,20 @@ class AsyncTaskManager:
             try:
                 # Execute with timeout
                 if task.timeout_seconds:
-                    result = await asyncio.wait_for(execution_task, timeout=task.timeout_seconds)
+                    try:
+                        result = await asyncio.wait_for(
+                            execution_task, timeout=task.timeout_seconds
+                        )
+                    except asyncio.TimeoutError:
+                        # Cancel the underlying task on timeout
+                        execution_task.cancel()
+                        try:
+                            await execution_task
+                        except asyncio.CancelledError:
+                            pass
+                        raise asyncio.TimeoutError(
+                            f"Task {task.name} timed out after {task.timeout_seconds}s"
+                        )
                 else:
                     result = await execution_task
 

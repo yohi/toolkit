@@ -245,7 +245,7 @@ class AsyncGitHubClient:
                     break
 
             except Exception as e:
-                logger.error(f"Error fetching comments page {page}: {e}")
+                logger.exception(f"Error fetching comments page {page}: {e}")
                 break
 
         logger.info(f"Fetched {len(comments)} comments from PR #{pr_number}")
@@ -291,7 +291,7 @@ class AsyncGitHubClient:
                     break
 
             except Exception as e:
-                logger.error(f"Error fetching reviews page {page}: {e}")
+                logger.exception(f"Error fetching reviews page {page}: {e}")
                 break
 
         logger.info(f"Fetched {len(reviews)} reviews from PR #{pr_number}")
