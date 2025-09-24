@@ -1,6 +1,5 @@
 """Web server for real-time dashboard."""
 
-import contextlib
 import logging
 import os
 import threading
