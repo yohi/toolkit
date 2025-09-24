@@ -1,5 +1,6 @@
 """Web server for real-time dashboard."""
 
+import contextlib
 import logging
 import os
 import threading
@@ -388,6 +389,7 @@ class DashboardServer:
 
     def _update_current_metrics(self) -> None:
         """Update current metrics from system state."""
+        # システム計測をロック外で実行（時間のかかる処理）
         try:
             import psutil
             memory_usage = psutil.virtual_memory().percent
@@ -397,20 +399,25 @@ class DashboardServer:
             memory_usage = 0.0
             cpu_usage = 0.0
 
-        # Update metrics
-        self.current_metrics = RealtimeMetrics(
-            timestamp=self._get_timestamp(),
-            memory_usage=memory_usage,
-            cpu_usage=cpu_usage,
-            active_connections=self.stats["connected_clients"],
-            # Other metrics would be updated from event handlers
-            processing_count=self.current_metrics.processing_count,
-            ai_requests=self.current_metrics.ai_requests,
-            cache_hits=self.current_metrics.cache_hits,
-            cache_misses=self.current_metrics.cache_misses,
-            errors=self.current_metrics.errors,
-            average_response_time=self.current_metrics.average_response_time,
-        )
+        # 状態更新をatomicに実行
+        with self._metrics_lock if hasattr(self, '_metrics_lock') else contextlib.nullcontext():
+            # 現在の状態のスナップショットを取得
+            current_snapshot = self.current_metrics
+            
+            # 新しいメトリクスを作成
+            self.current_metrics = RealtimeMetrics(
+                timestamp=self._get_timestamp(),
+                memory_usage=memory_usage,
+                cpu_usage=cpu_usage,
+                active_connections=self.stats["connected_clients"],
+                # その他のメトリクスは現在の値を保持
+                processing_count=current_snapshot.processing_count,
+                ai_requests=current_snapshot.ai_requests,
+                cache_hits=current_snapshot.cache_hits,
+                cache_misses=current_snapshot.cache_misses,
+                errors=current_snapshot.errors,
+                average_response_time=current_snapshot.average_response_time,
+            )
 
     def _broadcast_metrics_update(self) -> None:
         """Broadcast metrics update to all connected clients."""

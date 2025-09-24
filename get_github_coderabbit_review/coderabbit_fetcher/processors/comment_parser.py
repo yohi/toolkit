@@ -246,7 +246,7 @@ class CommentParser:
                 return NitpickComment(
                     suggestion=suggestion,
                     file_path=file_info.get("path", ""),
-                    line_number=file_info.get("line", 0),
+                    line_range=str(file_info.get("line", 0)) if file_info.get("line") else file_info.get("line_range", ""),
                     raw_content=content,
                 )
         except Exception as e:
@@ -259,12 +259,15 @@ class CommentParser:
         try:
             file_info = self._extract_file_info(content)
             suggestion = self._extract_suggestion(content)
+            description = self._extract_description(content)
 
-            if suggestion:
+            if suggestion or description:
+                comment_content = suggestion or description or content.strip()
                 return OutsideDiffComment(
-                    suggestion=suggestion,
+                    content=comment_content,
+                    reason="Comment refers to code outside the current diff range",
                     file_path=file_info.get("path", ""),
-                    line_range=file_info.get("line_range", ""),
+                    line_range=str(file_info.get("line", 0)) if file_info.get("line") else file_info.get("line_range", ""),
                     raw_content=content,
                 )
         except Exception as e:
@@ -275,15 +278,36 @@ class CommentParser:
     def _create_ai_agent_prompt(self, content: str) -> Optional[AIAgentPrompt]:
         """Create AIAgentPrompt object from content."""
         try:
-            # Extract prompt content from code blocks or details
-            prompt_text = re.sub(
-                r"```[\w]*\n?|```|\</?details\>|\</?summary\>.*?\<\/summary\>", "", content
-            )
-            prompt_text = prompt_text.strip()
+            # Extract code block from content
+            code_block_match = re.search(r"```[\w]*\n?([^`]+)```", content, re.MULTILINE | re.DOTALL)
+            code_block = code_block_match.group(1).strip() if code_block_match else ""
+            
+            # Extract description from non-code parts
+            description = re.sub(
+                r"```[\w]*\n?[^`]+```|\</?details\>|\</?summary\>.*?\<\/summary\>", "", content
+            ).strip()
+            
+            # If no code block found, try to extract from plain text
+            if not code_block:
+                # Look for indented code or specific patterns
+                lines = content.split('\n')
+                code_lines = [line for line in lines if line.startswith('    ') or line.startswith('\t')]
+                if code_lines:
+                    code_block = '\n'.join(line.strip() for line in code_lines)
+            
+            # Ensure we have both required fields
+            if not code_block:
+                code_block = "# AI agent prompt extracted from comment"
+            if not description:
+                description = "AI agent suggestion from CodeRabbit review"
 
-            if prompt_text:
+            if code_block and description:
+                file_info = self._extract_file_info(content)
                 return AIAgentPrompt(
-                    prompt_text=prompt_text, context="review_comment", raw_content=content
+                    code_block=code_block,
+                    description=description,
+                    file_path=file_info.get("path"),
+                    line_range=str(file_info.get("line", 0)) if file_info.get("line") else file_info.get("line_range"),
                 )
         except Exception as e:
             logger.debug(f"Failed to create AI agent prompt: {e}")

@@ -195,6 +195,7 @@ class RedisCache(CacheProvider):
             return None
 
         try:
+            import redis
             redis_key = self._get_redis_key(key)
             data = self._redis_client.get(redis_key)
 
