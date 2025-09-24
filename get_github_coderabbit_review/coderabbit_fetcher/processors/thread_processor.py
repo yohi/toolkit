@@ -146,6 +146,9 @@ class ThreadProcessor:
 
         for comment in comments:
             comment_id = str(comment.get("id", ""))
+            # Skip comments without a valid id
+            if not comment_id:
+                continue
             reply_to_id = comment.get("in_reply_to_id")
 
             if reply_to_id is None:
