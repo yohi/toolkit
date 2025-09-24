@@ -389,41 +389,48 @@ def main() -> None:
     try:
         parser = create_argument_parser()
 
+        # Debug: Print argv for troubleshooting
+        # print(f"DEBUG sys.argv: {sys.argv}", file=sys.stderr)
+
         # Handle special case when no arguments provided
         if len(sys.argv) == 1:
             parser.print_help()
-            return 0
+            sys.exit(0)
 
         args = parser.parse_args()
+        # print(f"DEBUG parsed args: {args}", file=sys.stderr)
 
-        # Handle utility commands first
-        if args.version:
-            return run_version_command()
+        # Handle utility commands first (these don't need PR URL)
+        if hasattr(args, 'version') and getattr(args, 'version', False):
+            sys.exit(run_version_command())
 
-        if args.examples:
-            return run_examples_command()
+        if hasattr(args, 'examples') and getattr(args, 'examples', False):
+            sys.exit(run_examples_command())
 
-        if args.validate:
-            return run_validate_command()
+        if hasattr(args, 'validate') and getattr(args, 'validate', False):
+            sys.exit(run_validate_command())
 
-        if args.validate_marker:
-            return run_validate_marker_command(args.validate_marker)
+        if hasattr(args, 'validate_marker') and getattr(args, 'validate_marker', None):
+            sys.exit(run_validate_marker_command(args.validate_marker))
 
         # Main fetch command (requires pr_url)
-        if not hasattr(args, "pr_url") or not args.pr_url:
+        if not hasattr(args, "pr_url") or not getattr(args, "pr_url", None):
             print("❌ PR URL is required for fetch command", file=sys.stderr)
             parser.print_help()
-            return 1
+            sys.exit(1)
 
-        return run_fetch_command(args)
+        sys.exit(run_fetch_command(args))
 
+    except SystemExit:
+        # Re-raise SystemExit to allow proper exit codes
+        raise
     except KeyboardInterrupt:
         print("\n⚠️  Operation cancelled by user", file=sys.stderr)
-        return 130
+        sys.exit(130)
     except Exception as e:
         logger.exception("CLI startup error")
         print(f"❌ Failed to start CLI: {e}", file=sys.stderr)
-        return 1
+        sys.exit(1)
 
 
 if __name__ == "__main__":
