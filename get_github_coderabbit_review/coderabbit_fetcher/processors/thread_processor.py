@@ -1,11 +1,12 @@
 """Thread processing and context analysis for CodeRabbit comments."""
 
 import re
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any
 from datetime import datetime, timezone
 from collections import defaultdict
 
 from ..models import ThreadContext
+from ..models.thread_context import ResolutionStatus
 from ..exceptions import CommentParsingError
 
 
@@ -33,16 +34,18 @@ class ThreadProcessor:
         Raises:
             CommentParsingError: If thread cannot be processed
         """
+        # Check for empty thread before entering try block
+        if not thread_comments:
+            raise CommentParsingError("Empty thread provided")
+        
         try:
-            if not thread_comments:
-                raise CommentParsingError("Empty thread provided")
-
             # Sort comments chronologically
             sorted_comments = self._sort_comments_chronologically(thread_comments)
-
             # Extract thread metadata
             root_comment = sorted_comments[0]
-            thread_id = str(root_comment.get("id", "unknown"))
+            if not root_comment.get("id"):
+                raise CommentParsingError("Missing root comment id")
+            thread_id = str(root_comment["id"])
             file_context = root_comment.get("path", "")
             line_context = self._extract_line_context(root_comment)
 
@@ -64,23 +67,21 @@ class ThreadProcessor:
             # Generate AI-friendly structured format
             ai_summary = self._generate_ai_summary(sorted_comments, context_summary)
 
+            # Prepare data for new ThreadContext structure
+            replies = sorted_comments[1:] if len(sorted_comments) > 1 else []
+            resolution_status = ResolutionStatus.RESOLVED if is_resolved else ResolutionStatus.UNRESOLVED
+
             return ThreadContext(
                 thread_id=thread_id,
-                root_comment_id=str(root_comment.get("id", "")),
-                file_context=file_context,
-                line_context=line_context,
-                participants=participants,
-                comment_count=len(sorted_comments),
-                coderabbit_comment_count=len(coderabbit_comments),
-                is_resolved=is_resolved,
-                context_summary=context_summary,
-                ai_summary=ai_summary,
-                chronological_comments=sorted_comments
+                main_comment=root_comment,
+                replies=replies,
+                resolution_status=resolution_status,
+                contextual_summary=context_summary,
+                chronological_order=sorted_comments
             )
 
         except Exception as e:
-            raise CommentParsingError(f"Failed to process thread: {str(e)}") from e
-
+            raise CommentParsingError(f"Failed to process thread: {e!s}") from e
     def build_thread_context(self, comments: List[Dict[str, Any]]) -> List[ThreadContext]:
         """Build thread contexts from a list of comments by grouping them into threads.
 
@@ -90,22 +91,28 @@ class ThreadProcessor:
         Returns:
             List of ThreadContext objects, one for each thread
         """
-        # Group comments into threads
-        threads = self._group_comments_into_threads(comments)
+        # Check for empty comments before processing
+        if not comments:
+            raise CommentParsingError("Empty comments list provided")
 
-        # Process each thread
-        thread_contexts = []
-        for thread_comments in threads:
-            if thread_comments:  # Only process non-empty threads
-                try:
-                    context = self.process_thread(thread_comments)
-                    thread_contexts.append(context)
-                except CommentParsingError:
-                    # Skip problematic threads but continue processing others
-                    continue
+        try:
+            # Group comments into threads
+            threads = self._group_comments_into_threads(comments)
 
-        return thread_contexts
+            # Process each thread
+            thread_contexts = []
+            for thread_comments in threads:
+                if thread_comments:  # Only process non-empty threads
+                    try:
+                        context = self.process_thread(thread_comments)
+                        thread_contexts.append(context)
+                    except CommentParsingError:
+                        # Skip problematic threads but continue processing others
+                        continue
 
+            return thread_contexts
+        except Exception as e:
+            raise CommentParsingError(f"Failed to build thread contexts: {e!s}") from e
     def _sort_comments_chronologically(self, comments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Sort comments in chronological order.
 
@@ -120,9 +127,13 @@ class ThreadProcessor:
             try:
                 # Try parsing ISO format with Z suffix
                 if dt_string.endswith('Z'):
-                    return datetime.fromisoformat(dt_string[:-1] + '+00:00')
+                    dt = datetime.fromisoformat(dt_string[:-1] + '+00:00')
                 else:
-                    return datetime.fromisoformat(dt_string)
+                    dt = datetime.fromisoformat(dt_string)
+                # すべて UTC aware に正規化
+                if dt.tzinfo is None:
+                    dt = dt.replace(tzinfo=timezone.utc)
+                return dt
             except (ValueError, TypeError):
                 # Fallback to current time if parsing fails
                 return datetime.now(timezone.utc)
@@ -131,7 +142,6 @@ class ThreadProcessor:
             comments,
             key=lambda c: parse_datetime(c.get("created_at", ""))
         )
-
     def _group_comments_into_threads(self, comments: List[Dict[str, Any]]) -> List[List[Dict[str, Any]]]:
         """Group comments into threads based on reply relationships.
 
@@ -371,6 +381,8 @@ class ThreadProcessor:
             if c.get("user", {}).get("login") == self.coderabbit_author
         ]
 
+        # Use existing method for participant analysis
+        participants = self._analyze_participants(comments)
         # Structure following Claude 4 best practices
         ai_summary_parts = []
 
@@ -378,10 +390,13 @@ class ThreadProcessor:
         ai_summary_parts.append("## Thread Context")
         ai_summary_parts.append(f"- **File**: {root_comment.get('path', 'Unknown')}")
         ai_summary_parts.append(f"- **Line**: {self._extract_line_context(root_comment) or 'Unknown'}")
-        ai_summary_parts.append(f"- **Participants**: {len(set(c.get('user', {}).get('login') for c in comments))}")
+        ai_summary_parts.append(f"- **Participants**: {len(participants)}")
         ai_summary_parts.append(f"- **Total Comments**: {len(comments)}")
         ai_summary_parts.append(f"- **CodeRabbit Comments**: {len(coderabbit_comments)}")
 
+        # Include the provided context summary
+        if context_summary:
+            ai_summary_parts.append(f"- **Summary**: {context_summary}")
         # 2. Resolution Status (clear outcome)
         resolution_status = "✅ Resolved" if self._determine_resolution_status(comments) else "⏳ Open"
         ai_summary_parts.append(f"- **Status**: {resolution_status}")

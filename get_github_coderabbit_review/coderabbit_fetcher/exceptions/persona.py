@@ -13,14 +13,17 @@ class PersonaLoadError(PersonaFileError):
     
     def __init__(self, message: str, file_path: str = None):
         """Initialize persona load error.
-        
+
         Args:
             message: Error message
             file_path: Optional file path that caused the error
         """
         self.file_path = file_path
+        details = None
+        if file_path is not None:
+            details = f"File path: {file_path}"
         super().__init__(message)
-    
+
     def __str__(self) -> str:
         """String representation of the error."""
         if self.file_path:

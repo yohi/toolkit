@@ -41,8 +41,8 @@ class SummaryProcessor:
         """
         try:
             body = comment.get("body", "")
-
-            if not self._is_summary_comment(body):
+            
+            if not self.is_summary_comment(body):
                 raise CommentParsingError(
                     "Comment does not appear to be a CodeRabbit summary"
                 )
@@ -83,6 +83,17 @@ class SummaryProcessor:
             for pattern in self.summary_patterns
         )
 
+    def is_summary_comment(self, body: str) -> bool:
+        """Public API to check if the comment body contains a CodeRabbit summary.
+        
+        Args:
+            body: Comment body text
+            
+        Returns:
+            True if this is a summary comment
+        """
+        return self._is_summary_comment(body)
+    
     def _extract_new_features(self, content: str) -> List[str]:
         """Extract new features from summary content.
 
@@ -231,18 +242,33 @@ class SummaryProcessor:
         lines = content.split('\n')
         table_lines = []
         current_table = []
-
+        in_code_block = False
+        
         for line in lines:
-            line = line.strip()
-            if line and '|' in line and line.count('|') >= 2:
-                current_table.append(line)
+            line_stripped = line.strip()
+            
+            # Check for fenced code block markers
+            if line_stripped.startswith("```"):
+                in_code_block = not in_code_block
+                # If we're entering a code block and have an open table, close it
+                if in_code_block and len(current_table) >= 2:
+                    table_lines.append(current_table)
+                    current_table = []
+                continue
+            
+            # Skip table detection inside code blocks
+            if in_code_block:
+                continue
+                
+            if line_stripped and '|' in line_stripped and line_stripped.count('|') >= 2:
+                current_table.append(line_stripped)
             else:
                 if len(current_table) >= 2:  # At least header + one data row
                     table_lines.append(current_table)
                 current_table = []
-
-        # Don't forget the last table
-        if len(current_table) >= 2:
+        
+        # Don't forget the last table (if not in code block)
+        if not in_code_block and len(current_table) >= 2:
             table_lines.append(current_table)
 
         # Process each table
