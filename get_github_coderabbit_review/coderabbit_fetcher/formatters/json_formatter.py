@@ -1,20 +1,20 @@
 """JSON formatter for CodeRabbit comment output."""
 
 import json
-from typing import Dict, Any, List, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from .base_formatter import BaseFormatter
 from ..models import (
-    AnalyzedComments,
-    SummaryComment,
-    ReviewComment,
-    ThreadContext,
-    AIAgentPrompt,
     ActionableComment,
+    AIAgentPrompt,
+    AnalyzedComments,
     NitpickComment,
-    OutsideDiffComment
+    OutsideDiffComment,
+    ReviewComment,
+    SummaryComment,
+    ThreadContext,
 )
+from .base_formatter import BaseFormatter
 
 
 class JSONFormatter(BaseFormatter):
@@ -47,7 +47,7 @@ class JSONFormatter(BaseFormatter):
             "persona": persona,
             "summary_comments": self._format_summary_comments(analyzed_comments.summary_comments),
             "review_comments": self._format_review_comments(analyzed_comments.review_comments),
-            "thread_contexts": self._format_thread_contexts(analyzed_comments.unresolved_threads)
+            "thread_contexts": self._format_thread_contexts(analyzed_comments.unresolved_threads),
         }
 
         if self.pretty_print:
@@ -70,8 +70,8 @@ class JSONFormatter(BaseFormatter):
             "file_path": prompt.file_path,
             "line_range": prompt.line_range,
             "code_block": prompt.code_block,
-            "language": getattr(prompt, 'language', None),
-            "is_complete_suggestion": getattr(prompt, 'is_complete_suggestion', False)
+            "language": getattr(prompt, "language", None),
+            "is_complete_suggestion": getattr(prompt, "is_complete_suggestion", False),
         }
 
     def format_thread_context(self, thread: ThreadContext) -> Dict[str, Any]:
@@ -84,19 +84,25 @@ class JSONFormatter(BaseFormatter):
             JSON-serializable dictionary
         """
         return {
-            "thread_id": getattr(thread, 'thread_id', None),
-            "root_comment_id": getattr(thread, 'root_comment_id', None),
+            "thread_id": getattr(thread, "thread_id", None),
+            "root_comment_id": getattr(thread, "root_comment_id", None),
             "resolution_status": str(thread.resolution_status),
-            "file_context": getattr(thread, 'file_context', None),
-            "line_context": getattr(thread, 'line_context', None),
-            "participants": getattr(thread, 'participants', []),
-            "comment_count": getattr(thread, 'comment_count', len(thread.chronological_order) if thread.chronological_order else 0),
-            "coderabbit_comment_count": getattr(thread, 'coderabbit_comment_count', 0),
-            "is_resolved": getattr(thread, 'is_resolved', False),
-            "context_summary": getattr(thread, 'context_summary', None),
-            "ai_summary": getattr(thread, 'ai_summary', None),
+            "file_context": getattr(thread, "file_context", None),
+            "line_context": getattr(thread, "line_context", None),
+            "participants": getattr(thread, "participants", []),
+            "comment_count": getattr(
+                thread,
+                "comment_count",
+                len(thread.chronological_order) if thread.chronological_order else 0,
+            ),
+            "coderabbit_comment_count": getattr(thread, "coderabbit_comment_count", 0),
+            "is_resolved": getattr(thread, "is_resolved", False),
+            "context_summary": getattr(thread, "context_summary", None),
+            "ai_summary": getattr(thread, "ai_summary", None),
             "contextual_summary": thread.contextual_summary,
-            "chronological_comments": self._format_chronological_comments(thread.chronological_order)
+            "chronological_comments": self._format_chronological_comments(
+                thread.chronological_order
+            ),
         }
 
     def _format_metadata(self, analyzed_comments: AnalyzedComments) -> Dict[str, Any]:
@@ -117,15 +123,17 @@ class JSONFormatter(BaseFormatter):
                 "total_comments": metadata["total_comments"],
                 "summary_count": metadata["summary_count"],
                 "review_count": metadata["review_count"],
-                "thread_count": metadata["total_threads"]
+                "thread_count": metadata["total_threads"],
             },
             "configuration": {
                 "pretty_print": self.pretty_print,
-                "include_raw_content": self.include_raw_content
-            }
+                "include_raw_content": self.include_raw_content,
+            },
         }
 
-    def _format_summary_comments(self, summary_comments: Optional[List[SummaryComment]]) -> List[Dict[str, Any]]:
+    def _format_summary_comments(
+        self, summary_comments: Optional[List[SummaryComment]]
+    ) -> List[Dict[str, Any]]:
         """Format summary comments as JSON structures.
 
         Args:
@@ -144,8 +152,11 @@ class JSONFormatter(BaseFormatter):
                 "new_features": summary.new_features,
                 "documentation_changes": summary.documentation_changes,
                 "test_changes": summary.test_changes,
-                "changes_table": [{"cohort_or_files": c.cohort_or_files, "summary": c.summary} for c in summary.changes_table],
-                "sequence_diagram": summary.sequence_diagram
+                "changes_table": [
+                    {"cohort_or_files": c.cohort_or_files, "summary": c.summary}
+                    for c in summary.changes_table
+                ],
+                "sequence_diagram": summary.sequence_diagram,
             }
 
             # Add statistics
@@ -154,7 +165,7 @@ class JSONFormatter(BaseFormatter):
                 "has_new_features": summary.has_new_features,
                 "has_documentation_changes": summary.has_documentation_changes,
                 "has_test_changes": summary.has_test_changes,
-                "has_sequence_diagram": summary.has_sequence_diagram
+                "has_sequence_diagram": summary.has_sequence_diagram,
             }
 
             if self.include_raw_content:
@@ -164,7 +175,9 @@ class JSONFormatter(BaseFormatter):
 
         return formatted
 
-    def _format_review_comments(self, review_comments: Optional[List[ReviewComment]]) -> List[Dict[str, Any]]:
+    def _format_review_comments(
+        self, review_comments: Optional[List[ReviewComment]]
+    ) -> List[Dict[str, Any]]:
         """Format review comments as JSON structures.
 
         Args:
@@ -179,11 +192,21 @@ class JSONFormatter(BaseFormatter):
         formatted = []
         for review in review_comments:
             review_dict = {
-                "actionable_comments": [self._format_actionable_comment(c) for c in review.actionable_comments],
-                "nitpick_comments": [self._format_nitpick_comment(c) for c in review.nitpick_comments],
-                "outside_diff_comments": [self._format_outside_diff_comment(c) for c in review.outside_diff_comments],
-                "ai_agent_prompts": [self.format_ai_agent_prompt(p) for p in review.ai_agent_prompts],
-                "has_ai_prompts": getattr(review, 'has_ai_prompts', len(review.ai_agent_prompts) > 0)
+                "actionable_comments": [
+                    self._format_actionable_comment(c) for c in review.actionable_comments
+                ],
+                "nitpick_comments": [
+                    self._format_nitpick_comment(c) for c in review.nitpick_comments
+                ],
+                "outside_diff_comments": [
+                    self._format_outside_diff_comment(c) for c in review.outside_diff_comments
+                ],
+                "ai_agent_prompts": [
+                    self.format_ai_agent_prompt(p) for p in review.ai_agent_prompts
+                ],
+                "has_ai_prompts": getattr(
+                    review, "has_ai_prompts", len(review.ai_agent_prompts) > 0
+                ),
             }
 
             if self.include_raw_content:
@@ -196,14 +219,16 @@ class JSONFormatter(BaseFormatter):
                 "actionable_count": len(review.actionable_comments),
                 "nitpick_count": len(review.nitpick_comments),
                 "outside_diff_count": len(review.outside_diff_comments),
-                "ai_prompt_count": len(review.ai_agent_prompts)
+                "ai_prompt_count": len(review.ai_agent_prompts),
             }
 
             formatted.append(review_dict)
 
         return formatted
 
-    def _format_thread_contexts(self, thread_contexts: Optional[List[ThreadContext]]) -> List[Dict[str, Any]]:
+    def _format_thread_contexts(
+        self, thread_contexts: Optional[List[ThreadContext]]
+    ) -> List[Dict[str, Any]]:
         """Format thread contexts as JSON structures.
 
         Args:
@@ -232,7 +257,7 @@ class JSONFormatter(BaseFormatter):
             "description": comment.issue_description,
             "file_path": comment.file_path,
             "line_number": comment.line_number,
-            "priority": self._extract_priority_level(comment.issue_description or "")
+            "priority": self._extract_priority_level(comment.issue_description or ""),
         }
 
     def _format_nitpick_comment(self, comment: NitpickComment) -> Dict[str, Any]:
@@ -249,7 +274,7 @@ class JSONFormatter(BaseFormatter):
             "suggestion": comment.suggestion,
             "file_path": comment.file_path,
             "line_number": comment.line_number,
-            "category": self._categorize_nitpick(comment.suggestion)
+            "category": self._categorize_nitpick(comment.suggestion),
         }
 
     def _format_outside_diff_comment(self, comment: OutsideDiffComment) -> Dict[str, Any]:
@@ -267,10 +292,12 @@ class JSONFormatter(BaseFormatter):
             "description": comment.issue_description,
             "file_path": comment.file_path,
             "line_range": comment.line_range,
-            "severity": self._assess_severity(comment.issue, comment.issue_description)
+            "severity": self._assess_severity(comment.issue, comment.issue_description),
         }
 
-    def _format_chronological_comments(self, chronological_order: Optional[List]) -> List[Dict[str, Any]]:
+    def _format_chronological_comments(
+        self, chronological_order: Optional[List]
+    ) -> List[Dict[str, Any]]:
         """Format chronological comments as JSON structures.
 
         Args:
@@ -287,16 +314,16 @@ class JSONFormatter(BaseFormatter):
             comment_dict = {
                 "sequence": i + 1,
                 "content": self._extract_comment_content(comment),
-                "type": self._identify_comment_source(comment)
+                "type": self._identify_comment_source(comment),
             }
 
             # Add timestamp if available
-            if hasattr(comment, 'created_at'):
-                comment_dict["timestamp"] = getattr(comment, 'created_at', None)
+            if hasattr(comment, "created_at"):
+                comment_dict["timestamp"] = getattr(comment, "created_at", None)
 
             # Add author if available
-            if hasattr(comment, 'user'):
-                comment_dict["author"] = getattr(comment, 'user', {}).get('login', 'Unknown')
+            if hasattr(comment, "user"):
+                comment_dict["author"] = getattr(comment, "user", {}).get("login", "Unknown")
 
             formatted.append(comment_dict)
 
@@ -359,13 +386,13 @@ class JSONFormatter(BaseFormatter):
         """
         suggestion_lower = suggestion.lower()
 
-        if any(keyword in suggestion_lower for keyword in ['format', 'style', 'indent', 'spacing']):
+        if any(keyword in suggestion_lower for keyword in ["format", "style", "indent", "spacing"]):
             return "formatting"
-        elif any(keyword in suggestion_lower for keyword in ['name', 'naming', 'rename']):
+        elif any(keyword in suggestion_lower for keyword in ["name", "naming", "rename"]):
             return "naming"
-        elif any(keyword in suggestion_lower for keyword in ['comment', 'document', 'doc']):
+        elif any(keyword in suggestion_lower for keyword in ["comment", "document", "doc"]):
             return "documentation"
-        elif any(keyword in suggestion_lower for keyword in ['import', 'unused', 'remove']):
+        elif any(keyword in suggestion_lower for keyword in ["import", "unused", "remove"]):
             return "cleanup"
         else:
             return "general"
@@ -382,9 +409,11 @@ class JSONFormatter(BaseFormatter):
         """
         content = f"{issue} {description or ''}".lower()
 
-        if any(keyword in content for keyword in ['critical', 'security', 'vulnerability', 'error']):
+        if any(
+            keyword in content for keyword in ["critical", "security", "vulnerability", "error"]
+        ):
             return "high"
-        elif any(keyword in content for keyword in ['warning', 'important', 'should']):
+        elif any(keyword in content for keyword in ["warning", "important", "should"]):
             return "medium"
         else:
             return "low"
@@ -398,9 +427,9 @@ class JSONFormatter(BaseFormatter):
         Returns:
             Comment content string
         """
-        if hasattr(comment, 'body'):
+        if hasattr(comment, "body"):
             return self._sanitize_content(comment.body)
-        elif hasattr(comment, 'content'):
+        elif hasattr(comment, "content"):
             return self._sanitize_content(comment.content)
         elif isinstance(comment, str):
             return self._sanitize_content(comment)
@@ -416,9 +445,9 @@ class JSONFormatter(BaseFormatter):
         Returns:
             Comment source string
         """
-        if hasattr(comment, 'user'):
-            user_login = getattr(comment, 'user', {}).get('login', '').lower()
-            if 'coderabbit' in user_login:
+        if hasattr(comment, "user"):
+            user_login = getattr(comment, "user", {}).get("login", "").lower()
+            if "coderabbit" in user_login:
                 return "coderabbit"
             else:
                 return "human"
@@ -436,7 +465,7 @@ class JSONFormatter(BaseFormatter):
         """
         if isinstance(obj, datetime):
             return obj.isoformat()
-        elif hasattr(obj, '__dict__'):
+        elif hasattr(obj, "__dict__"):
             return obj.__dict__
         else:
             return str(obj)

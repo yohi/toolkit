@@ -6,8 +6,8 @@ from typing import List
 
 from .base import BaseCodeRabbitModel
 from .comment_metadata import CommentMetadata
-from .summary_comment import SummaryComment
 from .review_comment import ReviewComment
+from .summary_comment import SummaryComment
 from .thread_context import ThreadContext
 
 
@@ -39,10 +39,7 @@ class AnalyzedComments(BaseCodeRabbitModel):
         Returns:
             True if any review comments have actionable items
         """
-        return any(
-            review.actionable_count > 0
-            for review in self.review_comments
-        )
+        return any(review.actionable_count > 0 for review in self.review_comments)
 
     @property
     def total_actionable_items(self) -> int:
@@ -51,10 +48,7 @@ class AnalyzedComments(BaseCodeRabbitModel):
         Returns:
             Sum of all actionable items across reviews
         """
-        return sum(
-            review.actionable_count
-            for review in self.review_comments
-        )
+        return sum(review.actionable_count for review in self.review_comments)
 
     @property
     def has_high_priority_issues(self) -> bool:
@@ -63,10 +57,7 @@ class AnalyzedComments(BaseCodeRabbitModel):
         Returns:
             True if any review has high priority issues
         """
-        return any(
-            review.has_high_priority_issues
-            for review in self.review_comments
-        )
+        return any(review.has_high_priority_issues for review in self.review_comments)
 
     @property
     def has_ai_prompts(self) -> bool:
@@ -75,10 +66,7 @@ class AnalyzedComments(BaseCodeRabbitModel):
         Returns:
             True if any review has AI prompts
         """
-        return any(
-            review.has_ai_prompts
-            for review in self.review_comments
-        )
+        return any(review.has_ai_prompts for review in self.review_comments)
 
     @property
     def files_with_issues(self) -> List[str]:
@@ -93,7 +81,7 @@ class AnalyzedComments(BaseCodeRabbitModel):
             for comment in review.actionable_comments:
                 files.add(comment.file_path)
 
-        return sorted(list(files))
+        return sorted(files)
 
     def get_summary_text(self) -> str:
         """Get a brief text summary of the analysis.

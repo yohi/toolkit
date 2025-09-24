@@ -120,6 +120,7 @@ name = "coderabbit-comment-fetcher"
 version = "1.0.0"
 source = { editable = "." }
 dependencies = [
+    { name = "psutil" },
     { name = "pydantic" },
     { name = "rich" },
     { name = "typing-extensions", marker = "python_full_version < '3.14'" },
@@ -128,7 +129,6 @@ dependencies = [
 [package.optional-dependencies]
 all = [
     { name = "memory-profiler" },
-    { name = "psutil" },
 ]
 dev = [
     { name = "black" },
@@ -147,12 +147,8 @@ docs = [
     { name = "mkdocs-material" },
     { name = "mkdocstrings", extra = ["python"] },
 ]
-full = [
-    { name = "psutil" },
-]
 performance = [
     { name = "memory-profiler" },
-    { name = "psutil" },
 ]
 
 [package.metadata]
@@ -167,8 +163,7 @@ requires-dist = [
     { name = "mkdocstrings", extras = ["python"], marker = "extra == 'docs'", specifier = ">=0.24.0" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.8.0" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.6.0" },
-    { name = "psutil", marker = "extra == 'full'", specifier = ">=5.9.0" },
-    { name = "psutil", marker = "extra == 'performance'", specifier = ">=5.9.0" },
+    { name = "psutil", specifier = ">=5.9.0" },
     { name = "pydantic", specifier = ">=2.5.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=7.4.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },

@@ -27,7 +27,7 @@ class PR2MockHelper:
         """JSONファイルを読み込む"""
         # tests/pr2/mock_dataディレクトリ内のファイルを参照
         file_path = self.repo_root / "tests" / "pr2" / "mock_data" / filename
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             return json.load(f)
 
     def mock_github_cli_command(self, command_args: List[str]) -> str:
@@ -58,18 +58,20 @@ class PR2MockHelper:
 
     def _is_api_command(self, cmd: str) -> bool:
         """apiコマンドかどうか判定"""
-        return "gh api" in cmd and ("yohi/lazygit-llm-commit-generator" in cmd or "repos/yohi" in cmd)
+        return "gh api" in cmd and (
+            "yohi/lazygit-llm-commit-generator" in cmd or "repos/yohi" in cmd
+        )
 
     def _handle_pr_view_command(self, cmd: str) -> str:
         """gh pr viewコマンドのレスポンスを処理"""
         # 基本情報を取得
         if "--json" in cmd and "files" not in cmd:
             return json.dumps(self.pr_basic_info, ensure_ascii=False, indent=2)
-        
+
         # ファイル情報を取得
         elif "--json files" in cmd:
             return json.dumps(self.pr_files, ensure_ascii=False, indent=2)
-        
+
         else:
             return ""
 
@@ -78,11 +80,11 @@ class PR2MockHelper:
         # レビューを取得
         if "/pulls/2/reviews" in cmd:
             return json.dumps(self.pr_reviews, ensure_ascii=False, indent=2)
-        
+
         # コメントを取得
         elif "/pulls/2/comments" in cmd:
             return json.dumps(self.pr_comments, ensure_ascii=False, indent=2)
-        
+
         else:
             return ""
 

@@ -1,8 +1,7 @@
 """Mock GitHub CLI responses for testing."""
 
-from typing import Dict, List, Any
 import json
-
+from typing import Any, Dict, List
 
 # Mock GitHub CLI pull request response
 MOCK_GH_PR_RESPONSE = {
@@ -12,31 +11,18 @@ MOCK_GH_PR_RESPONSE = {
     "state": "open",
     "createdAt": "2025-08-27T17:00:00Z",
     "updatedAt": "2025-08-27T17:30:00Z",
-    "author": {
-        "login": "developer"
-    },
-    "repository": {
-        "name": "repo",
-        "owner": {
-            "login": "owner"
-        }
-    },
+    "author": {"login": "developer"},
+    "repository": {"name": "repo", "owner": {"login": "owner"}},
     "url": "https://github.com/owner/repo/pull/104",
-    "baseRepository": {
-        "name": "repo",
-        "owner": {
-            "login": "owner"
-        }
-    }
+    "baseRepository": {"name": "repo", "owner": {"login": "owner"}},
+    "comments": [],  # Add expected comments key
 }
 
 # Mock GitHub CLI comments response
 MOCK_GH_COMMENTS_RESPONSE = [
     {
         "id": 2304764272,
-        "author": {
-            "login": "coderabbitai[bot]"
-        },
+        "author": {"login": "coderabbitai[bot]"},
         "body": """_💡 Verification agent_
 
 <details>
@@ -71,13 +57,11 @@ adjusted.
         "position": 1,
         "commitId": "6714ee424cba179d9289a955109f9e09bd98d42f",
         "pullRequestReviewId": None,
-        "inReplyToId": None
+        "inReplyToId": None,
     },
     {
         "id": 2304764288,
-        "author": {
-            "login": "coderabbitai[bot]"
-        },
+        "author": {"login": "coderabbitai[bot]"},
         "body": """_🛠️ Refactor suggestion_
 
 **「完全自動処理」表現を"原則自動（フォールバックあり）"へトーンダウン。**
@@ -103,13 +87,11 @@ wording to "原則自動（フォールバックあり）".
         "position": 1,
         "commitId": "6714ee424cba179d9289a955109f9e09bd98d42f",
         "pullRequestReviewId": None,
-        "inReplyToId": None
+        "inReplyToId": None,
     },
     {
         "id": 2304764300,
-        "author": {
-            "login": "developer"
-        },
+        "author": {"login": "developer"},
         "body": "@coderabbitai ありがとうございます。修正します。",
         "createdAt": "2025-08-27T17:21:00Z",
         "updatedAt": "2025-08-27T17:21:00Z",
@@ -120,17 +102,15 @@ wording to "原則自動（フォールバックあり）".
         "position": 1,
         "commitId": "6714ee424cba179d9289a955109f9e09bd98d42f",
         "pullRequestReviewId": None,
-        "inReplyToId": 2304764288
-    }
+        "inReplyToId": 2304764288,
+    },
 ]
 
 # Mock GitHub CLI reviews response
 MOCK_GH_REVIEWS_RESPONSE = [
     {
         "id": "REV_1",
-        "author": {
-            "login": "coderabbitai[bot]"
-        },
+        "author": {"login": "coderabbitai[bot]"},
         "state": "COMMENTED",
         "body": """**Actionable comments posted: 26**
 
@@ -150,13 +130,11 @@ Line 15: **設定値の検証が不足しています**
 
 </details>""",
         "submittedAt": "2025-08-27T17:25:00Z",
-        "updatedAt": "2025-08-27T17:25:00Z"
+        "updatedAt": "2025-08-27T17:25:00Z",
     },
     {
         "id": "REV_2",
-        "author": {
-            "login": "coderabbitai[bot]"
-        },
+        "author": {"login": "coderabbitai[bot]"},
         "state": "COMMENTED",
         "body": """## Summary by CodeRabbit
 
@@ -178,8 +156,8 @@ Line 15: **設定値の検証が不足しています**
 ---
 **Actionable comments posted: 26**""",
         "submittedAt": "2025-08-27T17:15:00Z",
-        "updatedAt": "2025-08-27T17:15:00Z"
-    }
+        "updatedAt": "2025-08-27T17:15:00Z",
+    },
 ]
 
 # Mock GitHub CLI error responses
@@ -187,57 +165,42 @@ MOCK_GH_ERROR_RESPONSES = {
     "authentication_error": {
         "exit_code": 1,
         "stderr": "gh: To use GitHub CLI, please authenticate by running: gh auth login",
-        "stdout": ""
+        "stdout": "",
     },
     "not_found_error": {
         "exit_code": 1,
         "stderr": "gh: could not find pull request #999 (HTTP 404)",
-        "stdout": ""
+        "stdout": "",
     },
     "rate_limit_error": {
         "exit_code": 1,
         "stderr": "gh: API rate limit exceeded (HTTP 403)",
-        "stdout": ""
+        "stdout": "",
     },
     "network_error": {
         "exit_code": 1,
         "stderr": "gh: failed to connect to github.com (network error)",
-        "stdout": ""
+        "stdout": "",
     },
     "permission_error": {
         "exit_code": 1,
         "stderr": "gh: you do not have permission to access this repository (HTTP 403)",
-        "stdout": ""
+        "stdout": "",
     },
     "invalid_url_error": {
         "exit_code": 1,
         "stderr": "gh: invalid repository URL format",
-        "stdout": ""
-    }
+        "stdout": "",
+    },
 }
 
 # Mock rate limit response
 MOCK_RATE_LIMIT_RESPONSE = {
     "resources": {
-        "core": {
-            "limit": 5000,
-            "remaining": 4999,
-            "reset": 1640995200,
-            "used": 1
-        },
-        "search": {
-            "limit": 30,
-            "remaining": 30,
-            "reset": 1640995200,
-            "used": 0
-        }
+        "core": {"limit": 5000, "remaining": 4999, "reset": 1640995200, "used": 1},
+        "search": {"limit": 30, "remaining": 30, "reset": 1640995200, "used": 0},
     },
-    "rate": {
-        "limit": 5000,
-        "remaining": 4999,
-        "reset": 1640995200,
-        "used": 1
-    }
+    "rate": {"limit": 5000, "remaining": 4999, "reset": 1640995200, "used": 1},
 }
 
 # Mock successful command responses
@@ -249,60 +212,39 @@ MOCK_SUCCESS_RESPONSES = {
   ✓ Git operations for github.com configured to use ssh protocol.
   ✓ Token: gho_xxxxxxxxxxxxxxxxxxxx
   ✓ Token scopes: gist, read:org, repo""",
-        "stderr": ""
+        "stderr": "",
     },
-    "gh_version": {
-        "exit_code": 0,
-        "stdout": "gh version 2.40.1 (2023-12-13)",
-        "stderr": ""
-    },
+    "gh_version": {"exit_code": 0, "stdout": "gh version 2.40.1 (2023-12-13)", "stderr": ""},
     "gh_pr_view": {
         "exit_code": 0,
         "stdout": json.dumps(MOCK_GH_PR_RESPONSE, indent=2),
-        "stderr": ""
+        "stderr": "",
     },
     "gh_pr_view_comments": {
         "exit_code": 0,
         "stdout": json.dumps(MOCK_GH_COMMENTS_RESPONSE, indent=2),
-        "stderr": ""
+        "stderr": "",
     },
     "gh_api_rate_limit": {
         "exit_code": 0,
         "stdout": json.dumps(MOCK_RATE_LIMIT_RESPONSE, indent=2),
-        "stderr": ""
-    }
+        "stderr": "",
+    },
 }
 
 # Mock scenarios for different PR states
 MOCK_PR_SCENARIOS = {
-    "open_pr": {
-        **MOCK_GH_PR_RESPONSE,
-        "state": "open",
-        "mergeable": True
-    },
-    "closed_pr": {
-        **MOCK_GH_PR_RESPONSE,
-        "state": "closed",
-        "merged": False
-    },
-    "merged_pr": {
-        **MOCK_GH_PR_RESPONSE,
-        "state": "closed",
-        "merged": True
-    },
-    "draft_pr": {
-        **MOCK_GH_PR_RESPONSE,
-        "isDraft": True
-    }
+    "open_pr": {**MOCK_GH_PR_RESPONSE, "state": "open", "mergeable": True},
+    "closed_pr": {**MOCK_GH_PR_RESPONSE, "state": "closed", "merged": False},
+    "merged_pr": {**MOCK_GH_PR_RESPONSE, "state": "closed", "merged": True},
+    "draft_pr": {**MOCK_GH_PR_RESPONSE, "isDraft": True},
 }
 
 # Mock large dataset response for performance testing
 MOCK_LARGE_COMMENTS_RESPONSE = [
     {
         "id": 3000000000 + i,
-        "author": {
-            "login": "coderabbitai[bot]"
-        },
+        "author": {"login": "coderabbitai[bot]"},
         "body": f"""_{'🛠️ Refactor suggestion' if i % 3 == 0 else '⚠️ Potential issue' if i % 3 == 1 else '📝 Documentation suggestion'}_
 
 Performance test comment #{i + 1}.
@@ -315,7 +257,7 @@ can contain detailed explanations, code suggestions, and analysis results.
         "updatedAt": f"2025-08-27T{10 + (i % 14):02d}:00:05Z",
         "path": f"src/file_{(i % 20) + 1}.py",
         "line": (i % 100) + 1,
-        "inReplyToId": None
+        "inReplyToId": None,
     }
     for i in range(1000)  # 1000 comments for performance testing
 ]
@@ -323,60 +265,46 @@ can contain detailed explanations, code suggestions, and analysis results.
 # Mock command execution responses for different scenarios
 COMMAND_RESPONSES = {
     "normal_execution": MOCK_SUCCESS_RESPONSES,
-    "authentication_failure": {
-        "gh_auth_status": MOCK_GH_ERROR_RESPONSES["authentication_error"]
-    },
-    "network_issues": {
-        "gh_pr_view": MOCK_GH_ERROR_RESPONSES["network_error"]
-    },
-    "rate_limiting": {
-        "gh_pr_view_comments": MOCK_GH_ERROR_RESPONSES["rate_limit_error"]
-    },
-    "permission_denied": {
-        "gh_pr_view": MOCK_GH_ERROR_RESPONSES["permission_error"]
-    },
-    "invalid_repository": {
-        "gh_pr_view": MOCK_GH_ERROR_RESPONSES["not_found_error"]
-    }
+    "authentication_failure": {"gh_auth_status": MOCK_GH_ERROR_RESPONSES["authentication_error"]},
+    "network_issues": {"gh_pr_view": MOCK_GH_ERROR_RESPONSES["network_error"]},
+    "rate_limiting": {"gh_pr_view_comments": MOCK_GH_ERROR_RESPONSES["rate_limit_error"]},
+    "permission_denied": {"gh_pr_view": MOCK_GH_ERROR_RESPONSES["permission_error"]},
+    "invalid_repository": {"gh_pr_view": MOCK_GH_ERROR_RESPONSES["not_found_error"]},
 }
 
 # Mock responses for different comment types and edge cases
 MOCK_EDGE_CASE_RESPONSES = {
-    "empty_comments": {
-        "exit_code": 0,
-        "stdout": "[]",
-        "stderr": ""
-    },
-    "malformed_json": {
-        "exit_code": 0,
-        "stdout": '{"incomplete": json',
-        "stderr": ""
-    },
+    "empty_comments": {"exit_code": 0, "stdout": "[]", "stderr": ""},
+    "malformed_json": {"exit_code": 0, "stdout": '{"incomplete": json', "stderr": ""},
     "mixed_comment_types": {
         "exit_code": 0,
-        "stdout": json.dumps([
-            {
-                "id": 1,
-                "author": {"login": "coderabbitai[bot]"},
-                "body": "CodeRabbit comment",
-                "createdAt": "2025-08-27T17:00:00Z"
-            },
-            {
-                "id": 2,
-                "author": {"login": "human-reviewer"},
-                "body": "Human comment",
-                "createdAt": "2025-08-27T17:01:00Z"
-            },
-            {
-                "id": 3,
-                "author": {"login": "other-bot[bot]"},
-                "body": "Other bot comment",
-                "createdAt": "2025-08-27T17:02:00Z"
-            }
-        ], indent=2),
-        "stderr": ""
-    }
+        "stdout": json.dumps(
+            [
+                {
+                    "id": 1,
+                    "author": {"login": "coderabbitai[bot]"},
+                    "body": "CodeRabbit comment",
+                    "createdAt": "2025-08-27T17:00:00Z",
+                },
+                {
+                    "id": 2,
+                    "author": {"login": "human-reviewer"},
+                    "body": "Human comment",
+                    "createdAt": "2025-08-27T17:01:00Z",
+                },
+                {
+                    "id": 3,
+                    "author": {"login": "other-bot[bot]"},
+                    "body": "Other bot comment",
+                    "createdAt": "2025-08-27T17:02:00Z",
+                },
+            ],
+            indent=2,
+        ),
+        "stderr": "",
+    },
 }
+
 
 # Helper function to get mock response based on command and scenario
 def get_mock_response(command: str, scenario: str = "normal_execution") -> Dict[str, Any]:
@@ -399,11 +327,7 @@ def get_mock_response(command: str, scenario: str = "normal_execution") -> Dict[
         return MOCK_SUCCESS_RESPONSES[command]
 
     # Fallback for unknown commands
-    return {
-        "exit_code": 1,
-        "stdout": "",
-        "stderr": f"gh: unknown command '{command}'"
-    }
+    return {"exit_code": 1, "stdout": "", "stderr": f"gh: unknown command '{command}'"}
 
 
 # Function to generate dynamic mock data
@@ -435,7 +359,7 @@ def generate_mock_comments(count: int, comment_type: str = "mixed") -> List[Dict
             "updatedAt": f"2025-08-27T{10 + (i % 14):02d}:{(i % 60):02d}:05Z",
             "path": f"src/test_file_{(i % 10) + 1}.py",
             "line": (i % 100) + 1,
-            "inReplyToId": None if i % 5 != 0 else (5000000000 + i - 1) if i > 0 else None
+            "inReplyToId": None if i % 5 != 0 else (5000000000 + i - 1) if i > 0 else None,
         }
 
         comments.append(comment)

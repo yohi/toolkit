@@ -1,10 +1,9 @@
 """Unit tests for SummaryProcessor class."""
 
 import pytest
-
-from coderabbit_fetcher.processors.summary_processor import SummaryProcessor
-from coderabbit_fetcher.models import SummaryComment, ChangeEntry
 from coderabbit_fetcher.exceptions import CommentParsingError
+from coderabbit_fetcher.models import ChangeEntry, SummaryComment
+from coderabbit_fetcher.processors.summary_processor import SummaryProcessor
 
 
 class TestSummaryProcessor:
@@ -57,21 +56,21 @@ sequenceDiagram
     DB-->>Auth: User data
     Auth-->>User: JWT token
 ```
-"""
+""",
         }
 
         # Sample without summary content
         self.non_summary_comment = {
             "id": 123457,
             "user": {"login": "coderabbitai[bot]"},
-            "body": "_🛠️ Refactor suggestion_\n\nThis is just a regular review comment."
+            "body": "_🛠️ Refactor suggestion_\n\nThis is just a regular review comment.",
         }
 
         # Sample with minimal summary
         self.minimal_summary = {
             "id": 123458,
             "user": {"login": "coderabbitai[bot]"},
-            "body": "## Summary\n\nBasic refactoring changes to improve code quality."
+            "body": "## Summary\n\nBasic refactoring changes to improve code quality.",
         }
 
     def test_is_summary_comment_with_full_summary(self):

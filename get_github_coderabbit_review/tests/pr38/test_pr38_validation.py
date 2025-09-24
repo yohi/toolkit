@@ -4,7 +4,9 @@ PR38のGitHub CLIレスポンスをモックしてcoderabbit-fetchの出力を�
 """
 
 import os
+import shutil
 import subprocess
+import sys
 import tempfile
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -25,7 +27,24 @@ class TestPR38Validation:
         """テストクラスの初期化"""
         cls.repo_root = Path(__file__).parent.parent.parent
         cls.expected_file = Path(__file__).parent / "expected" / "expected_pr_38_ai_agent_prompt.md"
+        cls.python_executable = cls._find_python_executable()
         cls.mock_helper = PR38MockHelper(cls.repo_root)
+
+    @classmethod
+    def _find_python_executable(cls) -> str:
+        """環境に適したPython実行可能ファイルを検出"""
+        # 1. python3を優先的に検索
+        python3_path = shutil.which("python3")
+        if python3_path:
+            return python3_path
+
+        # 2. pythonを検索
+        python_path = shutil.which("python")
+        if python_path:
+            return python_path
+
+        # 3. sys.executableをフォールバック（Cursor環境でも-mが使える場合）
+        return sys.executable
 
     def test_pr38_output_validation(self):
         """PR38の実際の出力が期待値と一致することを検証"""
@@ -52,28 +71,30 @@ class TestPR38Validation:
                 try:
                     # uvx でコマンドを実行（quietモード）
                     cmd = [
-                        "uvx",
-                        "--from",
-                        ".",
-                        "-n",
-                        "crf",
+                        cls.python_executable,
+                        "-m",
+                        "coderabbit_fetcher.cli.main",
                         "https://github.com/yohi/dots/pull/38",
                         "--quiet",
-                        "--output",
+                        "--output-file",
                         temp_file.name,
                     ]
 
-                    result = subprocess.run(cmd, capture_output=True, text=True, cwd=self.repo_root)
+                    env = os.environ.copy()
+                    env["PYTHONPATH"] = str(self.repo_root)
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True, cwd=self.repo_root, env=env
+                    )
 
                     # コマンドが成功したか確認
                     assert result.returncode == 0, f"Command failed: {result.stderr}"
 
                     # 出力ファイルの内容を読み込み
-                    with open(temp_file.name, "r", encoding="utf-8") as f:
+                    with open(temp_file.name, encoding="utf-8") as f:
                         actual_output = f.read()
 
                     # 期待値ファイルの内容を読み込み
-                    with open(self.expected_file, "r", encoding="utf-8") as f:
+                    with open(self.expected_file, encoding="utf-8") as f:
                         expected_output = f.read()
 
                     # 出力の検証
@@ -166,7 +187,7 @@ class TestPR38Validation:
                             "crf",
                             "https://github.com/yohi/dots/pull/38",
                             "--quiet",
-                            "--output",
+                            "--output-file",
                             temp_file.name,
                         ]
 
@@ -176,7 +197,7 @@ class TestPR38Validation:
 
                         assert result.returncode == 0
 
-                        with open(temp_file.name, "r", encoding="utf-8") as f:
+                        with open(temp_file.name, encoding="utf-8") as f:
                             outputs.append(f.read())
 
                     finally:
@@ -229,22 +250,24 @@ class TestPR38Validation:
             with tempfile.NamedTemporaryFile(mode="w+", suffix=".md", delete=False) as temp_file:
                 try:
                     cmd = [
-                        "uvx",
-                        "--from",
-                        ".",
-                        "-n",
-                        "crf",
+                        cls.python_executable,
+                        "-m",
+                        "coderabbit_fetcher.cli.main",
                         "https://github.com/yohi/dots/pull/38",
                         "--quiet",
-                        "--output",
+                        "--output-file",
                         temp_file.name,
                     ]
 
-                    result = subprocess.run(cmd, capture_output=True, text=True, cwd=self.repo_root)
+                    env = os.environ.copy()
+                    env["PYTHONPATH"] = str(self.repo_root)
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True, cwd=self.repo_root, env=env
+                    )
 
                     assert result.returncode == 0
 
-                    with open(temp_file.name, "r", encoding="utf-8") as f:
+                    with open(temp_file.name, encoding="utf-8") as f:
                         output = f.read()
 
                     # アクション可能なアイテムを抽出
@@ -285,22 +308,24 @@ class TestPR38Validation:
             with tempfile.NamedTemporaryFile(mode="w+", suffix=".md", delete=False) as temp_file:
                 try:
                     cmd = [
-                        "uvx",
-                        "--from",
-                        ".",
-                        "-n",
-                        "crf",
+                        cls.python_executable,
+                        "-m",
+                        "coderabbit_fetcher.cli.main",
                         "https://github.com/yohi/dots/pull/38",
                         "--quiet",
-                        "--output",
+                        "--output-file",
                         temp_file.name,
                     ]
 
-                    result = subprocess.run(cmd, capture_output=True, text=True, cwd=self.repo_root)
+                    env = os.environ.copy()
+                    env["PYTHONPATH"] = str(self.repo_root)
+                    result = subprocess.run(
+                        cmd, capture_output=True, text=True, cwd=self.repo_root, env=env
+                    )
 
                     assert result.returncode == 0
 
-                    with open(temp_file.name, "r", encoding="utf-8") as f:
+                    with open(temp_file.name, encoding="utf-8") as f:
                         output = f.read()
 
                     # ファイル変更情報を抽出
@@ -336,16 +361,18 @@ class TestPR38Validation:
             mock_subprocess.side_effect = mock_run_with_error
 
             cmd = [
-                "uvx",
-                "--from",
-                ".",
-                "-n",
-                "crf",
+                cls.python_executable,
+                "-m",
+                "coderabbit_fetcher.cli.main",
                 "https://github.com/yohi/dots/pull/38",
                 "--quiet",
             ]
 
-            result = subprocess.run(cmd, capture_output=True, text=True, cwd=self.repo_root)
+            env = os.environ.copy()
+            env["PYTHONPATH"] = str(self.repo_root)
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, cwd=self.repo_root, env=env
+            )
 
             # エラーハンドリングが適切に動作することを確認
             # （具体的な動作はツールの実装による）

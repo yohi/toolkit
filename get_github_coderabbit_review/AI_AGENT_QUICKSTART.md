@@ -206,7 +206,7 @@ AIエージェントがこのツールを使用する際の確認事項：
    ```bash
    # GitHub CLIのインストール（Mac）
    brew install gh
-   
+
    # GitHub CLIのインストール（Linux）
    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
    sudo apt update && sudo apt install gh

@@ -14,26 +14,26 @@ jobs:
   essential-tests:
     name: Essential Tests (PR2 & PR38)
     runs-on: ubuntu-latest
-    
+
     defaults:
       run:
         working-directory: get_github_coderabbit_review
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.11'
-        
+
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         # 基本的な依存関係のみインストール（テスト実行に必要な最小限）
         pip install pytest unittest-xml-reporting
-        
+
     - name: Verify test structure
       run: |
         echo "📁 Project structure verification"
@@ -42,16 +42,16 @@ jobs:
         ls -la tests/
         echo "📁 PR2 test files"
         ls -la tests/pr2/
-        echo "📁 PR38 test files"  
+        echo "📁 PR38 test files"
         ls -la tests/pr38/
-        
+
     - name: Run Essential Tests
       run: |
         cd tests
         echo "🚀 Starting Essential Tests (GitHub Actions)"
         echo "   Running PR2 and PR38 mock-based output validation tests"
         python run_essential_tests.py
-        
+
     - name: Upload test results
       if: always()
       uses: actions/upload-artifact@v3
@@ -61,7 +61,7 @@ jobs:
           get_github_coderabbit_review/tests/*.log
           get_github_coderabbit_review/tests/**/test_*.log
         retention-days: 5
-        
+
     - name: Test summary
       if: always()
       run: |

@@ -1,36 +1,28 @@
 """Main CLI interface for CodeRabbit Comment Fetcher."""
 
-import sys
 import argparse
 import logging
-from pathlib import Path
-from typing import Dict, List, Optional, Any, TextIO
-import json
+import sys
+from typing import Any, Dict
+
+from ..config import DEFAULT_RESOLVED_MARKER, QUIET_MODE_LOG_MODULES
+from ..exceptions import CodeRabbitFetcherError
+from ..github_client import GitHubClient
+from ..orchestrator import CodeRabbitOrchestrator, ExecutionConfig
 
 # import click  # Will be added in later version
-
-from ..exceptions import CodeRabbitFetcherError, GitHubAuthenticationError, InvalidPRUrlError
-from ..github_client import GitHubClient, GitHubAPIError
-from ..comment_analyzer import CommentAnalyzer
-from ..persona_manager import PersonaManager
-from ..formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter, LLMInstructionFormatter
-from ..resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
-from ..comment_poster import ResolutionRequestManager, ResolutionRequestConfig
-from ..models import CommentMetadata
-from ..orchestrator import CodeRabbitOrchestrator, ExecutionConfig
-from ..config import DEFAULT_RESOLVED_MARKER, QUIET_MODE_LOG_MODULES
 
 
 # Configure logging - will be reconfigured based on command line args
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
 
 class CLIError(CodeRabbitFetcherError):
     """CLI-specific errors."""
+
     pass
 
 
@@ -64,88 +56,58 @@ Examples:
       --post-resolution-request \\
       --show-stats \\
       --debug
-        """
+        """,
     )
 
-    # Required argument
-    parser.add_argument(
-        'pr_url',
-        help='GitHub pull request URL'
-    )
+    # PR URL (optional for utility commands like --version)
+    parser.add_argument("pr_url", nargs="?", help="GitHub pull request URL")
 
     # Optional arguments
     parser.add_argument(
-        '--persona-file', '-p',
-        type=str,
-        help='Path to persona file for AI context'
+        "--persona-file", "-p", type=str, help="Path to persona file for AI context"
     )
 
     parser.add_argument(
-        '--output-format', '-f',
-        choices=['markdown', 'json', 'plain', 'llm-instruction', 'ai-agent-prompt'],
-        default='markdown',
-        help='Output format (default: markdown)'
+        "--output-format",
+        "-f",
+        choices=["markdown", "json", "plain", "llm-instruction", "ai-agent-prompt"],
+        default="markdown",
+        help="Output format (default: markdown)",
     )
 
-    parser.add_argument(
-        '--output-file', '-o',
-        type=str,
-        help='Output file path (default: stdout)'
-    )
+    parser.add_argument("--output-file", "-o", type=str, help="Output file path (default: stdout)")
 
     parser.add_argument(
-        '--resolved-marker', '-m',
+        "--resolved-marker",
+        "-m",
         type=str,
         default=DEFAULT_RESOLVED_MARKER,
-        help='Resolved marker string (default: 🔒 CODERABBIT_RESOLVED 🔒)'
+        help="Resolved marker string (default: 🔒 CODERABBIT_RESOLVED 🔒)",
     )
 
     parser.add_argument(
-        '--post-resolution-request', '-r',
-        action='store_true',
-        help='Post resolution request comment to CodeRabbit'
+        "--post-resolution-request",
+        "-r",
+        action="store_true",
+        help="Post resolution request comment to CodeRabbit",
     )
 
     parser.add_argument(
-        '--show-stats', '-s',
-        action='store_true',
-        help='Show processing statistics'
+        "--show-stats", "-s", action="store_true", help="Show processing statistics"
     )
 
-    parser.add_argument(
-        '--debug',
-        action='store_true',
-        help='Enable debug logging'
-    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+
+    parser.add_argument("--validate", action="store_true", help="Validate GitHub CLI setup only")
+
+    parser.add_argument("--validate-marker", type=str, help="Validate a resolved marker string")
+
+    parser.add_argument("--version", action="store_true", help="Show version information")
+
+    parser.add_argument("--examples", action="store_true", help="Show usage examples")
 
     parser.add_argument(
-        '--validate',
-        action='store_true',
-        help='Validate GitHub CLI setup only'
-    )
-
-    parser.add_argument(
-        '--validate-marker',
-        type=str,
-        help='Validate a resolved marker string'
-    )
-
-    parser.add_argument(
-        '--version',
-        action='store_true',
-        help='Show version information'
-    )
-
-    parser.add_argument(
-        '--examples',
-        action='store_true',
-        help='Show usage examples'
-    )
-
-    parser.add_argument(
-        '--quiet', '-q',
-        action='store_true',
-        help='Reduce output verbosity (minimal output)'
+        "--quiet", "-q", action="store_true", help="Reduce output verbosity (minimal output)"
     )
 
     return parser
@@ -165,8 +127,14 @@ def run_fetch_command(args) -> int:
         # Create execution configuration
         # In quiet mode, use ai-agent-prompt format if no format is explicitly specified
         output_format = args.output_format
-        if args.quiet and args.output_format == 'markdown':
-            output_format = 'ai-agent-prompt'
+        if args.quiet and args.output_format == "markdown":
+            output_format = "ai-agent-prompt"
+
+        # Check if pr_url is required for the operation
+        if not args.pr_url and not (
+            getattr(args, "version", False) or getattr(args, "validate", False)
+        ):
+            raise ValueError("pr_url is required unless using --version or --validate")
 
         config = ExecutionConfig(
             pr_url=args.pr_url,
@@ -177,7 +145,7 @@ def run_fetch_command(args) -> int:
             post_resolution_request=args.post_resolution_request,
             show_stats=args.show_stats,
             debug=args.debug,
-            quiet=args.quiet
+            quiet=args.quiet,
         )
 
         # Validate configuration
@@ -204,7 +172,9 @@ def run_fetch_command(args) -> int:
 
         if results["success"]:
             if not args.quiet:
-                print(f"\n✅ Processing completed successfully in {results['execution_time']:.2f}s!")
+                print(
+                    f"\n✅ Processing completed successfully in {results['execution_time']:.2f}s!"
+                )
 
             # Show statistics if requested
             if args.show_stats:
@@ -313,7 +283,7 @@ def run_validate_marker_command(marker: str) -> int:
         from ..resolved_marker import ResolvedMarkerConfig, ResolvedMarkerManager
 
         config = ResolvedMarkerConfig(default_marker=marker)
-        validation = config.validate_marker()
+        validation = config.validate_marker(marker)
 
         if validation["valid"]:
             print("✅ Marker is valid")
@@ -346,8 +316,9 @@ def run_version_command() -> int:
     try:
         # Try to get version from package metadata
         from importlib.metadata import version as get_version
-        version = get_version('coderabbit-comment-fetcher')
-    except:
+
+        version = get_version("coderabbit-comment-fetcher")
+    except Exception:
         version = "development"
 
     print(f"CodeRabbit Comment Fetcher v{version}")
@@ -413,7 +384,7 @@ def run_examples_command() -> int:
     return 0
 
 
-def main():
+def main() -> None:
     """Main entry point for the CLI."""
     try:
         parser = create_argument_parser()
@@ -439,7 +410,7 @@ def main():
             return run_validate_marker_command(args.validate_marker)
 
         # Main fetch command (requires pr_url)
-        if not hasattr(args, 'pr_url') or not args.pr_url:
+        if not hasattr(args, "pr_url") or not args.pr_url:
             print("❌ PR URL is required for fetch command", file=sys.stderr)
             parser.print_help()
             return 1

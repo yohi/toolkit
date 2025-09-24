@@ -1,41 +1,36 @@
 """Review comment processor for extracting actionable comments and specialized sections."""
 
+from __future__ import annotations
+
 import logging
 import re
 from typing import Any, Dict, List, Optional
 
 from ..exceptions import CommentParsingError
-from ..models import ActionableComment, AIAgentPrompt
+from ..models.actionable_comment import ActionableComment
+from ..models.ai_agent_prompt import AIAgentPrompt
 from ..models.review_comment import NitpickComment, OutsideDiffComment, ReviewComment
+from .comment_parser import CommentParser
+from .content_analyzer import ContentAnalyzer
+from .output_formatter import OutputFormatter
 
 logger = logging.getLogger(__name__)
 
 
 class ReviewProcessor:
-    """Processes CodeRabbit review comments to extract actionable items and specialized sections."""
+    """Processes CodeRabbit review comments to extract actionable items and specialized sections.
 
-    def __init__(self):
-        """Initialize the review processor."""
-        self.nitpick_patterns = [
-            r"🧹 Nitpick comments?",
-            r"Nitpick comments?",
-            r"Minor suggestions?",
-            r"Style suggestions?",
-        ]
+    This refactored version delegates responsibilities to specialized components:
+    - CommentParser: Handles parsing and extraction
+    - ContentAnalyzer: Analyzes content patterns and complexity
+    - OutputFormatter: Formats output for different use cases
+    """
 
-        self.outside_diff_patterns = [
-            r"⚠️ Outside diff range comments?",
-            r"Outside diff range comments?",
-            r"Comments? outside the diff",
-            r"Outside.*diff.*range",
-        ]
-
-        self.ai_agent_patterns = [
-            r"🤖 Prompt for AI Agents",
-            r"Prompt for AI Agents",
-            r"AI Agent Prompt",
-            r"For AI Agents",
-        ]
+    def __init__(self) -> None:
+        """Initialize the review processor with specialized components."""
+        self.parser = CommentParser()
+        self.analyzer = ContentAnalyzer()
+        self.formatter = OutputFormatter()
 
     def process_review_comment(self, comment: Dict[str, Any]) -> ReviewComment:
         """Process a CodeRabbit review comment.
@@ -55,24 +50,18 @@ class ReviewProcessor:
             # Extract actionable comments count from the comment
             actionable_count = self._extract_actionable_count(body)
 
-            # Extract different types of comments
-            actionable_comments = self.extract_actionable_comments(body)
-            nitpick_comments = self.extract_nitpick_comments(body)
-            outside_diff_comments = self.extract_outside_diff_comments(body)
+            # Delegate extraction to specialized parser
+            actionable_comments = self.parser.extract_actionable_comments(body)
+            nitpick_comments = self.parser.extract_nitpick_comments(body)
+            outside_diff_comments = self.parser.extract_outside_diff_comments(body)
+            ai_agent_prompts = self.parser.extract_ai_agent_prompts(body)
+
+            # Use existing extractor for additional comments
             additional_comments = self.extract_additional_comments(body)
-            ai_agent_prompts = self.extract_ai_agent_prompts(body)
 
             logger.debug(
                 f"Creating ReviewComment with {len(nitpick_comments)} nitpick comments and {len(additional_comments)} additional comments"
             )
-            for i, nc in enumerate(nitpick_comments):
-                logger.debug(
-                    f"Nitpick {i+1}: {type(nc).__name__} - suggestion: '{getattr(nc, 'suggestion', 'N/A')}'"
-                )
-            for i, ac in enumerate(additional_comments):
-                logger.debug(
-                    f"Additional {i+1}: {type(ac).__name__} - suggestion: '{getattr(ac, 'suggestion', 'N/A')}'"
-                )
 
             return ReviewComment(
                 actionable_count=actionable_count,
@@ -99,7 +88,7 @@ class ReviewProcessor:
         Returns:
             List of ActionableComment objects
         """
-        actionable_comments = []
+        actionable_comments: list[ActionableComment] = []
         logger.debug(f"extract_actionable_comments called with content length: {len(content)}")
         logger.debug(f"Content preview: {content[:200]}...")
 
@@ -406,7 +395,7 @@ class ReviewProcessor:
         Returns:
             List of NitpickComment objects
         """
-        nitpick_comments = []
+        nitpick_comments: list[NitpickComment] = []
 
         # Extract the nitpick section using manual parsing to handle nested blockquotes
         nitpick_start = content.find("<summary>🧹 Nitpick comments (")
@@ -674,7 +663,7 @@ class ReviewProcessor:
 
     def extract_additional_comments(self, content: str) -> List:
         """Extract additional comments as a separate category."""
-        additional_comments = []
+        additional_comments: list[Any] = []
 
         # Find the Additional comments section
         additional_start = content.find("<summary>🔇 Additional comments (")
@@ -733,7 +722,7 @@ class ReviewProcessor:
 
     def _extract_additional_comments_as_nitpicks(self, content: str) -> List:
         """Extract additional comments that should be treated as nitpicks."""
-        nitpick_comments = []
+        nitpick_comments: list[NitpickComment] = []
         import re
 
         from ..models.review_comment import NitpickComment
@@ -1463,7 +1452,7 @@ class ReviewProcessor:
         Returns:
             List of ActionableComment objects
         """
-        items = []
+        items: list[Any] = []
         section_type = section.get("type", "unknown")
 
         if section_type == "issue_with_description":
@@ -1689,7 +1678,6 @@ class ReviewProcessor:
             "Configuration used",
             "Review profile",
             "Knowledge Base",
-            "+",
             "+end",
             "zsh/functions/aws.zsh",
             "zsh/functions/cursor.zsh",
@@ -2004,7 +1992,7 @@ class ReviewProcessor:
                 }
 
         # Generate priority adjustments based on context
-        for thread_id, mapping in relationships["thread_comment_mapping"].items():
+        for _thread_id, mapping in relationships["thread_comment_mapping"].items():
             thread = mapping["thread"]
             comments = mapping["related_comments"]
 

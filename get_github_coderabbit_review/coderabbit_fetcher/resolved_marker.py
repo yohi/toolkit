@@ -1,10 +1,10 @@
 """Resolved marker management for CodeRabbit comments."""
 
 import re
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
-from .models import ThreadContext, ResolutionStatus
+from .models import ResolutionStatus, ThreadContext
 
 
 @dataclass
@@ -19,7 +19,7 @@ class ResolvedMarkerConfig:
     default_marker: str = "🔒 CODERABBIT_RESOLVED 🔒"
 
     # Additional patterns to detect various resolution formats
-    additional_patterns: List[str] = None
+    additional_patterns: Optional[List[str]] = None
 
     # Case sensitive matching (recommended for security)
     case_sensitive: bool = True
@@ -27,7 +27,7 @@ class ResolvedMarkerConfig:
     # Require exact match (no partial matches)
     exact_match: bool = True
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize additional patterns if not provided."""
         if self.additional_patterns is None:
             self.additional_patterns = [
@@ -38,7 +38,7 @@ class ResolvedMarkerConfig:
                 "✅ CODERABBIT_RESOLVED ✅",
                 # Format from requirements document
                 "[CR_RESOLUTION_CONFIRMED]",
-                "RESOLVED_BY_CODERABBIT"
+                "RESOLVED_BY_CODERABBIT",
             ]
 
     @property
@@ -88,7 +88,7 @@ class ResolvedMarkerDetector:
             config: Optional configuration, uses default if not provided
         """
         self.config = config or ResolvedMarkerConfig()
-        self._compiled_patterns = self.config.get_compiled_patterns()
+        self._compiled_patterns: List[re.Pattern[str]] = self.config.get_compiled_patterns()
 
     def is_comment_resolved(self, comment: Dict[str, Any]) -> bool:
         """Check if a single comment contains resolved markers.
@@ -139,18 +139,18 @@ class ResolvedMarkerDetector:
                 return ResolutionStatus.RESOLVED
 
         # Check main comment if no chronological order
-        if hasattr(thread_context, 'main_comment') and thread_context.main_comment:
+        if hasattr(thread_context, "main_comment") and thread_context.main_comment:
             if self.is_comment_resolved(thread_context.main_comment):
                 return ResolutionStatus.RESOLVED
 
         # Check replies for resolved markers
-        if hasattr(thread_context, 'replies') and thread_context.replies:
+        if hasattr(thread_context, "replies") and thread_context.replies:
             for reply in thread_context.replies:
                 if self.is_comment_resolved(reply):
                     return ResolutionStatus.RESOLVED
 
         # Default to current resolution status or unresolved
-        return getattr(thread_context, 'resolution_status', ResolutionStatus.UNRESOLVED)
+        return getattr(thread_context, "resolution_status", ResolutionStatus.UNRESOLVED)
 
     def filter_resolved_comments(self, comments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Filter out resolved comments from a list.
@@ -204,7 +204,7 @@ class ResolvedMarkerDetector:
             "total_comments": total,
             "resolved_comments": resolved,
             "unresolved_comments": unresolved,
-            "resolution_rate": resolved / total if total > 0 else 0.0
+            "resolution_rate": resolved / total if total > 0 else 0.0,
         }
 
     def _extract_comment_content(self, comment: Dict[str, Any]) -> str:
@@ -218,14 +218,14 @@ class ResolvedMarkerDetector:
         """
         if isinstance(comment, dict):
             # Try common field names for comment content
-            for field in ['body', 'content', 'text', 'message']:
+            for field in ["body", "content", "text", "message"]:
                 if field in comment and comment[field]:
                     return str(comment[field])
         elif isinstance(comment, str):
             return comment
-        elif hasattr(comment, 'body'):
+        elif hasattr(comment, "body"):
             return str(comment.body)
-        elif hasattr(comment, 'content'):
+        elif hasattr(comment, "content"):
             return str(comment.content)
 
         return ""
@@ -248,10 +248,13 @@ class ResolvedMarkerDetector:
                 if pattern in content:
                     # Additional check to ensure it's not part of a larger word
                     # Only for patterns that contain only word characters
-                    if re.match(r'^[\w\s]+$', pattern):
+                    if re.match(r"^[\w\s]+$", pattern):
                         # Use word boundary check for word-only patterns
-                        if re.search(rf'\b{re.escape(pattern)}\b', content,
-                                   0 if self.config.case_sensitive else re.IGNORECASE):
+                        if re.search(
+                            rf"\b{re.escape(pattern)}\b",
+                            content,
+                            0 if self.config.case_sensitive else re.IGNORECASE,
+                        ):
                             return True
                     else:
                         # For patterns with special characters, direct containment is enough
@@ -269,7 +272,9 @@ class ResolvedMarkerDetector:
 
         return False
 
-    def _find_last_coderabbit_comment(self, comments: List[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    def _find_last_coderabbit_comment(
+        self, comments: List[Dict[str, Any]]
+    ) -> Optional[Dict[str, Any]]:
         """Find the last comment from CodeRabbit in a thread.
 
         Args:
@@ -296,20 +301,20 @@ class ResolvedMarkerDetector:
         """
         if isinstance(comment, dict):
             # Check user/author information
-            user = comment.get('user', {})
+            user = comment.get("user", {})
             if isinstance(user, dict):
-                login = user.get('login', '')
-                if 'coderabbitai' in login.lower():
+                login = user.get("login", "")
+                if "coderabbitai" in login.lower():
                     return True
 
             # Check author field
-            author = comment.get('author', '')
-            if 'coderabbitai' in str(author).lower():
+            author = comment.get("author", "")
+            if "coderabbitai" in str(author).lower():
                 return True
 
             # Check node_id pattern (CodeRabbit specific)
-            node_id = comment.get('node_id', '')
-            if 'coderabbitai' in str(node_id).lower():
+            node_id = comment.get("node_id", "")
+            if "coderabbitai" in str(node_id).lower():
                 return True
 
         return False
@@ -350,8 +355,8 @@ class ResolvedMarkerManager:
                 "default_marker": self.config.default_marker,
                 "additional_patterns": self.config.additional_patterns,
                 "case_sensitive": self.config.case_sensitive,
-                "exact_match": self.config.exact_match
-            }
+                "exact_match": self.config.exact_match,
+            },
         }
 
     def process_threads_with_resolution(self, threads: List[ThreadContext]) -> Dict[str, Any]:
@@ -384,8 +389,10 @@ class ResolvedMarkerManager:
                 "total_threads": len(updated_threads),
                 "resolved_threads": resolved_count,
                 "unresolved_threads": len(unresolved_threads),
-                "resolution_rate": resolved_count / len(updated_threads) if updated_threads else 0.0
-            }
+                "resolution_rate": (
+                    resolved_count / len(updated_threads) if updated_threads else 0.0
+                ),
+            },
         }
 
     def update_config(self, **kwargs) -> None:
@@ -431,24 +438,26 @@ class ResolvedMarkerManager:
             recommendations.append("Use at least 5 characters")
 
         # Check for special characters (good for uniqueness)
-        has_special = bool(re.search(r'[^\w\s]', marker))
+        has_special = bool(re.search(r"[^\w\s]", marker))
         if not has_special:
-            recommendations.append("Consider adding special characters (emoji, symbols) for uniqueness")
+            recommendations.append(
+                "Consider adding special characters (emoji, symbols) for uniqueness"
+            )
 
         # Check for common words that might appear in regular text
-        common_words = ['the', 'and', 'or', 'but', 'for', 'is', 'was', 'are', 'were']
+        common_words = ["the", "and", "or", "but", "for", "is", "was", "are", "were"]
         if any(word.lower() in marker.lower() for word in common_words):
             issues.append("Contains common words - may cause false positives")
 
         # Check for CodeRabbit specific terms
-        if 'coderabbit' not in marker.lower() and 'cr' not in marker.lower():
+        if "coderabbit" not in marker.lower() and "cr" not in marker.lower():
             recommendations.append("Consider including 'CodeRabbit' or 'CR' for clarity")
 
         return {
             "valid": len(issues) == 0,
             "issues": issues,
             "recommendations": recommendations,
-            "uniqueness_score": self._calculate_uniqueness_score(marker)
+            "uniqueness_score": self._calculate_uniqueness_score(marker),
         }
 
     def _calculate_uniqueness_score(self, marker: str) -> float:
@@ -467,12 +476,12 @@ class ResolvedMarkerManager:
         score += length_score * 0.3
 
         # Special character factor
-        special_chars = len(re.findall(r'[^\w\s]', marker))
+        special_chars = len(re.findall(r"[^\w\s]", marker))
         special_score = min(special_chars / 5.0, 1.0)
         score += special_score * 0.4
 
         # Uniqueness factor (uncommon character combinations)
-        unique_patterns = len(re.findall(r'[A-Z]{2,}|[0-9]{2,}|[^\w\s]{2,}', marker))
+        unique_patterns = len(re.findall(r"[A-Z]{2,}|[0-9]{2,}|[^\w\s]{2,}", marker))
         unique_score = min(unique_patterns / 3.0, 1.0)
         score += unique_score * 0.3
 

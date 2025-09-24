@@ -7,7 +7,7 @@ CI/CD環境でGitHub認証なしで動作するモック実装
 import os
 import tempfile
 from pathlib import Path
-from unittest.mock import Mock, patch
+from unittest.mock import Mock
 
 try:
     from .test_pr38_mock_helpers import PR38MockHelper
@@ -36,11 +36,13 @@ def test_mock_execution():
     with tempfile.NamedTemporaryFile(mode="w+", suffix=".md", delete=False) as temp_file:
         try:
             # モック化されたコマンド実行をシミュレート
-            print("🔧 モック実行: uvx crf https://github.com/yohi/dots/pull/38 --quiet --output-file")
+            print(
+                "🔧 モック実行: uvx crf https://github.com/yohi/dots/pull/38 --quiet --output-file"
+            )
 
             # 期待値ファイルから内容を読み取ってモック出力とする
             if expected_file.exists():
-                with open(expected_file, "r", encoding="utf-8") as f:
+                with open(expected_file, encoding="utf-8") as f:
                     expected_content = f.read()
 
                 # 出力ファイルに書き込み（実際のツール実行をシミュレート）
@@ -71,7 +73,7 @@ def test_mock_execution():
             if result.returncode == 0:
                 # 出力ファイルの内容を確認
                 if os.path.exists(temp_file.name):
-                    with open(temp_file.name, "r", encoding="utf-8") as f:
+                    with open(temp_file.name, encoding="utf-8") as f:
                         output = f.read()
 
                     print(f"📝 出力ファイルサイズ: {len(output)} 文字")

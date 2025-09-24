@@ -1,12 +1,9 @@
 """Unit tests for CommentAnalyzer class."""
 
 import pytest
-from datetime import datetime
-from unittest.mock import Mock, patch
-
 from coderabbit_fetcher.analyzer.comment_analyzer import CommentAnalyzer
-from coderabbit_fetcher.models import AnalyzedComments, SummaryComment, ActionableComment
 from coderabbit_fetcher.exceptions import CommentParsingError
+from coderabbit_fetcher.models import ActionableComment, AnalyzedComments, SummaryComment
 
 
 class TestCommentAnalyzer:
@@ -24,7 +21,7 @@ class TestCommentAnalyzer:
             "body": "This is a CodeRabbit suggestion for improvement.",
             "path": "src/main.py",
             "line": 42,
-            "position": 5
+            "position": 5,
         }
 
         # Sample user comment
@@ -35,7 +32,7 @@ class TestCommentAnalyzer:
             "body": "Thanks for the review!",
             "path": "src/main.py",
             "line": 42,
-            "position": 5
+            "position": 5,
         }
 
         # Sample resolved comment
@@ -46,7 +43,7 @@ class TestCommentAnalyzer:
             "body": "Great fix! 🔒 CODERABBIT_RESOLVED 🔒",
             "path": "src/main.py",
             "line": 42,
-            "position": 5
+            "position": 5,
         }
 
         # Sample summary comment
@@ -55,7 +52,7 @@ class TestCommentAnalyzer:
             "user": {"login": "coderabbitai[bot]"},
             "created_at": "2025-08-28T09:00:00Z",
             "body": "## Summary by CodeRabbit\n\nThis PR includes several improvements...",
-            "path": None
+            "path": None,
         }
 
     def test_is_coderabbit_comment_with_dict_user(self):
@@ -68,15 +65,11 @@ class TestCommentAnalyzer:
         comment_with_string_user = {
             "id": 123460,
             "user": "coderabbitai[bot]",
-            "body": "Test comment"
+            "body": "Test comment",
         }
         assert self.analyzer._is_coderabbit_comment(comment_with_string_user) is True
 
-        comment_with_other_user = {
-            "id": 123461,
-            "user": "developer",
-            "body": "Test comment"
-        }
+        comment_with_other_user = {"id": 123461, "user": "developer", "body": "Test comment"}
         assert self.analyzer._is_coderabbit_comment(comment_with_other_user) is False
 
     def test_filter_coderabbit_comments(self):
@@ -85,7 +78,7 @@ class TestCommentAnalyzer:
             self.coderabbit_comment,
             self.user_comment,
             self.resolved_comment,
-            self.summary_comment
+            self.summary_comment,
         ]
 
         filtered = self.analyzer.filter_coderabbit_comments(comments)
@@ -96,20 +89,13 @@ class TestCommentAnalyzer:
 
     def test_is_resolved_with_resolved_thread(self):
         """Test resolution detection with resolved marker."""
-        thread = [
-            self.coderabbit_comment,
-            self.user_comment,
-            self.resolved_comment
-        ]
+        thread = [self.coderabbit_comment, self.user_comment, self.resolved_comment]
 
         assert self.analyzer.is_resolved(thread) is True
 
     def test_is_resolved_with_unresolved_thread(self):
         """Test resolution detection without resolved marker."""
-        thread = [
-            self.coderabbit_comment,
-            self.user_comment
-        ]
+        thread = [self.coderabbit_comment, self.user_comment]
 
         assert self.analyzer.is_resolved(thread) is False
 
@@ -122,7 +108,7 @@ class TestCommentAnalyzer:
         comments = [
             self.coderabbit_comment,
             {**self.user_comment, "path": "src/main.py", "line": 42, "position": 5},
-            {**self.coderabbit_comment, "id": 999, "path": "src/other.py", "line": 10}
+            {**self.coderabbit_comment, "id": 999, "path": "src/other.py", "line": 10},
         ]
 
         threads = self.analyzer._group_into_threads(comments)
@@ -136,15 +122,10 @@ class TestCommentAnalyzer:
     def test_filter_unresolved_threads(self):
         """Test filtering out resolved threads."""
         # Create resolved thread
-        resolved_thread = [
-            self.coderabbit_comment,
-            self.resolved_comment
-        ]
+        resolved_thread = [self.coderabbit_comment, self.resolved_comment]
 
         # Create unresolved thread
-        unresolved_thread = [
-            {**self.coderabbit_comment, "id": 999, "path": "other.py"}
-        ]
+        unresolved_thread = [{**self.coderabbit_comment, "id": 999, "path": "other.py"}]
 
         threads = [resolved_thread, unresolved_thread]
         unresolved = self.analyzer._filter_unresolved_threads(threads)
@@ -217,10 +198,7 @@ class TestCommentAnalyzer:
 
     def test_extract_summary_comments(self):
         """Test extraction of summary comments."""
-        comments = [
-            self.summary_comment,
-            self.coderabbit_comment
-        ]
+        comments = [self.summary_comment, self.coderabbit_comment]
 
         summary_comments = self.analyzer._extract_summary_comments(comments)
 
@@ -232,7 +210,7 @@ class TestCommentAnalyzer:
         """Test extraction of actionable comments."""
         comments = [
             {**self.coderabbit_comment, "body": "Critical security issue needs immediate fix"},
-            {**self.coderabbit_comment, "id": 999, "body": "Just an informational note"}
+            {**self.coderabbit_comment, "id": 999, "body": "Just an informational note"},
         ]
 
         actionable = self.analyzer._extract_actionable_comments(comments)
@@ -246,7 +224,7 @@ class TestCommentAnalyzer:
         comments_data = {
             "inline_comments": [self.coderabbit_comment, self.user_comment],
             "review_comments": [self.resolved_comment],
-            "pr_comments": [self.summary_comment]
+            "pr_comments": [self.summary_comment],
         }
 
         result = self.analyzer.analyze_comments(comments_data)
@@ -270,9 +248,7 @@ class TestCommentAnalyzer:
 
     def test_analyze_comments_with_invalid_data(self):
         """Test comment analysis with invalid data."""
-        invalid_data = {
-            "inline_comments": "invalid_format"  # Should be list
-        }
+        invalid_data = {"inline_comments": "invalid_format"}  # Should be list
 
         with pytest.raises(CommentParsingError):
             self.analyzer.analyze_comments(invalid_data)

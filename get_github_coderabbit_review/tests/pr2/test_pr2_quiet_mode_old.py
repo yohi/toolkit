@@ -24,7 +24,7 @@ class TestPR2QuietMode(unittest.TestCase):
         # 期待値ファイルを読み込み
         expected_file = self.test_dir / "expected" / "expected_pr_2_ai_agent_prompt.md"
         if expected_file.exists():
-            with open(expected_file, "r", encoding="utf-8") as f:
+            with open(expected_file, encoding="utf-8") as f:
                 self.expected_output = f.read()
         else:
             self.expected_output = None
@@ -141,7 +141,7 @@ class TestPR2QuietMode(unittest.TestCase):
 
                 # JSONファイルの構造を確認
                 if file_path.exists():
-                    with open(file_path, "r", encoding="utf-8") as f:
+                    with open(file_path, encoding="utf-8") as f:
                         try:
                             data = json.load(f)
                             self.assertIsNotNone(data, f"Invalid JSON in {filename}")
@@ -151,7 +151,7 @@ class TestPR2QuietMode(unittest.TestCase):
         # 基本情報ファイルの構造確認
         basic_info_file = mock_data_dir / "pr2_basic_info.json"
         if basic_info_file.exists():
-            with open(basic_info_file, "r", encoding="utf-8") as f:
+            with open(basic_info_file, encoding="utf-8") as f:
                 basic_info = json.load(f)
 
             required_keys = [

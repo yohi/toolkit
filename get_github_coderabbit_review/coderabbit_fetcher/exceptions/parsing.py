@@ -18,10 +18,7 @@ class InvalidPRUrlError(CodeRabbitFetcherError):
         Args:
             message: Error message with URL details
         """
-        super().__init__(
-            message,
-            details="Expected format: https://github.com/owner/repo/pull/123"
-        )
+        super().__init__(message, details="Expected format: https://github.com/owner/repo/pull/123")
 
 
 class CommentParsingError(CodeRabbitFetcherError):

@@ -27,7 +27,7 @@ class PR38MockHelper:
         """JSONファイルを読み込む"""
         # tests/pr38/mock_dataディレクトリ内のファイルを参照
         file_path = self.repo_root / "tests" / "pr38" / "mock_data" / filename
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             return json.load(f)
 
     def mock_github_cli_command(self, command_args: List[str]) -> str:

@@ -179,7 +179,7 @@ crf https://github.com/owner/repo/pull/123 --output-format json
 
 カスタムテストランナー（`tests/test_runner.py`）を使用：
 - `tests/unit/`: 単体テスト
-- `tests/integration/`: 統合テスト  
+- `tests/integration/`: 統合テスト
 - `tests/performance/`: パフォーマンステスト
 - `tests/fixtures/`: テスト用フィクスチャ
 

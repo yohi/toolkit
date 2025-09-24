@@ -49,7 +49,7 @@ class AIAgentPrompt(BaseCodeRabbitModel):
             return "java"
         elif any(keyword in code for keyword in ["#include", "int main", "std::"]):
             return "cpp"
-        elif any(keyword in code for keyword in ["func ", "package ", "import \""]):
+        elif any(keyword in code for keyword in ["func ", "package ", 'import "']):
             return "go"
 
         return None
@@ -62,7 +62,7 @@ class AIAgentPrompt(BaseCodeRabbitModel):
             True if prompt contains complete implementation suggestion
         """
         return (
-            self.code_block and
-            len(self.code_block.strip()) > 20 and  # Relaxed from 50 to 20
-            self.language is not None
+            self.code_block
+            and len(self.code_block.strip()) > 20  # Relaxed from 50 to 20
+            and self.language is not None
         )
