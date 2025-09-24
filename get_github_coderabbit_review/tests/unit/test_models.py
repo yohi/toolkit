@@ -141,8 +141,9 @@ class TestThreadContext:
     def test_basic_thread(self):
         """Test basic thread creation."""
         thread = ThreadContext(
-            main_comment={"user": {"login": "user1"}, "created_at": "2023-01-01T10:00:00Z"},
             thread_id="thread123",
+            root_comment_id="comment123",
+            main_comment={"user": {"login": "user1"}, "created_at": "2023-01-01T10:00:00Z"}
         )
 
         assert thread.participant_count == 1
@@ -152,12 +153,13 @@ class TestThreadContext:
     def test_thread_with_replies(self):
         """Test thread with replies."""
         thread = ThreadContext(
+            thread_id="thread123",
+            root_comment_id="comment123",
             main_comment={"user": {"login": "user1"}, "created_at": "2023-01-01T10:00:00Z"},
             replies=[
                 {"user": {"login": "user2"}, "created_at": "2023-01-01T11:00:00Z"},
                 {"user": {"login": "user1"}, "created_at": "2023-01-01T12:00:00Z"},
-            ],
-            thread_id="thread123",
+            ]
         )
 
         assert thread.participant_count == 2
@@ -192,7 +194,7 @@ class TestSummaryComment:
         assert summary.has_new_features
         assert summary.has_documentation_changes
         assert summary.has_test_changes
-        assert summary.total_changes == 4
+        assert summary.total_changes == 5  # 2 new features + 1 doc + 1 test + 1 change entry
 
 
 class TestAnalyzedComments:

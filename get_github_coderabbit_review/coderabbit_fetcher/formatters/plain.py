@@ -9,30 +9,30 @@ from .base import Formatter
 
 class PlainFormatter(Formatter):
     """Plain text output formatter."""
-    
+
     def format(self, persona: str, analyzed_comments: Dict[str, Any]) -> str:
         """Format the analyzed comments as plain text.
-        
+
         Args:
             persona: The persona context for formatting
             analyzed_comments: The analyzed comments data
-            
+
         Returns:
             Formatted plain text string
         """
         lines = []
-        
+
         # Title
         lines.append("CodeRabbit Comments Analysis")
         lines.append("=" * 40)
         lines.append("")
-        
+
         # Persona context if provided
         if persona and persona.strip():
             lines.append("Context:")
             lines.append(persona)
             lines.append("")
-        
+
         # Summary
         metadata = analyzed_comments.get('metadata', {})
         lines.append("Summary:")
@@ -40,7 +40,7 @@ class PlainFormatter(Formatter):
         lines.append(f"  Total Comments: {metadata.get('total_inline_comments', 0)}")
         lines.append(f"  Total Reviews: {metadata.get('total_reviews', 0)}")
         lines.append("")
-        
+
         # Comments
         inline_comments = analyzed_comments.get('inline_comments', [])
         if inline_comments:
@@ -59,5 +59,5 @@ class PlainFormatter(Formatter):
                     for line in body.split('\n'):
                         lines.append(f"  {line}")
                 lines.append("")
-        
+
         return "\n".join(lines)
