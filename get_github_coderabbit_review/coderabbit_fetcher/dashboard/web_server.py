@@ -388,14 +388,20 @@ class DashboardServer:
 
     def _update_current_metrics(self) -> None:
         """Update current metrics from system state."""
-        # Get system metrics (simplified - in production, use psutil)
-        import psutil
+        try:
+            import psutil
+            memory_usage = psutil.virtual_memory().percent
+            cpu_usage = psutil.cpu_percent()
+        except ImportError:
+            logger.warning("psutil not available. System metrics will be unavailable.")
+            memory_usage = 0.0
+            cpu_usage = 0.0
 
         # Update metrics
         self.current_metrics = RealtimeMetrics(
             timestamp=self._get_timestamp(),
-            memory_usage=psutil.virtual_memory().percent,
-            cpu_usage=psutil.cpu_percent(),
+            memory_usage=memory_usage,
+            cpu_usage=cpu_usage,
             active_connections=self.stats["connected_clients"],
             # Other metrics would be updated from event handlers
             processing_count=self.current_metrics.processing_count,

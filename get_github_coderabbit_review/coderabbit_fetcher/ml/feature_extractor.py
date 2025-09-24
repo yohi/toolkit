@@ -1,5 +1,6 @@
 """Feature extraction for machine learning comment classification."""
 
+import hashlib
 import logging
 import math
 import re
@@ -98,7 +99,13 @@ class ContextFeatures:
             "is_in_test_file": float(self.is_in_test_file),
             "is_in_config_file": float(self.is_in_config_file),
             "is_in_documentation": float(self.is_in_documentation),
-            "file_extension_hash": float(hash(self.file_extension) % 1000),
+            "file_extension_hash": float(
+                int.from_bytes(
+                    hashlib.blake2b(self.file_extension.encode("utf-8"), digest_size=2).digest(),
+                    "big",
+                )
+                % 1000
+            ),
             "line_number": float(self.line_number),
             "is_in_function": float(self.is_in_function),
             "is_in_class": float(self.is_in_class),

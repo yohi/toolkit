@@ -95,7 +95,7 @@ class ProcessorFactory(ComponentFactory):
                 return processor_class()
 
         except Exception as e:
-            raise ComponentCreationError(f"Failed to create {component_type} processor: {e}")
+            raise ComponentCreationError(f"Failed to create {component_type} processor: {e}") from e
 
     def get_supported_types(self) -> List[str]:
         """Get supported processor types."""
@@ -160,7 +160,7 @@ class FormatterFactory(ComponentFactory):
                 return formatter_class()
 
         except Exception as e:
-            raise ComponentCreationError(f"Failed to create {component_type} formatter: {e}")
+            raise ComponentCreationError(f"Failed to create {component_type} formatter: {e}") from e
 
     def get_supported_types(self) -> List[str]:
         """Get supported formatter types."""
@@ -214,7 +214,7 @@ class AnalyzerFactory(ComponentFactory):
                 return analyzer_class()
 
         except Exception as e:
-            raise ComponentCreationError(f"Failed to create {component_type} analyzer: {e}")
+            raise ComponentCreationError(f"Failed to create {component_type} analyzer: {e}") from e
 
     def get_supported_types(self) -> List[str]:
         """Get supported analyzer types."""
@@ -279,7 +279,7 @@ class UtilityFactory(ComponentFactory):
                 return utility_class()
 
         except Exception as e:
-            raise ComponentCreationError(f"Failed to create {component_type} utility: {e}")
+            raise ComponentCreationError(f"Failed to create {component_type} utility: {e}") from e
 
     def get_supported_types(self) -> List[str]:
         """Get supported utility types."""

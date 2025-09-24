@@ -1,5 +1,6 @@
 """Comment parsing utilities for extracting structured content from CodeRabbit comments."""
 
+import hashlib
 import logging
 import re
 from typing import Any, Dict, List, Optional
@@ -221,12 +222,13 @@ class CommentParser:
             suggestion = self._extract_suggestion(content)
 
             if description:
+                comment_hash = hashlib.md5(content.encode("utf-8")).hexdigest()
                 return ActionableComment(
-                    id=f"actionable_{hash(content) % 10000}",
-                    description=description,
-                    suggestion=suggestion,
+                    comment_id=f"actionable_{comment_hash}",
+                    issue_description=description,
+                    proposed_diff=suggestion,
                     file_path=file_info.get("path", ""),
-                    line_number=file_info.get("line", 0),
+                    line_range=str(file_info.get("line", 0)),
                     raw_content=content,
                 )
         except Exception as e:

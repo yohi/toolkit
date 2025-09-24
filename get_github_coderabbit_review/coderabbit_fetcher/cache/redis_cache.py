@@ -92,11 +92,8 @@ class RedisCache(CacheProvider):
         except ImportError:
             logger.error("Redis library not installed. Install with: pip install redis")
             self._available = False
-        except (ConnectionError, TimeoutError) as e:
-            logger.exception(f"Redis connection error: {e}")
-            self._available = False
-        except Exception as e:
-            logger.exception(f"Unexpected error connecting to Redis: {e}")
+        except redis.RedisError:
+            logger.exception("Failed to connect to Redis")
             self._available = False
 
     def _ensure_connected(self) -> bool:
@@ -108,10 +105,11 @@ class RedisCache(CacheProvider):
             return False
 
         try:
+            import redis
             self._redis_client.ping()
             return True
-        except Exception as e:
-            logger.warning(f"Redis connection lost, attempting reconnect: {e}")
+        except redis.RedisError as e:
+            logger.warning("Redis connection lost, attempting reconnect: %s", e)
             self._connect()
             self.stats["reconnects"] += 1
             return self._available
@@ -139,8 +137,8 @@ class RedisCache(CacheProvider):
                 return json.dumps(data, default=str)
 
         except Exception as e:
-            logger.error(f"Error serializing cache entry: {e}")
-            raise CacheError(f"Serialization failed: {e}")
+            logger.exception("Error serializing cache entry")
+            raise CacheError("Serialization failed") from e
 
     def _deserialize_entry(self, data: Union[str, bytes]) -> CacheEntry:
         """Deserialize cache entry from storage."""
@@ -183,8 +181,8 @@ class RedisCache(CacheProvider):
             )
 
         except Exception as e:
-            logger.error(f"Error deserializing cache entry: {e}")
-            raise CacheError(f"Deserialization failed: {e}")
+            logger.exception("Error deserializing cache entry")
+            raise CacheError("Deserialization failed") from e
 
     def _get_redis_key(self, key: CacheKey) -> str:
         """Get Redis key with prefix."""
@@ -220,8 +218,8 @@ class RedisCache(CacheProvider):
             self.stats["hits"] += 1
             return entry
 
-        except Exception as e:
-            logger.error(f"Error getting from Redis cache: {e}")
+        except redis.RedisError:
+            logger.exception("Error getting from Redis cache")
             self.stats["errors"] += 1
             return None
 
@@ -232,6 +230,7 @@ class RedisCache(CacheProvider):
             return False
 
         try:
+            import redis
             redis_key = self._get_redis_key(entry.key)
             serialized_data = self._serialize_entry(entry)
 
@@ -250,8 +249,8 @@ class RedisCache(CacheProvider):
             self.stats["sets"] += 1
             return True
 
-        except Exception as e:
-            logger.error(f"Error setting Redis cache: {e}")
+        except redis.RedisError:
+            logger.exception("Error setting Redis cache")
             self.stats["errors"] += 1
             return False
 
@@ -262,6 +261,7 @@ class RedisCache(CacheProvider):
             return False
 
         try:
+            import redis
             redis_key = self._get_redis_key(key)
             result = self._redis_client.delete(redis_key)
 
@@ -271,8 +271,8 @@ class RedisCache(CacheProvider):
 
             return False
 
-        except Exception as e:
-            logger.error(f"Error deleting from Redis cache: {e}")
+        except redis.RedisError:
+            logger.exception("Error deleting from Redis cache")
             self.stats["errors"] += 1
             return False
 
@@ -282,11 +282,12 @@ class RedisCache(CacheProvider):
             return False
 
         try:
+            import redis
             redis_key = self._get_redis_key(key)
             return bool(self._redis_client.exists(redis_key))
 
-        except Exception as e:
-            logger.error(f"Error checking Redis cache existence: {e}")
+        except redis.RedisError:
+            logger.exception("Error checking Redis cache existence")
             return False
 
     def clear(self) -> bool:
@@ -296,6 +297,7 @@ class RedisCache(CacheProvider):
             return False
 
         try:
+            import redis
             # Get all keys with our prefix using SCAN for production safety
             pattern = f"{self.config.key_prefix}*"
             batch = []
@@ -309,8 +311,8 @@ class RedisCache(CacheProvider):
 
             return True
 
-        except Exception as e:
-            logger.error(f"Error clearing Redis cache: {e}")
+        except redis.RedisError:
+            logger.exception("Error clearing Redis cache")
             self.stats["errors"] += 1
             return False
 
@@ -338,6 +340,7 @@ class RedisCache(CacheProvider):
         # Get Redis server info if available
         if self._ensure_connected():
             try:
+                import redis
                 redis_info = self._redis_client.info()
                 stats["redis_info"] = {
                     "version": redis_info.get("redis_version"),
@@ -354,8 +357,8 @@ class RedisCache(CacheProvider):
                     1 for _ in self._redis_client.scan_iter(pattern, count=1000)
                 )
 
-            except Exception as e:
-                logger.warning(f"Error getting Redis server info: {e}")
+            except redis.RedisError as e:
+                logger.warning("Error getting Redis server info: %s", e)
                 stats["redis_info"] = {"error": str(e)}
 
         return stats
@@ -373,6 +376,7 @@ class RedisCache(CacheProvider):
             return 0
 
         try:
+            import redis
             pattern = f"{self.config.key_prefix}{namespace}:*"
             deleted = 0
             batch = []
@@ -386,8 +390,8 @@ class RedisCache(CacheProvider):
             logger.info(f"Flushed {deleted} keys from namespace: {namespace}")
             return deleted
 
-        except Exception as e:
-            logger.error(f"Error flushing namespace {namespace}: {e}")
+        except redis.RedisError:
+            logger.exception(f"Error flushing namespace {namespace}")
             return 0
 
     def get_namespace_keys(self, namespace: str) -> list[str]:
@@ -403,6 +407,7 @@ class RedisCache(CacheProvider):
             return []
 
         try:
+            import redis
             pattern = f"{self.config.key_prefix}{namespace}:*"
             redis_keys = list(self._redis_client.scan_iter(pattern, count=1000))
 
@@ -410,6 +415,6 @@ class RedisCache(CacheProvider):
             prefix_len = len(self.config.key_prefix)
             return [key[prefix_len:] for key in redis_keys]
 
-        except Exception as e:
-            logger.error(f"Error getting namespace keys for {namespace}: {e}")
+        except redis.RedisError:
+            logger.exception(f"Error getting namespace keys for {namespace}")
             return []

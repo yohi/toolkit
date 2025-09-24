@@ -102,7 +102,7 @@ class FastProcessingStrategy(ProcessingStrategy):
 
         if hasattr(data, "__iter__") and not isinstance(data, (str, dict)):
             return processor.process_streaming(
-                list(data), fast_processor, parallel=optimized_context.parallel_enabled
+                data, fast_processor, parallel=optimized_context.parallel_enabled
             )
         else:
             return fast_processor(data)
@@ -146,7 +146,7 @@ class BalancedProcessingStrategy(ProcessingStrategy):
 
         if hasattr(data, "__iter__") and not isinstance(data, (str, dict)):
             return memory_manager.process_with_memory_limit(
-                list(data), balanced_processor, batch_size=context.batch_size
+                data, balanced_processor, batch_size=context.batch_size
             )
         else:
             return balanced_processor(data)
@@ -285,7 +285,7 @@ class MemoryEfficientStrategy(ProcessingStrategy):
         if hasattr(data, "__iter__") and not isinstance(data, (str, dict)):
             # Process in very small batches
             results = []
-            for batch in memory_manager.stream_large_list(list(data), context.batch_size):
+            for batch in memory_manager.stream_large_list(data, context.batch_size):
                 batch_results = []
                 for item in batch:
                     result = memory_efficient_processor(item)

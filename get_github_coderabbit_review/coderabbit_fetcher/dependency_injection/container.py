@@ -193,7 +193,8 @@ class DIContainer:
             parent._child_containers.append(self)
 
         # Self-register the container
-        self.bind(DIContainer).to_instance(self)
+        with self.bind(DIContainer) as b:
+            b.to_instance(self)
 
     def bind(self, service_type: Type[T]) -> "ServiceBinder[T]":
         """Bind a service type.
