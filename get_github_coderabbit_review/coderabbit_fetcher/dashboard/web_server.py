@@ -129,6 +129,9 @@ class DashboardServer:
         self.metrics_history: List[RealtimeMetrics] = []
         self.current_metrics = RealtimeMetrics(timestamp=self._get_timestamp())
 
+        # スレッドセーフティ用のロック
+        self._metrics_lock = threading.Lock()
+
         # Event handlers
         self.event_handlers: Dict[str, List[Callable]] = {}
 
