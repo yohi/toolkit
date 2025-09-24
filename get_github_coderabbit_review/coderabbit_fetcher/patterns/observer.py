@@ -7,7 +7,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Sequence
 
 logger = logging.getLogger(__name__)
 
@@ -77,6 +77,44 @@ class EventObserver(ABC):
             True if observer should be notified
         """
         return True  # Default: interested in all events
+
+
+class FilteredEventObserver(EventObserver):
+    """Wrapper observer that filters events based on specified event types."""
+
+    def __init__(self, observer: EventObserver, event_types: Sequence[EventType]):
+        """Initialize filtered observer.
+
+        Args:
+            observer: The underlying observer to wrap
+            event_types: List of event types to filter for
+        """
+        self.observer = observer
+        self.allowed_event_types = set(event_types)
+
+    def update(self, event: Event) -> None:
+        """Handle event notification if event type is allowed.
+
+        Args:
+            event: Event to handle
+        """
+        if event.event_type in self.allowed_event_types:
+            self.observer.update(event)
+
+    def get_name(self) -> str:
+        """Get observer name."""
+        return f"Filtered[{self.observer.get_name()}]"
+
+    def is_interested_in(self, event_type: EventType) -> bool:
+        """Check if observer is interested in event type.
+
+        Args:
+            event_type: Type of event
+
+        Returns:
+            True if observer should be notified and event type is allowed
+        """
+        return event_type in self.allowed_event_types and self.observer.is_interested_in(event_type)
 
 
 class LoggingObserver(EventObserver):
@@ -512,13 +550,24 @@ def publish_event(
     event_publisher.publish(event)
 
 
-def subscribe_observer(observer: EventObserver) -> None:
+def subscribe_observer(
+    observer: EventObserver, events: Optional[Sequence[EventType]] = None
+) -> None:
     """Subscribe an observer to the global event publisher.
 
     Args:
         observer: Observer to subscribe
+        events: Optional sequence of event types to filter for.
+               If provided, observer will only receive these event types.
+               If None, observer receives all events (default behavior).
     """
-    event_publisher.subscribe(observer)
+    if events is not None:
+        # Wrap observer with filter for specific event types
+        filtered_observer = FilteredEventObserver(observer, events)
+        event_publisher.subscribe(filtered_observer)
+    else:
+        # Subscribe directly without filtering (backward compatibility)
+        event_publisher.subscribe(observer)
 
 
 def get_default_observers() -> List[EventObserver]:

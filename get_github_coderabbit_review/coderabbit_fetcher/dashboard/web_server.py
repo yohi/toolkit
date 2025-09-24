@@ -183,13 +183,14 @@ class DashboardServer:
         @self.app.route("/api/metrics")
         def get_metrics():
             """Get current metrics."""
-            self.stats["total_requests"] += 1
+            with self._metrics_lock:
+                self.stats["total_requests"] += 1
 
-            response_data = {
-                "current": self.current_metrics.to_dict(),
-                "history": [m.to_dict() for m in self.metrics_history[-50:]],  # Last 50 points
-                "stats": self.stats.copy(),
-            }
+                response_data = {
+                    "current": self.current_metrics.to_dict(),
+                    "history": [m.to_dict() for m in self.metrics_history[-50:]],  # Last 50 points
+                    "stats": self.stats.copy(),
+                }
 
             return jsonify(response_data)
 
@@ -261,23 +262,27 @@ class DashboardServer:
         @self.socketio.on("connect")
         def handle_connect():
             """Handle client connection."""
-            self.stats["connected_clients"] += 1
-            logger.info(f"Client connected. Total clients: {self.stats['connected_clients']}")
+            with self._metrics_lock:
+                self.stats["connected_clients"] += 1
+                logger.info(f"Client connected. Total clients: {self.stats['connected_clients']}")
 
-            # Send initial data to client
-            emit(
-                "metrics_update",
-                {
+                # Capture data for sending (while still holding lock)
+                initial_data = {
                     "current": self.current_metrics.to_dict(),
                     "history": [m.to_dict() for m in self.metrics_history[-10:]],
-                },
-            )
+                }
+
+            # Send initial data to client (outside lock)
+            emit("metrics_update", initial_data)
 
         @self.socketio.on("disconnect")
         def handle_disconnect():
             """Handle client disconnection."""
-            self.stats["connected_clients"] = max(0, self.stats["connected_clients"] - 1)
-            logger.info(f"Client disconnected. Total clients: {self.stats['connected_clients']}")
+            with self._metrics_lock:
+                self.stats["connected_clients"] = max(0, self.stats["connected_clients"] - 1)
+                logger.info(
+                    f"Client disconnected. Total clients: {self.stats['connected_clients']}"
+                )
 
         @self.socketio.on("subscribe_to_events")
         def handle_subscribe(data):
@@ -291,13 +296,14 @@ class DashboardServer:
         @self.socketio.on("request_metrics")
         def handle_metrics_request():
             """Handle metrics request."""
-            emit(
-                "metrics_update",
-                {
+            with self._metrics_lock:
+                metrics_data = {
                     "current": self.current_metrics.to_dict(),
                     "history": [m.to_dict() for m in self.metrics_history[-50:]],
-                },
-            )
+                }
+
+            # Send response outside lock
+            emit("metrics_update", metrics_data)
 
     def _subscribe_to_events(self) -> None:
         """Subscribe to system events."""
@@ -326,7 +332,8 @@ class DashboardServer:
             logger.warning("Dashboard server is already running")
             return
 
-        self.stats["server_start_time"] = datetime.now()
+        with self._metrics_lock:
+            self.stats["server_start_time"] = datetime.now()
         self.running = True
 
         logger.info(f"Starting dashboard server on {self.config.host}:{self.config.port}")
@@ -395,6 +402,7 @@ class DashboardServer:
         # システム計測をロック外で実行（時間のかかる処理）
         try:
             import psutil
+
             memory_usage = psutil.virtual_memory().percent
             cpu_usage = psutil.cpu_percent()
         except ImportError:
@@ -403,10 +411,10 @@ class DashboardServer:
             cpu_usage = 0.0
 
         # 状態更新をatomicに実行
-        with self._metrics_lock if hasattr(self, '_metrics_lock') else contextlib.nullcontext():
+        with self._metrics_lock:
             # 現在の状態のスナップショットを取得
             current_snapshot = self.current_metrics
-            
+
             # 新しいメトリクスを作成
             self.current_metrics = RealtimeMetrics(
                 timestamp=self._get_timestamp(),
@@ -428,10 +436,14 @@ class DashboardServer:
             return
 
         try:
-            self.socketio.emit(
-                "metrics_update",
-                {"current": self.current_metrics.to_dict(), "timestamp": self._get_timestamp()},
-            )
+            with self._metrics_lock:
+                broadcast_data = {
+                    "current": self.current_metrics.to_dict(),
+                    "timestamp": self._get_timestamp(),
+                }
+
+            # Emit outside lock to avoid blocking
+            self.socketio.emit("metrics_update", broadcast_data)
         except Exception as e:
             logger.error(f"Broadcast error: {e}")
 
@@ -441,36 +453,53 @@ class DashboardServer:
         Args:
             event: System event
         """
-        self.stats["total_events_processed"] += 1
+        # Perform all metrics updates atomically
+        with self._metrics_lock:
+            self.stats["total_events_processed"] += 1
 
-        # Update metrics based on event type
-        if event.event_type == EventType.PROCESSING_STARTED:
-            self.current_metrics.processing_count += 1
+            # Update metrics based on event type
+            if event.event_type == EventType.PROCESSING_STARTED:
+                self.current_metrics.processing_count += 1
 
-        elif event.event_type == EventType.PROCESSING_COMPLETED:
-            # Extract response time if available
-            if "response_time_ms" in event.data:
-                response_time = event.data["response_time_ms"]
-                self._update_average_response_time(response_time)
+            elif event.event_type == EventType.PROCESSING_COMPLETED:
+                # Extract response time if available
+                if "response_time_ms" in event.data:
+                    response_time = event.data["response_time_ms"]
+                    self._update_average_response_time_unsafe(response_time)
 
-            # Count AI requests
-            if event.source in ["OpenAIClient", "AnthropicClient", "AICommentClassifier"]:
-                self.current_metrics.ai_requests += 1
+                # Count AI requests
+                if event.source in ["OpenAIClient", "AnthropicClient", "AICommentClassifier"]:
+                    self.current_metrics.ai_requests += 1
 
-        elif event.event_type == EventType.PROCESSING_FAILED:
-            self.current_metrics.errors += 1
+            elif event.event_type == EventType.PROCESSING_FAILED:
+                self.current_metrics.errors += 1
 
-        elif event.event_type == EventType.CACHE_HIT:
-            self.current_metrics.cache_hits += 1
+            elif event.event_type == EventType.CACHE_HIT:
+                self.current_metrics.cache_hits += 1
 
-        elif event.event_type == EventType.CACHE_MISS:
-            self.current_metrics.cache_misses += 1
+            elif event.event_type == EventType.CACHE_MISS:
+                self.current_metrics.cache_misses += 1
 
-        # Broadcast event to interested clients
+        # Broadcast event to interested clients (outside lock to avoid blocking)
         self._broadcast_event(event)
 
     def _update_average_response_time(self, response_time: float) -> None:
-        """Update average response time."""
+        """Update average response time with thread safety.
+
+        Args:
+            response_time: Response time in milliseconds
+        """
+        with self._metrics_lock:
+            self._update_average_response_time_unsafe(response_time)
+
+    def _update_average_response_time_unsafe(self, response_time: float) -> None:
+        """Update average response time without locking (for internal use).
+
+        Note: This method must be called while holding _metrics_lock.
+
+        Args:
+            response_time: Response time in milliseconds
+        """
         if self.current_metrics.average_response_time == 0.0:
             self.current_metrics.average_response_time = response_time
         else:
@@ -511,10 +540,12 @@ class DashboardServer:
 
     def _get_uptime(self) -> str:
         """Get server uptime."""
-        if not self.stats["server_start_time"]:
-            return "0:00:00"
+        with self._metrics_lock:
+            if not self.stats["server_start_time"]:
+                return "0:00:00"
 
-        uptime = datetime.now() - self.stats["server_start_time"]
+            uptime = datetime.now() - self.stats["server_start_time"]
+
         hours, remainder = divmod(int(uptime.total_seconds()), 3600)
         minutes, seconds = divmod(remainder, 60)
 
