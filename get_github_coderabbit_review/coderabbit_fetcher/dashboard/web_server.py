@@ -379,14 +379,18 @@ class DashboardServer:
                 # Update current metrics
                 self._update_current_metrics()
 
-                # Add to history
-                self.metrics_history.append(self.current_metrics)
+                # Safely update metrics history with proper synchronization
+                with self._metrics_lock:
+                    # Add to history
+                    self.metrics_history.append(self.current_metrics)
 
-                # Limit history size
-                if len(self.metrics_history) > self.config.max_history_points:
-                    self.metrics_history = self.metrics_history[-self.config.max_history_points :]
+                    # Limit history size
+                    if len(self.metrics_history) > self.config.max_history_points:
+                        self.metrics_history = self.metrics_history[
+                            -self.config.max_history_points :
+                        ]
 
-                # Broadcast to clients
+                # Broadcast to clients (outside lock to avoid blocking readers)
                 self._broadcast_metrics_update()
 
                 # Wait for next update
