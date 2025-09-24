@@ -37,7 +37,7 @@ class ThreadProcessor:
         # Check for empty thread before entering try block
         if not thread_comments:
             raise CommentParsingError("Empty thread provided")
-        
+
         try:
             # Sort comments chronologically
             sorted_comments = self._sort_comments_chronologically(thread_comments)
@@ -46,26 +46,12 @@ class ThreadProcessor:
             if not root_comment.get("id"):
                 raise CommentParsingError("Missing root comment id")
             thread_id = str(root_comment["id"])
-            file_context = root_comment.get("path", "")
-            line_context = self._extract_line_context(root_comment)
-
-            # Analyze thread participants
-            participants = self._analyze_participants(sorted_comments)
 
             # Determine resolution status
             is_resolved = self._determine_resolution_status(sorted_comments)
 
             # Generate contextual summary
             context_summary = self._generate_context_summary(sorted_comments)
-
-            # Extract CodeRabbit comments only
-            coderabbit_comments = [
-                c for c in sorted_comments
-                if c.get("user", {}).get("login") == self.coderabbit_author
-            ]
-
-            # Generate AI-friendly structured format
-            ai_summary = self._generate_ai_summary(sorted_comments, context_summary)
 
             # Prepare data for new ThreadContext structure
             replies = sorted_comments[1:] if len(sorted_comments) > 1 else []
