@@ -1,19 +1,18 @@
 """Plain text formatter for CodeRabbit comment output."""
 
 from typing import List
-from datetime import datetime
 
-from .base_formatter import BaseFormatter
 from ..models import (
-    AnalyzedComments,
-    SummaryComment,
-    ReviewComment,
-    ThreadContext,
-    AIAgentPrompt,
     ActionableComment,
+    AIAgentPrompt,
+    AnalyzedComments,
     NitpickComment,
-    OutsideDiffComment
+    OutsideDiffComment,
+    ReviewComment,
+    SummaryComment,
+    ThreadContext,
 )
+from .base_formatter import BaseFormatter
 
 
 class PlainTextFormatter(BaseFormatter):
@@ -30,12 +29,13 @@ class PlainTextFormatter(BaseFormatter):
         self.line_width = line_width
         self.include_separators = include_separators
 
-    def format(self, persona: str, analyzed_comments: AnalyzedComments) -> str:
+    def format(self, persona: str, analyzed_comments: AnalyzedComments, quiet: bool = False) -> str:
         """Format analyzed comments as plain text.
 
         Args:
             persona: AI persona prompt string
             analyzed_comments: Analyzed CodeRabbit comments
+            quiet: Use quiet mode for minimal output (ignored for plain text)
 
         Returns:
             Formatted plain text string
@@ -194,27 +194,27 @@ class PlainTextFormatter(BaseFormatter):
         sections = []
 
         # Thread info
-        thread_id = getattr(thread, 'thread_id', 'Unknown')
+        thread_id = getattr(thread, "thread_id", "Unknown")
         sections.append(f"Thread ID: {thread_id}")
         sections.append(f"Status: {thread.resolution_status}")
 
-        if hasattr(thread, 'file_context') and thread.file_context:
+        if hasattr(thread, "file_context") and thread.file_context:
             sections.append(f"File: {thread.file_context}")
 
-        if hasattr(thread, 'line_context') and thread.line_context:
+        if hasattr(thread, "line_context") and thread.line_context:
             sections.append(f"Line: {thread.line_context}")
 
-        if hasattr(thread, 'participants') and thread.participants:
+        if hasattr(thread, "participants") and thread.participants:
             participants = ", ".join(thread.participants)
             sections.append(f"Participants: {participants}")
 
-        if hasattr(thread, 'comment_count'):
+        if hasattr(thread, "comment_count"):
             sections.append(f"Comments: {thread.comment_count}")
 
         sections.append("")
 
         # AI Summary or contextual summary
-        if hasattr(thread, 'ai_summary') and thread.ai_summary:
+        if hasattr(thread, "ai_summary") and thread.ai_summary:
             sections.append("AI Analysis:")
             sections.append(self._wrap_text(thread.ai_summary))
         elif thread.contextual_summary:
@@ -262,7 +262,7 @@ class PlainTextFormatter(BaseFormatter):
             sections.append(f"Code: {code_preview}")
 
         # Completion status
-        if hasattr(prompt, 'is_complete_suggestion') and prompt.is_complete_suggestion:
+        if hasattr(prompt, "is_complete_suggestion") and prompt.is_complete_suggestion:
             sections.append("Status: Complete implementation")
         else:
             sections.append("Status: Partial guidance")
@@ -283,14 +283,16 @@ class PlainTextFormatter(BaseFormatter):
 
         sections = []
         for i, comment in enumerate(comments, 1):
-            priority = self._extract_priority_level(comment.description or "")
-            priority_marker = {"High": "[HIGH]", "Medium": "[MED]", "Low": "[LOW]"}.get(priority, "")
+            priority = self._extract_priority_level(comment.issue_description or "")
+            priority_marker = {"High": "[HIGH]", "Medium": "[MED]", "Low": "[LOW]"}.get(
+                priority, ""
+            )
 
             header = f"  {i}. {priority_marker} {comment.title}"
             sections.append(header)
 
-            if comment.description:
-                wrapped_desc = self._wrap_text(comment.description, indent=6)
+            if comment.issue_description:
+                wrapped_desc = self._wrap_text(comment.issue_description, indent=6)
                 sections.append(f"     {wrapped_desc}")
 
             # Location
@@ -353,8 +355,8 @@ class PlainTextFormatter(BaseFormatter):
         for i, comment in enumerate(comments, 1):
             sections.append(f"  {i}. {comment.issue}")
 
-            if comment.description:
-                wrapped_desc = self._wrap_text(comment.description, indent=6)
+            if comment.issue_description:
+                wrapped_desc = self._wrap_text(comment.issue_description, indent=6)
                 sections.append(f"     {wrapped_desc}")
 
             # Location
@@ -381,32 +383,34 @@ class PlainTextFormatter(BaseFormatter):
             Condensed persona description
         """
         # Extract key information from persona
-        lines = persona.split('\n')
+        lines = persona.split("\n")
         key_lines = []
 
         for line in lines:
             line = line.strip()
-            if not line or line.startswith('#'):
+            if not line or line.startswith("#"):
                 continue
 
             # Look for role definition
-            if any(keyword in line.lower() for keyword in ['you are', 'role', 'expert', 'specialist']):
+            if any(
+                keyword in line.lower() for keyword in ["you are", "role", "expert", "specialist"]
+            ):
                 key_lines.append(line)
                 if len(key_lines) >= 2:  # Limit to keep it condensed
                     break
 
         if key_lines:
-            return self._wrap_text(' '.join(key_lines))
+            return self._wrap_text(" ".join(key_lines))
         else:
             # Fallback to first non-empty, non-header line
             for line in lines:
                 line = line.strip()
-                if line and not line.startswith('#') and len(line) > 20:
+                if line and not line.startswith("#") and len(line) > 20:
                     return self._wrap_text(line)
 
             return "AI assistant for CodeRabbit comment analysis"
 
-    def _wrap_text(self, text: str, indent: int = 0, max_length: int = None) -> str:
+    def _wrap_text(self, text: str, indent: int = 0, max_length: int | None = None) -> str:
         """Wrap text to fit line width.
 
         Args:
@@ -422,7 +426,7 @@ class PlainTextFormatter(BaseFormatter):
 
         # Truncate if too long
         if max_length and len(text) > max_length:
-            text = text[:max_length-3] + "..."
+            text = text[: max_length - 3] + "..."
 
         # Clean and sanitize
         text = self._sanitize_content(text)
@@ -459,9 +463,9 @@ class PlainTextFormatter(BaseFormatter):
             Comment content string
         """
         try:
-            if hasattr(comment, 'body'):
+            if hasattr(comment, "body"):
                 return comment.body or ""
-            elif hasattr(comment, 'content'):
+            elif hasattr(comment, "content"):
                 return comment.content or ""
             elif isinstance(comment, str):
                 return comment

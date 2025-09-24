@@ -1,14 +1,20 @@
 """Unit tests for resolved marker management."""
 
-import pytest
-from unittest.mock import Mock, patch
+import sys
+from pathlib import Path
+from unittest.mock import Mock
 
+import pytest
+
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
+from coderabbit_fetcher.models import ResolutionStatus, ThreadContext
 from coderabbit_fetcher.resolved_marker import (
     ResolvedMarkerConfig,
     ResolvedMarkerDetector,
-    ResolvedMarkerManager
+    ResolvedMarkerManager,
 )
-from coderabbit_fetcher.models import ThreadContext, ResolutionStatus
 
 
 class TestResolvedMarkerConfig:
@@ -30,7 +36,7 @@ class TestResolvedMarkerConfig:
             default_marker="CUSTOM_RESOLVED",
             case_sensitive=False,
             exact_match=False,
-            additional_patterns=["PATTERN1", "PATTERN2"]
+            additional_patterns=["PATTERN1", "PATTERN2"],
         )
 
         assert config.default_marker == "CUSTOM_RESOLVED"
@@ -41,9 +47,7 @@ class TestResolvedMarkerConfig:
 
     def test_all_patterns_property(self):
         """Test all_patterns property includes default and additional."""
-        config = ResolvedMarkerConfig(
-            additional_patterns=["EXTRA1", "EXTRA2"]
-        )
+        config = ResolvedMarkerConfig(additional_patterns=["EXTRA1", "EXTRA2"])
 
         patterns = config.all_patterns
         assert config.default_marker in patterns
@@ -53,9 +57,7 @@ class TestResolvedMarkerConfig:
     def test_compiled_patterns_case_sensitive(self):
         """Test compiled patterns with case sensitivity."""
         config = ResolvedMarkerConfig(
-            default_marker="RESOLVED",
-            case_sensitive=True,
-            additional_patterns=[]
+            default_marker="RESOLVED", case_sensitive=True, additional_patterns=[]
         )
 
         compiled = config.get_compiled_patterns()
@@ -69,9 +71,7 @@ class TestResolvedMarkerConfig:
     def test_compiled_patterns_case_insensitive(self):
         """Test compiled patterns without case sensitivity."""
         config = ResolvedMarkerConfig(
-            default_marker="RESOLVED",
-            case_sensitive=False,
-            additional_patterns=[]
+            default_marker="RESOLVED", case_sensitive=False, additional_patterns=[]
         )
 
         compiled = config.get_compiled_patterns()
@@ -84,9 +84,7 @@ class TestResolvedMarkerConfig:
     def test_exact_match_patterns(self):
         """Test exact match pattern generation."""
         config = ResolvedMarkerConfig(
-            default_marker="RESOLVED",
-            exact_match=True,
-            additional_patterns=[]
+            default_marker="RESOLVED", exact_match=True, additional_patterns=[]
         )
 
         compiled = config.get_compiled_patterns()
@@ -110,7 +108,7 @@ class TestResolvedMarkerDetector:
             default_marker="🔒 RESOLVED 🔒",
             additional_patterns=["RESOLVED_BY_CR", "✅ DONE"],
             case_sensitive=True,
-            exact_match=True
+            exact_match=True,
         )
         self.detector = ResolvedMarkerDetector(self.config)
 
@@ -164,7 +162,7 @@ class TestResolvedMarkerDetector:
             {"user": {"login": "developer"}, "body": "Found an issue"},
             {"user": {"login": "coderabbitai"}, "body": "Here's the problem"},
             {"user": {"login": "developer"}, "body": "Fixed it"},
-            {"user": {"login": "coderabbitai"}, "body": "Looks good! 🔒 RESOLVED 🔒"}
+            {"user": {"login": "coderabbitai"}, "body": "Looks good! 🔒 RESOLVED 🔒"},
         ]
 
         assert self.detector.is_thread_resolved(thread_comments) is True
@@ -175,7 +173,7 @@ class TestResolvedMarkerDetector:
             {"user": {"login": "developer"}, "body": "Found an issue"},
             {"user": {"login": "coderabbitai"}, "body": "Here's the problem"},
             {"user": {"login": "developer"}, "body": "Fixed it"},
-            {"user": {"login": "coderabbitai"}, "body": "Thanks for the fix!"}
+            {"user": {"login": "coderabbitai"}, "body": "Thanks for the fix!"},
         ]
 
         assert self.detector.is_thread_resolved(thread_comments) is False
@@ -185,7 +183,7 @@ class TestResolvedMarkerDetector:
         thread_comments = [
             {"user": {"login": "developer1"}, "body": "Found an issue"},
             {"user": {"login": "developer2"}, "body": "I'll fix it"},
-            {"user": {"login": "developer1"}, "body": "Thanks!"}
+            {"user": {"login": "developer1"}, "body": "Thanks!"},
         ]
 
         assert self.detector.is_thread_resolved(thread_comments) is False
@@ -206,7 +204,7 @@ class TestResolvedMarkerDetector:
                 {"user": {"login": "coderabbitai"}, "body": "Issue fixed! 🔒 RESOLVED 🔒"}
             ],
             contextual_summary="Test thread",
-            root_comment_id="root_123"
+            root_comment_id="root_123",
         )
 
         status = self.detector.detect_resolution_status(thread)
@@ -219,11 +217,9 @@ class TestResolvedMarkerDetector:
             main_comment={"body": "Initial comment"},
             replies=[],
             resolution_status=ResolutionStatus.UNRESOLVED,
-            chronological_order=[
-                {"user": {"login": "coderabbitai"}, "body": "Found an issue"}
-            ],
+            chronological_order=[{"user": {"login": "coderabbitai"}, "body": "Found an issue"}],
             contextual_summary="Test thread",
-            root_comment_id="root_124"
+            root_comment_id="root_124",
         )
 
         status = self.detector.detect_resolution_status(thread)
@@ -238,7 +234,7 @@ class TestResolvedMarkerDetector:
             resolution_status=ResolutionStatus.UNRESOLVED,
             chronological_order=[],
             contextual_summary="Test thread",
-            root_comment_id="root_125"
+            root_comment_id="root_125",
         )
 
         status = self.detector.detect_resolution_status(thread)
@@ -250,7 +246,7 @@ class TestResolvedMarkerDetector:
             {"body": "Issue 1"},
             {"body": "Issue 2 - 🔒 RESOLVED 🔒"},
             {"body": "Issue 3"},
-            {"body": "Issue 4 - RESOLVED_BY_CR"}
+            {"body": "Issue 4 - RESOLVED_BY_CR"},
         ]
 
         unresolved = self.detector.filter_resolved_comments(comments)
@@ -269,7 +265,7 @@ class TestResolvedMarkerDetector:
                 resolution_status=ResolutionStatus.UNRESOLVED,
                 chronological_order=[],
                 contextual_summary="Thread 1",
-                root_comment_id="root_1"
+                root_comment_id="root_1",
             ),
             ThreadContext(
                 thread_id="thread_2",
@@ -278,7 +274,7 @@ class TestResolvedMarkerDetector:
                 resolution_status=ResolutionStatus.UNRESOLVED,
                 chronological_order=[],
                 contextual_summary="Thread 2",
-                root_comment_id="root_2"
+                root_comment_id="root_2",
             ),
             ThreadContext(
                 thread_id="thread_3",
@@ -287,8 +283,8 @@ class TestResolvedMarkerDetector:
                 resolution_status=ResolutionStatus.UNRESOLVED,
                 chronological_order=[],
                 contextual_summary="Thread 3",
-                root_comment_id="root_3"
-            )
+                root_comment_id="root_3",
+            ),
         ]
 
         unresolved = self.detector.filter_resolved_threads(threads)
@@ -304,7 +300,7 @@ class TestResolvedMarkerDetector:
             {"body": "Issue 2 - 🔒 RESOLVED 🔒"},
             {"body": "Issue 3"},
             {"body": "Issue 4 - ✅ DONE"},
-            {"body": "Issue 5"}
+            {"body": "Issue 5"},
         ]
 
         stats = self.detector.get_resolution_statistics(comments)
@@ -366,8 +362,7 @@ class TestResolvedMarkerManager:
     def setup_method(self):
         """Set up test fixtures."""
         self.config = ResolvedMarkerConfig(
-            default_marker="🔒 TEST_RESOLVED 🔒",
-            additional_patterns=["TEST_DONE"]
+            default_marker="🔒 TEST_RESOLVED 🔒", additional_patterns=["TEST_DONE"]
         )
         self.manager = ResolvedMarkerManager(self.config)
 
@@ -382,7 +377,7 @@ class TestResolvedMarkerManager:
             {"body": "Issue 1"},
             {"body": "Issue 2 - 🔒 TEST_RESOLVED 🔒"},
             {"body": "Issue 3"},
-            {"body": "Issue 4 - TEST_DONE"}
+            {"body": "Issue 4 - TEST_DONE"},
         ]
 
         result = self.manager.process_comments_with_resolution(comments)
@@ -408,7 +403,7 @@ class TestResolvedMarkerManager:
                 resolution_status=ResolutionStatus.UNRESOLVED,
                 chronological_order=[],
                 contextual_summary="Thread 1",
-                root_comment_id="root_1"
+                root_comment_id="root_1",
             ),
             ThreadContext(
                 thread_id="thread_2",
@@ -417,8 +412,8 @@ class TestResolvedMarkerManager:
                 resolution_status=ResolutionStatus.UNRESOLVED,
                 chronological_order=[],
                 contextual_summary="Thread 2",
-                root_comment_id="root_2"
-            )
+                root_comment_id="root_2",
+            ),
         ]
 
         result = self.manager.process_threads_with_resolution(threads)
@@ -437,10 +432,7 @@ class TestResolvedMarkerManager:
         """Test configuration update."""
         original_marker = self.manager.config.default_marker
 
-        self.manager.update_config(
-            default_marker="NEW_MARKER",
-            case_sensitive=False
-        )
+        self.manager.update_config(default_marker="NEW_MARKER", case_sensitive=False)
 
         assert self.manager.config.default_marker == "NEW_MARKER"
         assert self.manager.config.case_sensitive is False
@@ -491,7 +483,9 @@ class TestResolvedMarkerManager:
         short_score = self.manager._calculate_uniqueness_score("OK")
 
         # Long unique marker
-        unique_score = self.manager._calculate_uniqueness_score("🔒 VERY_UNIQUE_CODERABBIT_RESOLVED_MARKER_123 🔒")
+        unique_score = self.manager._calculate_uniqueness_score(
+            "🔒 VERY_UNIQUE_CODERABBIT_RESOLVED_MARKER_123 🔒"
+        )
 
         # Medium marker
         medium_score = self.manager._calculate_uniqueness_score("RESOLVED_CR")
@@ -508,37 +502,23 @@ class TestResolvedMarkerIntegration:
     def test_end_to_end_workflow(self):
         """Test complete workflow from raw comments to filtered output."""
         # Setup
-        config = ResolvedMarkerConfig(
-            default_marker="🔒 INTEGRATION_RESOLVED 🔒"
-        )
+        config = ResolvedMarkerConfig(default_marker="🔒 INTEGRATION_RESOLVED 🔒")
         manager = ResolvedMarkerManager(config)
 
         # Raw comments data (simulating GitHub API response)
         raw_comments = [
-            {
-                "user": {"login": "developer1"},
-                "body": "Found a bug in the authentication logic"
-            },
+            {"user": {"login": "developer1"}, "body": "Found a bug in the authentication logic"},
             {
                 "user": {"login": "coderabbitai"},
-                "body": "I see the issue. Here's what needs to be fixed..."
+                "body": "I see the issue. Here's what needs to be fixed...",
             },
-            {
-                "user": {"login": "developer1"},
-                "body": "Thanks! I've applied your suggestions."
-            },
+            {"user": {"login": "developer1"}, "body": "Thanks! I've applied your suggestions."},
             {
                 "user": {"login": "coderabbitai"},
-                "body": "Great! The fix looks good. 🔒 INTEGRATION_RESOLVED 🔒"
+                "body": "Great! The fix looks good. 🔒 INTEGRATION_RESOLVED 🔒",
             },
-            {
-                "user": {"login": "developer2"},
-                "body": "Another issue with error handling"
-            },
-            {
-                "user": {"login": "coderabbitai"},
-                "body": "This needs attention..."
-            }
+            {"user": {"login": "developer2"}, "body": "Another issue with error handling"},
+            {"user": {"login": "coderabbitai"}, "body": "This needs attention..."},
         ]
 
         # Process comments
@@ -546,7 +526,9 @@ class TestResolvedMarkerIntegration:
 
         # Verify results
         assert result["statistics"]["total_comments"] == 6
-        assert result["statistics"]["resolved_comments"] == 1  # Only the CodeRabbit comment with marker
+        assert (
+            result["statistics"]["resolved_comments"] == 1
+        )  # Only the CodeRabbit comment with marker
         assert result["statistics"]["unresolved_comments"] == 5
 
         # Check that resolved comment is filtered out
@@ -567,18 +549,17 @@ class TestResolvedMarkerIntegration:
                 main_comment={"body": "Bug report"},
                 replies=[
                     {"user": {"login": "coderabbitai"}, "body": "Analysis..."},
-                    {"user": {"login": "developer"}, "body": "Working on it"}
+                    {"user": {"login": "developer"}, "body": "Working on it"},
                 ],
                 resolution_status=ResolutionStatus.UNRESOLVED,
                 chronological_order=[
                     {"user": {"login": "developer"}, "body": "Bug report"},
                     {"user": {"login": "coderabbitai"}, "body": "Analysis..."},
-                    {"user": {"login": "developer"}, "body": "Working on it"}
+                    {"user": {"login": "developer"}, "body": "Working on it"},
                 ],
                 contextual_summary="Bug discussion",
-                root_comment_id="root_unresolved"
+                root_comment_id="root_unresolved",
             ),
-
             # Resolved thread
             ThreadContext(
                 thread_id="resolved_thread",
@@ -589,11 +570,11 @@ class TestResolvedMarkerIntegration:
                 resolution_status=ResolutionStatus.UNRESOLVED,  # Will be updated
                 chronological_order=[
                     {"user": {"login": "developer"}, "body": "Another bug"},
-                    {"user": {"login": "coderabbitai"}, "body": "Fixed! 🔒 CODERABBIT_RESOLVED 🔒"}
+                    {"user": {"login": "coderabbitai"}, "body": "Fixed! 🔒 CODERABBIT_RESOLVED 🔒"},
                 ],
                 contextual_summary="Fixed bug discussion",
-                root_comment_id="root_resolved"
-            )
+                root_comment_id="root_resolved",
+            ),
         ]
 
         # Process threads
@@ -605,7 +586,9 @@ class TestResolvedMarkerIntegration:
         assert result["statistics"]["unresolved_threads"] == 1
 
         # Check resolution status was updated
-        resolved_thread = next(t for t in result["original_threads"] if t.thread_id == "resolved_thread")
+        resolved_thread = next(
+            t for t in result["original_threads"] if t.thread_id == "resolved_thread"
+        )
         assert resolved_thread.resolution_status == ResolutionStatus.RESOLVED
 
         # Check filtering
@@ -617,7 +600,7 @@ class TestResolvedMarkerIntegration:
         """Test detection with multiple marker patterns."""
         config = ResolvedMarkerConfig(
             default_marker="🔒 PRIMARY 🔒",
-            additional_patterns=["SECONDARY_RESOLVED", "✅ TERTIARY ✅"]
+            additional_patterns=["SECONDARY_RESOLVED", "✅ TERTIARY ✅"],
         )
         detector = ResolvedMarkerDetector(config)
 
@@ -627,7 +610,7 @@ class TestResolvedMarkerIntegration:
             ("Complete ✅ TERTIARY ✅", True),
             ("Still working on it", False),
             ("The primary concern is...", False),  # Partial match should not work
-            ("SECONDARY_RESOLVED_BUT_MORE", False)  # Partial match should not work
+            ("SECONDARY_RESOLVED_BUT_MORE", False),  # Partial match should not work
         ]
 
         for content, expected in test_cases:
@@ -646,9 +629,7 @@ class TestResolvedMarkerIntegration:
         large_comments = []
         for i in range(1000):
             marker = "🔒 CODERABBIT_RESOLVED 🔒" if i % 10 == 0 else ""
-            large_comments.append({
-                "body": f"Comment {i} content here. {marker}"
-            })
+            large_comments.append({"body": f"Comment {i} content here. {marker}"})
 
         # Measure performance
         start_time = time.time()

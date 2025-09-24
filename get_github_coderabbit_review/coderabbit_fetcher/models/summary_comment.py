@@ -81,10 +81,10 @@ class SummaryComment(BaseCodeRabbitModel):
             Total count of changes mentioned
         """
         return (
-            len(self.new_features) +
-            len(self.documentation_changes) +
-            len(self.test_changes) +
-            len(self.changes_table)
+            len(self.new_features)
+            + len(self.documentation_changes)
+            + len(self.test_changes)
+            + len(self.changes_table)
         )
 
     def get_formatted_walkthrough(self, max_length: int = 500) -> str:
@@ -102,4 +102,4 @@ class SummaryComment(BaseCodeRabbitModel):
         if len(self.walkthrough) <= max_length:
             return self.walkthrough
 
-        return self.walkthrough[:max_length - 3] + "..."
+        return self.walkthrough[: max_length - 3] + "..."

@@ -1,0 +1,62 @@
+[
+  {
+    "url": "https://api.github.com/repos/yohi/lazygit-llm-commit-generator/pulls/comments/2354255369",
+    "pull_request_review_id": 3232599712,
+    "id": 2354255369,
+    "node_id": "PRRC_kwDOPxR4rs6MUxYJ",
+    "diff_hunk": "@@ -0,0 +1,142 @@\n+\"\"\"\n+ベースプロバイダーインターフェース\n+\n+全てのLLMプロバイダーが実装すべき共通インターフェースを定義。\n+API型とCLI型の両方に対応する抽象基底クラス。\n+\"\"\"\n+\n+from abc import ABC, abstractmethod\n+from typing import Dict, Any, Optional\n+import logging\n+\n+logger = logging.getLogger(__name__)\n+\n+\n+class BaseProvider(ABC):\n+    \"\"\"全LLMプロバイダーの基底クラス\"\"\"\n+\n+    def __init__(self, config: Dict[str, Any]):\n+        \"\"\"\n+        プロバイダーを初期化\n+\n+        Args:\n+            config: プロバイダー固有の設定情報\n+        \"\"\"\n+        self.config = config\n+        self.timeout = config.get('timeout', 30)\n+        self.max_tokens = config.get('max_tokens', 100)\n+\n+    @abstractmethod\n+    def generate_commit_message(self, diff: str, prompt_template: str) -> str:\n+        \"\"\"\n+        Gitの差分からコミットメッセージを生成\n+\n+        Args:\n+            diff: `git diff --staged`の出力\n+            prompt_template: LLMに送信するプロンプトテンプレート\n+\n+        Returns:\n+            生成されたコミットメッセージ\n+\n+        Raises:\n+            ProviderError: プロバイダー固有のエラー\n+            TimeoutError: タイムアウトエラー\n+            AuthenticationError: 認証エラー\n+        \"\"\"\n+        pass\n+\n+    @abstractmethod\n+    def test_connection(self) -> bool:\n+        \"\"\"\n+        プロバイダーへの接続をテスト\n+\n+        Returns:\n+            接続が成功した場合True、失敗した場合False\n+        \"\"\"\n+        pass\n+\n+    def supports_streaming(self) -> bool:\n+        \"\"\"\n+        ストリーミング出力をサポートするかどうか\n+\n+        Returns:\n+            ストリーミングをサポートする場合True\n+        \"\"\"\n+        return False\n+\n+    def validate_config(self) -> bool:\n+        \"\"\"\n+        設定情報を検証\n+\n+        Returns:\n+            設定が有効な場合True、無効な場合False\n+        \"\"\"\n+        required_fields = self.get_required_config_fields()\n+        for field in required_fields:\n+            if field not in self.config:\n+                logger.error(f\"必須設定項目が不足: {field}\")\n+                return False\n+        return True\n+\n+    @abstractmethod\n+    def get_required_config_fields(self) -> list[str]:\n+        \"\"\"\n+        このプロバイダーに必要な設定項目のリストを返す\n+\n+        Returns:\n+            必須設定項目のリスト\n+        \"\"\"\n+        pass\n+\n+    def _format_prompt(self, diff: str, prompt_template: str) -> str:\n+        \"\"\"\n+        プロンプトテンプレートに差分を挿入してプロンプトを生成\n+\n+        Args:\n+            diff: Git差分\n+            prompt_template: プロンプトテンプレート（{diff}プレースホルダーを含む）\n+\n+        Returns:\n+            フォーマット済みプロンプト\n+        \"\"\"\n+        return prompt_template.format(diff=diff)\n+",
+    "path": "lazygit-llm/src/base_provider.py",
+    "commit_id": "80d4fb861ac992c037c44bbf19501c3f6a95aed5",
+    "original_commit_id": "d4c4369ba25d6d330c18e567569e18b05664751d",
+    "user": {
+      "login": "coderabbitai[bot]",
+      "id": 136622811,
+      "node_id": "BOT_kgDOCCSy2w",
+      "avatar_url": "https://avatars.githubusercontent.com/in/347564?v=4",
+      "gravatar_id": "",
+      "url": "https://api.github.com/users/coderabbitai%5Bbot%5D",
+      "html_url": "https://github.com/apps/coderabbitai",
+      "type": "Bot",
+      "user_view_type": "public",
+      "site_admin": false
+    },
+    "body": "_⚠️ Potential issue_\n\n**重大: `str.format`はdiff内の`{}`で壊れます。`Template.safe_substitute`へ置換を。**\n\nJSON/テンプレ入りのdiffに`{`/`}`があるとKeyErrorで落ちます。`string.Template`＋`$diff`に移行し、後方互換として`{diff}`→`$diff`の置換も入れてください。\n\n```diff\n-from typing import Dict, Any, Optional\n+from typing import Dict, Any, Optional\n+from string import Template\n@@\n-    def _format_prompt(self, diff: str, prompt_template: str) -> str:\n+    def _format_prompt(self, diff: str, prompt_template: str) -> str:\n@@\n-        return prompt_template.format(diff=diff)\n+        # 後方互換: 旧 `{diff}` を `$diff` に正規化\n+        if \"{diff}\" in prompt_template:\n+            prompt_template = prompt_template.replace(\"{diff}\", \"$diff\")\n+        tmpl = Template(prompt_template)\n+        return tmpl.safe_substitute(diff=diff)\n```\n併せて設定例のプレースホルダも`$diff`に更新してください。\n\n<!-- suggestion_start -->\n\n<details>\n<summary>📝 Committable suggestion</summary>\n\n> ‼️ **IMPORTANT**\n> Carefully review the code before committing. Ensure that it accurately replaces the highlighted code, contains no missing lines, and has no issues with indentation. Thoroughly test & benchmark the code to ensure it meets the requirements.\n\n```suggestion\ndef _format_prompt(self, diff: str, prompt_template: str) -> str:\n    \"\"\"\n    プロンプトテンプレートに差分を挿入してプロンプトを生成\n\n    Args:\n        diff: Git差分\n        prompt_template: プロンプトテンプレート（{diff}プレースホルダーを含む）\n\n    Returns:\n        フォーマット済みプロンプト\n    \"\"\"\n    # 後方互換: 旧 `{diff}` を `$diff` に正規化\n    if \"{diff}\" in prompt_template:\n        prompt_template = prompt_template.replace(\"{diff}\", \"$diff\")\n    tmpl = Template(prompt_template)\n    return tmpl.safe_substitute(diff=diff)\n```\n\n</details>\n\n<!-- suggestion_end -->\n\n<details>\n<summary>🧰 Tools</summary>\n\n<details>\n<summary>🪛 Ruff (0.12.2)</summary>\n\n97-97: Docstring contains ambiguous `（` (FULLWIDTH LEFT PARENTHESIS). Did you mean `(` (LEFT PARENTHESIS)?\n\n(RUF002)\n\n---\n\n97-97: Docstring contains ambiguous `）` (FULLWIDTH RIGHT PARENTHESIS). Did you mean `)` (RIGHT PARENTHESIS)?\n\n(RUF002)\n\n</details>\n\n</details>\n\n<details>\n<summary>🤖 Prompt for AI Agents</summary>\n\n```\nIn lazygit-llm/src/base_provider.py around lines 91 to 103, _format_prompt\ncurrently uses str.format which breaks on raw `{}` in diffs; change it to use\nstring.Template.safe_substitute with a `$diff` placeholder: update the method to\naccept the prompt_template, detect and replace any legacy `{diff}` occurrences\nwith `$diff` before creating a string.Template, then call\nsafe_substitute({'diff': diff}) to produce the formatted prompt; also update any\nconfiguration/examples that use `{diff}` to use `$diff` instead to keep examples\nconsistent.\n```\n\n</details>\n\n<!-- fingerprinting:phantom:poseidon:chinchilla -->\n\n<!-- This is an auto-generated comment by CodeRabbit -->\n\n✅ Addressed in commit 61a0f7a",
+    "created_at": "2025-09-17T04:17:40Z",
+    "updated_at": "2025-09-17T15:12:28Z",
+    "html_url": "https://github.com/yohi/lazygit-llm-commit-generator/pull/2#discussion_r2354255369",
+    "pull_request_url": "https://api.github.com/repos/yohi/lazygit-llm-commit-generator/pulls/2",
+    "author_association": "NONE",
+    "_links": {
+      "self": {
+        "href": "https://api.github.com/repos/yohi/lazygit-llm-commit-generator/pulls/comments/2354255369"
+      },
+      "html": {
+        "href": "https://github.com/yohi/lazygit-llm-commit-generator/pull/2#discussion_r2354255369"
+      },
+      "pull_request": {
+        "href": "https://api.github.com/repos/yohi/lazygit-llm-commit-generator/pulls/2"
+      }
+    },
+    "reactions": {
+      "url": "https://api.github.com/repos/yohi/lazygit-llm-commit-generator/pulls/comments/2354255369/reactions",
+      "total_count": 0,
+      "+1": 0,
+      "-1": 0,
+      "laugh": 0,
+      "hooray": 0,
+      "confused": 0,
+      "heart": 0,
+      "rocket": 0,
+      "eyes": 0
+    },
+    "start_line": null,
+    "original_start_line": 91,
+    "start_side": "RIGHT",
+    "line": null,
+    "original_line": 103,
+    "side": "RIGHT",
+    "original_position": 103,
+    "position": 1,
+    "subject_type": "line"
+  }
+]

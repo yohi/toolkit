@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Test script for uvx installation and execution compatibility."""
 
+import json
 import subprocess
 import sys
-import os
 import tempfile
-import json
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List
+
 
 class UvxTestRunner:
     """Test runner for uvx compatibility."""
@@ -29,11 +29,7 @@ class UvxTestRunner:
         """
         try:
             result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=timeout,
-                cwd=self.temp_dir
+                cmd, capture_output=True, text=True, timeout=timeout, cwd=self.temp_dir
             )
 
             return {
@@ -41,7 +37,7 @@ class UvxTestRunner:
                 "returncode": result.returncode,
                 "stdout": result.stdout,
                 "stderr": result.stderr,
-                "command": " ".join(cmd)
+                "command": " ".join(cmd),
             }
         except subprocess.TimeoutExpired:
             return {
@@ -49,7 +45,7 @@ class UvxTestRunner:
                 "returncode": -1,
                 "stdout": "",
                 "stderr": f"Command timed out after {timeout} seconds",
-                "command": " ".join(cmd)
+                "command": " ".join(cmd),
             }
         except FileNotFoundError:
             return {
@@ -57,7 +53,7 @@ class UvxTestRunner:
                 "returncode": -1,
                 "stdout": "",
                 "stderr": f"Command not found: {cmd[0]}",
-                "command": " ".join(cmd)
+                "command": " ".join(cmd),
             }
 
     def test_uvx_availability(self) -> bool:
@@ -103,7 +99,7 @@ class UvxTestRunner:
         self.results["github_cli"] = result
 
         if result["success"]:
-            version_info = result["stdout"].strip().split('\n')[0]
+            version_info = result["stdout"].strip().split("\n")[0]
             print(f"✅ GitHub CLI available: {version_info}")
             return True
         else:
@@ -121,7 +117,8 @@ class UvxTestRunner:
         # Create temporary pyproject.toml for testing
         test_pyproject = self.temp_dir / "pyproject.toml"
         with open(test_pyproject, "w") as f:
-            f.write("""
+            f.write(
+                """
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -135,25 +132,24 @@ dependencies = []
 
 [project.scripts]
 test-crf = "test_package:main"
-""")
+"""
+            )
 
         # Create test package
         test_package_dir = Path(self.temp_dir) / "test_package"
         test_package_dir.mkdir()
 
         with open(test_package_dir / "__init__.py", "w") as f:
-            f.write("""
+            f.write(
+                """
 def main():
     print("Test package working!")
     return 0
-""")
+"""
+            )
 
         # Test uvx installation
-        result = self.run_command([
-            "uvx", "run",
-            "--from", self.temp_dir,
-            "test-crf"
-        ], timeout=120)
+        result = self.run_command(["uvx", "run", "--from", self.temp_dir, "test-crf"], timeout=120)
 
         self.results["package_installation"] = result
 
@@ -169,9 +165,7 @@ def main():
         print("🚀 Testing entry point execution...")
 
         # Test help command (doesn't require authentication)
-        result = self.run_command([
-            "python", "-m", "coderabbit_fetcher.cli.main", "--help"
-        ])
+        result = self.run_command(["python", "-m", "coderabbit_fetcher.cli.main", "--help"])
 
         self.results["entry_point"] = result
 
@@ -187,9 +181,7 @@ def main():
         print("⚙️  Testing CLI argument parsing...")
 
         # Test version command
-        result = self.run_command([
-            "python", "-m", "coderabbit_fetcher.cli.main", "--version"
-        ])
+        result = self.run_command(["python", "-m", "coderabbit_fetcher.cli.main", "--version"])
 
         self.results["cli_arguments"] = result
 
@@ -302,10 +294,10 @@ print("\\nDependency check completed!")
                 "successful_tests": successful_tests,
                 "failed_tests": total_tests - successful_tests,
                 "success_rate": (successful_tests / total_tests * 100) if total_tests > 0 else 0,
-                "overall_success": successful_tests == total_tests
+                "overall_success": successful_tests == total_tests,
             },
             "test_results": self.results,
-            "recommendations": []
+            "recommendations": [],
         }
 
         # Add recommendations based on failures
@@ -316,7 +308,9 @@ print("\\nDependency check completed!")
             report["recommendations"].append("Install GitHub CLI from: https://cli.github.com/")
 
         if not self.results.get("python_version", {}).get("success", False):
-            report["recommendations"].append("Install Python 3.13+ from: https://www.python.org/downloads/")
+            report["recommendations"].append(
+                "Install Python 3.13+ from: https://www.python.org/downloads/"
+            )
 
         return report
 
@@ -353,6 +347,7 @@ print("\\nDependency check completed!")
     def cleanup(self):
         """Clean up temporary files."""
         import shutil
+
         try:
             shutil.rmtree(self.temp_dir)
         except Exception:

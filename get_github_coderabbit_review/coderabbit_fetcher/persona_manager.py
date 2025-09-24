@@ -1,8 +1,7 @@
 """Persona management system for AI prompt optimization."""
 
-import os
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 from .exceptions import PersonaLoadError
 
@@ -57,7 +56,7 @@ class PersonaManager:
                 raise PersonaLoadError(f"Persona path is not a file: {file_path}")
 
             # Read file content
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, encoding="utf-8") as f:
                 content = f.read()
 
             # Validate content
@@ -75,7 +74,9 @@ class PersonaManager:
         except OSError as e:
             raise PersonaLoadError(f"Failed to read persona file {file_path}: {str(e)}") from e
         except UnicodeDecodeError as e:
-            raise PersonaLoadError(f"Persona file has invalid encoding {file_path}: {str(e)}") from e
+            raise PersonaLoadError(
+                f"Persona file has invalid encoding {file_path}: {str(e)}"
+            ) from e
 
     def _validate_persona_content(self, content: str, file_path: str) -> None:
         """Validate persona content structure.
@@ -96,14 +97,28 @@ class PersonaManager:
 
         # Look for role definition indicators
         role_indicators = [
-            "you are", "your role", "act as", "persona", "character",
-            "あなたは", "役割", "として振る舞"
+            "you are",
+            "your role",
+            "act as",
+            "persona",
+            "character",
+            "あなたは",
+            "役割",
+            "として振る舞",
         ]
 
         has_role = any(indicator in content_lower for indicator in role_indicators)
         if not has_role:
             # This is a warning, not an error - allow flexible persona formats
             pass
+
+    def get_default_persona(self) -> str:
+        """Get default persona for backward compatibility.
+
+        Returns:
+            Default persona string
+        """
+        return self.default_persona_generator.generate()
 
     def clear_cache(self) -> None:
         """Clear persona cache."""
@@ -118,7 +133,7 @@ class PersonaManager:
         return {
             "cached_files": list(self._persona_cache.keys()),
             "cache_size": len(self._persona_cache),
-            "total_characters": sum(len(content) for content in self._persona_cache.values())
+            "total_characters": sum(len(content) for content in self._persona_cache.values()),
         }
 
 
@@ -224,11 +239,11 @@ For each significant issue:
         base_persona = self._generate_coderabbit_analyst_persona()
 
         specializations = {
-            'security': self._add_security_focus(),
-            'performance': self._add_performance_focus(),
-            'frontend': self._add_frontend_focus(),
-            'backend': self._add_backend_focus(),
-            'testing': self._add_testing_focus()
+            "security": self._add_security_focus(),
+            "performance": self._add_performance_focus(),
+            "frontend": self._add_frontend_focus(),
+            "backend": self._add_backend_focus(),
+            "testing": self._add_testing_focus(),
         }
 
         if specialization.lower() in specializations:
@@ -322,4 +337,4 @@ For each significant issue:
         Returns:
             List of available specialization names
         """
-        return ['security', 'performance', 'frontend', 'backend', 'testing']
+        return ["security", "performance", "frontend", "backend", "testing"]

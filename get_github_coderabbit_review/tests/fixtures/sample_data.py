@@ -1,9 +1,5 @@
 """Sample CodeRabbit comment data for testing."""
 
-from typing import Dict, List, Any
-from datetime import datetime, timezone
-
-
 # Sample CodeRabbit comments based on real PR data
 SAMPLE_CODERABBIT_COMMENTS = [
     {
@@ -65,7 +61,7 @@ adjusted.
         "in_reply_to_id": None,
         "is_coderabbit": True,
         "body_length": 1863,
-        "has_suggestions": True
+        "has_suggestions": True,
     },
     {
         "id": 2304764288,
@@ -103,7 +99,7 @@ wording to "原則自動（フォールバックあり）" and adjust the sub-bu
         "in_reply_to_id": None,
         "is_coderabbit": True,
         "body_length": 856,
-        "has_suggestions": False
+        "has_suggestions": False,
     },
     {
         "id": 2304764310,
@@ -141,8 +137,8 @@ only a brief mention in the main flow like "API失敗時は手動返信フォー
         "in_reply_to_id": None,
         "is_coderabbit": True,
         "body_length": 743,
-        "has_suggestions": False
-    }
+        "has_suggestions": False,
+    },
 ]
 
 # Sample resolved comments (with resolution markers)
@@ -168,7 +164,7 @@ SAMPLE_RESOLVED_COMMENTS = [
         "in_reply_to_id": None,
         "is_coderabbit": True,
         "body_length": 298,
-        "has_suggestions": False
+        "has_suggestions": False,
     }
 ]
 
@@ -185,7 +181,7 @@ SAMPLE_THREAD_DATA = [
         "path": "src/main.py",
         "line": 45,
         "in_reply_to_id": None,
-        "is_coderabbit": True
+        "is_coderabbit": True,
     },
     {
         "id": 2304764501,
@@ -196,7 +192,7 @@ SAMPLE_THREAD_DATA = [
         "path": "src/main.py",
         "line": 45,
         "in_reply_to_id": 2304764500,
-        "is_coderabbit": False
+        "is_coderabbit": False,
     },
     {
         "id": 2304764502,
@@ -213,8 +209,8 @@ SAMPLE_THREAD_DATA = [
         "path": "src/main.py",
         "line": 45,
         "in_reply_to_id": 2304764501,
-        "is_coderabbit": True
-    }
+        "is_coderabbit": True,
+    },
 ]
 
 # Sample PR data structure
@@ -226,7 +222,7 @@ SAMPLE_PR_DATA = {
         "total_inline_comments": 21,
         "total_reviews": 8,
         "data_sources": ["pr_data", "inline_comments", "reviews"],
-        "processing_script": "process_pr_comments.py"
+        "processing_script": "process_pr_comments.py",
     },
     "pull_request_info": {
         "number": 104,
@@ -236,11 +232,11 @@ SAMPLE_PR_DATA = {
         "created_at": "2025-08-27T17:00:00Z",
         "updated_at": "2025-08-27T17:30:00Z",
         "author": "developer",
-        "repository": "owner/repo"
+        "repository": "owner/repo",
     },
     "inline_comments": SAMPLE_CODERABBIT_COMMENTS,
     "resolved_comments": SAMPLE_RESOLVED_COMMENTS,
-    "thread_data": SAMPLE_THREAD_DATA
+    "thread_data": SAMPLE_THREAD_DATA,
 }
 
 # Large dataset for performance testing
@@ -249,7 +245,7 @@ SAMPLE_LARGE_DATASET = {
         "pull_request_number": 999,
         "title": "Large PR with many comments",
         "total_inline_comments": 500,
-        "total_reviews": 50
+        "total_reviews": 50,
     },
     "inline_comments": [
         {
@@ -269,10 +265,10 @@ can contain detailed explanations, code suggestions, and analysis results.
             "line": (i % 100) + 1,
             "in_reply_to_id": None,
             "is_coderabbit": True,
-            "body_length": 200 + (i % 300)
+            "body_length": 200 + (i % 300),
         }
         for i in range(500)
-    ]
+    ],
 }
 
 # Sample summary comment from CodeRabbit
@@ -346,7 +342,7 @@ sequenceDiagram
 ```""",
     "path": None,
     "in_reply_to_id": None,
-    "is_coderabbit": True
+    "is_coderabbit": True,
 }
 
 # Sample review comment
@@ -381,26 +377,26 @@ def validate_config(config_dict):
 </details>""",
     "path": None,
     "in_reply_to_id": None,
-    "is_coderabbit": True
+    "is_coderabbit": True,
 }
 
 # Different comment types for testing
 COMMENT_TYPES_SAMPLES = {
     "potential_issue": {
         "body": "_⚠️ Potential issue_\n\n**セキュリティ上の問題があります。**\n\nSQL インジェクションの脆弱性が検出されました。",
-        "type": "potential_issue"
+        "type": "potential_issue",
     },
     "refactor_suggestion": {
         "body": "_🛠️ Refactor suggestion_\n\n**コードの改善提案**\n\nこの関数は複雑すぎます。",
-        "type": "refactor_suggestion"
+        "type": "refactor_suggestion",
     },
     "documentation": {
         "body": "_📝 Documentation suggestion_\n\n**ドキュメントの改善**\n\nこの関数にはドキュメントコメントがありません。",
-        "type": "documentation"
+        "type": "documentation",
     },
     "verification": {
         "body": "_💡 Verification agent_\n\n<details>\n<summary>🧩 Analysis chain</summary>\n\n検証結果の詳細\n\n</details>",
-        "type": "verification"
+        "type": "verification",
     },
     "with_ai_prompt": {
         "body": """_🛠️ Refactor suggestion_
@@ -416,41 +412,36 @@ and maintainability by splitting into smaller functions.
 ```
 
 </details>""",
-        "type": "with_ai_prompt"
-    }
+        "type": "with_ai_prompt",
+    },
 }
 
 # Edge cases and special scenarios
 EDGE_CASE_SAMPLES = {
-    "empty_body": {
-        "id": 1000001,
-        "user": "coderabbitai[bot]",
-        "body": "",
-        "is_coderabbit": True
-    },
+    "empty_body": {"id": 1000001, "user": "coderabbitai[bot]", "body": "", "is_coderabbit": True},
     "very_long_body": {
         "id": 1000002,
         "user": "coderabbitai[bot]",
         "body": "A" * 10000,  # 10KB comment
-        "is_coderabbit": True
+        "is_coderabbit": True,
     },
     "special_characters": {
         "id": 1000003,
         "user": "coderabbitai[bot]",
         "body": "コメント with émojis 🚀 and special chars: <>&\"'",
-        "is_coderabbit": True
+        "is_coderabbit": True,
     },
     "malformed_markdown": {
         "id": 1000004,
         "user": "coderabbitai[bot]",
         "body": "```python\nprint('unclosed code block'\n**bold without closing**\n[link without url]()",
-        "is_coderabbit": True
+        "is_coderabbit": True,
     },
     "non_coderabbit": {
         "id": 1000005,
         "user": "human-reviewer",
         "body": "This is not a CodeRabbit comment",
-        "is_coderabbit": False
+        "is_coderabbit": False,
     },
     "mixed_language": {
         "id": 1000006,
@@ -466,8 +457,8 @@ This comment contains both Japanese and English text for testing multilingual su
 def function_名前():  # 関数名
     return "mixed content"
 ```""",
-        "is_coderabbit": True
-    }
+        "is_coderabbit": True,
+    },
 }
 
 # Error scenarios for testing
@@ -481,11 +472,7 @@ ERROR_SCENARIOS = {
         "id": 123,
         "user": "coderabbitai[bot]",
         "created_at": "invalid-date",
-        "body": "test"
+        "body": "test",
     },
-    "negative_id": {
-        "id": -1,
-        "user": "coderabbitai[bot]",
-        "body": "test"
-    }
+    "negative_id": {"id": -1, "user": "coderabbitai[bot]", "body": "test"},
 }

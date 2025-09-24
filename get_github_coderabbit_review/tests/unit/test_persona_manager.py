@@ -2,11 +2,10 @@
 
 import os
 import tempfile
-import pytest
-from pathlib import Path
 
-from coderabbit_fetcher.persona_manager import PersonaManager, DefaultPersonaGenerator
-from coderabbit_fetcher.exceptions import PersonaLoadError, PersonaValidationError
+import pytest
+from coderabbit_fetcher.exceptions import PersonaLoadError
+from coderabbit_fetcher.persona_manager import DefaultPersonaGenerator, PersonaManager
 
 
 class TestPersonaManager:
@@ -34,7 +33,9 @@ Your role is to analyze CodeRabbit feedback and provide actionable improvements.
 - Provide before/after code examples when helpful
 """
 
-        self.minimal_persona = """You are a code reviewer. Analyze CodeRabbit comments and suggest fixes."""
+        self.minimal_persona = (
+            """You are a code reviewer. Analyze CodeRabbit comments and suggest fixes."""
+        )
 
         self.japanese_persona = """# コードレビュー専門家
 
@@ -68,7 +69,7 @@ Your role is to analyze CodeRabbit feedback and provide actionable improvements.
 
     def test_load_persona_from_valid_file(self):
         """Test loading persona from valid file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write(self.valid_persona)
             f.flush()
             temp_path = f.name
@@ -96,7 +97,7 @@ Your role is to analyze CodeRabbit feedback and provide actionable improvements.
 
     def test_load_persona_empty_file(self):
         """Test loading persona from empty file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write(self.invalid_empty_persona)
             f.flush()
             temp_path = f.name
@@ -111,7 +112,7 @@ Your role is to analyze CodeRabbit feedback and provide actionable improvements.
 
     def test_load_persona_too_short(self):
         """Test loading persona with content too short."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write(self.invalid_short_persona)
             f.flush()
             temp_path = f.name
@@ -126,7 +127,7 @@ Your role is to analyze CodeRabbit feedback and provide actionable improvements.
 
     def test_load_persona_minimal_valid(self):
         """Test loading minimal but valid persona."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write(self.minimal_persona)
             f.flush()
             temp_path = f.name
@@ -139,7 +140,9 @@ Your role is to analyze CodeRabbit feedback and provide actionable improvements.
 
     def test_load_persona_japanese_content(self):
         """Test loading persona with Japanese content."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False, encoding='utf-8') as f:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".md", delete=False, encoding="utf-8"
+        ) as f:
             f.write(self.japanese_persona)
             f.flush()
             temp_path = f.name
@@ -154,7 +157,7 @@ Your role is to analyze CodeRabbit feedback and provide actionable improvements.
 
     def test_persona_caching(self):
         """Test persona file caching functionality."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write(self.valid_persona)
             f.flush()
             temp_path = f.name
@@ -180,7 +183,7 @@ Your role is to analyze CodeRabbit feedback and provide actionable improvements.
 
     def test_clear_cache(self):
         """Test cache clearing functionality."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write(self.valid_persona)
             f.flush()
             temp_path = f.name
@@ -198,9 +201,9 @@ Your role is to analyze CodeRabbit feedback and provide actionable improvements.
 
     def test_load_persona_encoding_error(self):
         """Test loading persona with invalid encoding."""
-        with tempfile.NamedTemporaryFile(mode='wb', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".md", delete=False) as f:
             # Write invalid UTF-8 bytes
-            f.write(b'\x80\x81\x82\x83')
+            f.write(b"\x80\x81\x82\x83")
             f.flush()
             temp_path = f.name
 
@@ -214,7 +217,7 @@ Your role is to analyze CodeRabbit feedback and provide actionable improvements.
 
     def test_load_persona_permission_error(self):
         """Test loading persona with permission error."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.md', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
             f.write(self.valid_persona)
             f.flush()
             temp_path = f.name
@@ -243,7 +246,7 @@ Your role is to analyze CodeRabbit feedback and provide actionable improvements.
         # Load a few personas
         personas = []
         for i, content in enumerate([self.valid_persona, self.minimal_persona]):
-            with tempfile.NamedTemporaryFile(mode='w', suffix=f'_{i}.md', delete=False) as f:
+            with tempfile.NamedTemporaryFile(mode="w", suffix=f"_{i}.md", delete=False) as f:
                 f.write(content)
                 f.flush()  # Ensure content is written to disk
                 personas.append(f.name)
@@ -286,7 +289,7 @@ class TestDefaultPersonaGenerator:
 
     def test_generate_specialized_security_persona(self):
         """Test generation of security-specialized persona."""
-        persona = self.generator.generate_specialized_persona('security')
+        persona = self.generator.generate_specialized_persona("security")
 
         assert isinstance(persona, str)
         assert len(persona) > 500
@@ -302,7 +305,7 @@ class TestDefaultPersonaGenerator:
 
     def test_generate_specialized_performance_persona(self):
         """Test generation of performance-specialized persona."""
-        persona = self.generator.generate_specialized_persona('performance')
+        persona = self.generator.generate_specialized_persona("performance")
 
         assert isinstance(persona, str)
         assert "Performance Specialization" in persona
@@ -312,7 +315,7 @@ class TestDefaultPersonaGenerator:
 
     def test_generate_specialized_frontend_persona(self):
         """Test generation of frontend-specialized persona."""
-        persona = self.generator.generate_specialized_persona('frontend')
+        persona = self.generator.generate_specialized_persona("frontend")
 
         assert isinstance(persona, str)
         assert "Frontend Specialization" in persona
@@ -322,7 +325,7 @@ class TestDefaultPersonaGenerator:
 
     def test_generate_specialized_backend_persona(self):
         """Test generation of backend-specialized persona."""
-        persona = self.generator.generate_specialized_persona('backend')
+        persona = self.generator.generate_specialized_persona("backend")
 
         assert isinstance(persona, str)
         assert "Backend Specialization" in persona
@@ -332,7 +335,7 @@ class TestDefaultPersonaGenerator:
 
     def test_generate_specialized_testing_persona(self):
         """Test generation of testing-specialized persona."""
-        persona = self.generator.generate_specialized_persona('testing')
+        persona = self.generator.generate_specialized_persona("testing")
 
         assert isinstance(persona, str)
         assert "Testing Specialization" in persona
@@ -342,7 +345,7 @@ class TestDefaultPersonaGenerator:
 
     def test_generate_specialized_unknown_specialization(self):
         """Test generation with unknown specialization falls back to default."""
-        persona = self.generator.generate_specialized_persona('unknown')
+        persona = self.generator.generate_specialized_persona("unknown")
 
         # Should return base persona without specialization
         assert isinstance(persona, str)
@@ -351,9 +354,9 @@ class TestDefaultPersonaGenerator:
 
     def test_generate_specialized_case_insensitive(self):
         """Test specialized persona generation is case insensitive."""
-        persona_lower = self.generator.generate_specialized_persona('security')
-        persona_upper = self.generator.generate_specialized_persona('SECURITY')
-        persona_mixed = self.generator.generate_specialized_persona('Security')
+        persona_lower = self.generator.generate_specialized_persona("security")
+        persona_upper = self.generator.generate_specialized_persona("SECURITY")
+        persona_mixed = self.generator.generate_specialized_persona("Security")
 
         assert persona_lower == persona_upper == persona_mixed
 
@@ -364,7 +367,7 @@ class TestDefaultPersonaGenerator:
         assert isinstance(specializations, list)
         assert len(specializations) > 0
 
-        expected = ['security', 'performance', 'frontend', 'backend', 'testing']
+        expected = ["security", "performance", "frontend", "backend", "testing"]
         for spec in expected:
             assert spec in specializations
 
@@ -373,10 +376,10 @@ class TestDefaultPersonaGenerator:
         persona = self.generator.generate()
 
         # Should start with a header
-        assert persona.strip().startswith('#')
+        assert persona.strip().startswith("#")
 
         # Should have multiple sections
-        sections = persona.split('\n##')
+        sections = persona.split("\n##")
         assert len(sections) > 3
 
         # Should end with a clear conclusion or ready statement
@@ -398,7 +401,7 @@ class TestDefaultPersonaGenerator:
         persona = self.generator.generate()
 
         # Should not contain casual language
-        casual_words = ['awesome', 'cool', 'super', 'amazing', 'fantastic']
+        casual_words = ["awesome", "cool", "super", "amazing", "fantastic"]
         persona_lower = persona.lower()
 
         for word in casual_words:
@@ -406,8 +409,13 @@ class TestDefaultPersonaGenerator:
 
         # Should contain professional language
         professional_indicators = [
-            'experienced', 'expertise', 'professional', 'analysis',
-            'recommendations', 'best practices', 'guidelines'
+            "experienced",
+            "expertise",
+            "professional",
+            "analysis",
+            "recommendations",
+            "best practices",
+            "guidelines",
         ]
 
         found_professional = sum(1 for word in professional_indicators if word in persona_lower)
@@ -440,7 +448,7 @@ class TestDefaultPersonaGenerator:
         assert "Output Format" in persona or "format" in persona.lower()
 
         # Should be structured with headers
-        header_count = persona.count('#')
+        header_count = persona.count("#")
         assert header_count >= 5  # Multiple levels of organization
 
         # Should have actionable guidelines

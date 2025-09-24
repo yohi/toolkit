@@ -1,10 +1,10 @@
 """Summary comment processor for extracting CodeRabbit summaries."""
 
 import re
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
-from ..models import SummaryComment, ChangeEntry
 from ..exceptions import CommentParsingError
+from ..models import ChangeEntry, SummaryComment
 
 
 class SummaryProcessor:
@@ -24,7 +24,7 @@ class SummaryProcessor:
             r"# サマリー",
             r"サマリー by CodeRabbit",
             r"## 📋 サマリー",
-            r"🤖 サマリー by CodeRabbit"
+            r"🤖 サマリー by CodeRabbit",
         ]
 
     def process_summary_comment(self, comment: Dict[str, Any]) -> SummaryComment:
@@ -43,9 +43,7 @@ class SummaryProcessor:
             body = comment.get("body", "")
 
             if not self._is_summary_comment(body):
-                raise CommentParsingError(
-                    "Comment does not appear to be a CodeRabbit summary"
-                )
+                raise CommentParsingError("Comment does not appear to be a CodeRabbit summary")
 
             # Extract different sections from the summary
             new_features = self._extract_new_features(body)
@@ -62,7 +60,7 @@ class SummaryProcessor:
                 walkthrough=walkthrough,
                 changes_table=changes_table,
                 sequence_diagram=sequence_diagram,
-                raw_content=body
+                raw_content=body,
             )
 
         except Exception as e:
@@ -79,8 +77,7 @@ class SummaryProcessor:
         """
         body_lines = body.lower()
         return any(
-            re.search(pattern, body_lines, re.IGNORECASE)
-            for pattern in self.summary_patterns
+            re.search(pattern, body_lines, re.IGNORECASE) for pattern in self.summary_patterns
         )
 
     def _extract_new_features(self, content: str) -> List[str]:
@@ -100,7 +97,7 @@ class SummaryProcessor:
             r"## New features?\s*\n(.*?)(?=\n##|\n---|\Z)",
             r"#### New features?\s*\n(.*?)(?=\n####|\n###|\n##|\Z)",
             r"#### ✨ New features?\s*\n(.*?)(?=\n####|\n###|\n##|\Z)",
-            r"- \*\*New features?\*\*:?\s*(.*?)(?=\n-|\n##|\Z)"
+            r"- \*\*New features?\*\*:?\s*(.*?)(?=\n-|\n##|\Z)",
         ]
 
         for pattern in feature_patterns:
@@ -136,7 +133,7 @@ class SummaryProcessor:
             r"## Documentation\s*\n(.*?)(?=\n##|\n---|\Z)",
             r"#### Documentation\s*\n(.*?)(?=\n####|\n###|\n##|\Z)",
             r"#### 📚 Documentation\s*\n(.*?)(?=\n####|\n###|\n##|\Z)",
-            r"- \*\*Documentation\*\*:?\s*(.*?)(?=\n-|\n##|\Z)"
+            r"- \*\*Documentation\*\*:?\s*(.*?)(?=\n-|\n##|\Z)",
         ]
 
         for pattern in doc_patterns:
@@ -172,7 +169,7 @@ class SummaryProcessor:
             r"## Tests?\s*\n(.*?)(?=\n##|\n---|\Z)",
             r"#### Tests?\s*\n(.*?)(?=\n####|\n###|\n##|\Z)",
             r"#### 🧪 Tests?\s*\n(.*?)(?=\n####|\n###|\n##|\Z)",
-            r"- \*\*Tests?\*\*:?\s*(.*?)(?=\n-|\n##|\Z)"
+            r"- \*\*Tests?\*\*:?\s*(.*?)(?=\n-|\n##|\Z)",
         ]
 
         for pattern in test_patterns:
@@ -224,17 +221,17 @@ class SummaryProcessor:
         Returns:
             List of ChangeEntry objects
         """
-        changes = []
+        changes: list[Any] = []
 
         # Look for markdown tables - simpler approach
         # Find lines that look like table rows
-        lines = content.split('\n')
+        lines = content.split("\n")
         table_lines = []
         current_table = []
 
         for line in lines:
             line = line.strip()
-            if line and '|' in line and line.count('|') >= 2:
+            if line and "|" in line and line.count("|") >= 2:
                 current_table.append(line)
             else:
                 if len(current_table) >= 2:  # At least header + one data row
@@ -266,12 +263,12 @@ class SummaryProcessor:
         if len(rows) > 1:
             # Check if any row looks like a separator (contains mostly dashes, pipes, spaces, colons)
             for i in range(1, min(3, len(rows))):  # Check first few rows after header
-                if re.match(r'^\s*\|[\s\-:|]+\|\s*$', rows[i]):
+                if re.match(r"^\s*\|[\s\-:|]+\|\s*$", rows[i]):
                     data_start = i + 1
                     break
 
         for row in rows[data_start:]:
-            cells = [cell.strip() for cell in row.split('|')]
+            cells = [cell.strip() for cell in row.split("|")]
             # Remove empty cells from start/end
             while cells and not cells[0]:
                 cells.pop(0)
@@ -283,13 +280,13 @@ class SummaryProcessor:
                 summary = self._clean_table_cell(cells[1])
 
                 # Skip separator rows (containing only dashes, colons, spaces)
-                if (cohort_or_files and summary and
-                    not re.match(r'^[\s\-:]+$', cohort_or_files) and
-                    not re.match(r'^[\s\-:]+$', summary)):
-                    changes.append(ChangeEntry(
-                        cohort_or_files=cohort_or_files,
-                        summary=summary
-                    ))
+                if (
+                    cohort_or_files
+                    and summary
+                    and not re.match(r"^[\s\-:]+$", cohort_or_files)
+                    and not re.match(r"^[\s\-:]+$", summary)
+                ):
+                    changes.append(ChangeEntry(cohort_or_files=cohort_or_files, summary=summary))
 
     def _extract_sequence_diagram(self, content: str) -> Optional[str]:
         """Extract sequence diagram from summary content.
@@ -304,7 +301,7 @@ class SummaryProcessor:
         mermaid_patterns = [
             r"```mermaid\s*\n(sequenceDiagram.*?)```",
             r"```\s*mermaid\s*\n(sequenceDiagram.*?)```",
-            r"```sequence\s*\n(.*?)```"
+            r"```sequence\s*\n(.*?)```",
         ]
 
         for pattern in mermaid_patterns:
@@ -316,7 +313,7 @@ class SummaryProcessor:
         diagram_patterns = [
             r"```\s*diagram\s*\n(.*?)```",
             r"```\s*flow\s*\n(.*?)```",
-            r"```\s*graph\s*\n(.*?)```"
+            r"```\s*graph\s*\n(.*?)```",
         ]
 
         for pattern in diagram_patterns:
@@ -324,8 +321,17 @@ class SummaryProcessor:
             if match:
                 diagram_content = match.group(1).strip()
                 # Check if it looks like a sequence diagram
-                if any(keyword in diagram_content.lower() for keyword in
-                       ['sequence', 'participant', 'actor', '->', 'activate', 'deactivate']):
+                if any(
+                    keyword in diagram_content.lower()
+                    for keyword in [
+                        "sequence",
+                        "participant",
+                        "actor",
+                        "->",
+                        "activate",
+                        "deactivate",
+                    ]
+                ):
                     return diagram_content
 
         return None
@@ -348,10 +354,10 @@ class SummaryProcessor:
         bullet_patterns = [
             r"^[-*+]\s+(.+)$",  # - item, * item, + item
             r"^\d+\.\s+(.+)$",  # 1. item, 2. item
-            r"^[•·]\s+(.+)$",   # • item, · item
+            r"^[•·]\s+(.+)$",  # • item, · item
         ]
 
-        lines = section.split('\n')
+        lines = section.split("\n")
         for line in lines:
             line = line.strip()
             if not line:
@@ -362,16 +368,16 @@ class SummaryProcessor:
                 if match:
                     item = match.group(1).strip()
                     # Remove markdown formatting
-                    item = re.sub(r'\*\*(.*?)\*\*', r'\1', item)  # **bold**
-                    item = re.sub(r'\*(.*?)\*', r'\1', item)      # *italic*
-                    item = re.sub(r'`(.*?)`', r'\1', item)        # `code`
+                    item = re.sub(r"\*\*(.*?)\*\*", r"\1", item)  # **bold**
+                    item = re.sub(r"\*(.*?)\*", r"\1", item)  # *italic*
+                    item = re.sub(r"`(.*?)`", r"\1", item)  # `code`
 
                     if item:
                         items.append(item)
                     break
             else:
                 # If it's not a bullet point but looks like content, add it
-                if len(line) > 10 and not line.startswith('#'):
+                if len(line) > 10 and not line.startswith("#"):
                     items.append(line)
 
         return items
@@ -386,10 +392,10 @@ class SummaryProcessor:
             Cleaned cell content
         """
         # Remove markdown formatting
-        cell = re.sub(r'\*\*(.*?)\*\*', r'\1', cell)  # **bold**
-        cell = re.sub(r'\*(.*?)\*', r'\1', cell)      # *italic*
-        cell = re.sub(r'`(.*?)`', r'\1', cell)        # `code`
-        cell = re.sub(r'\[(.*?)\]\([^)]*\)', r'\1', cell)  # [text](link)
+        cell = re.sub(r"\*\*(.*?)\*\*", r"\1", cell)  # **bold**
+        cell = re.sub(r"\*(.*?)\*", r"\1", cell)  # *italic*
+        cell = re.sub(r"`(.*?)`", r"\1", cell)  # `code`
+        cell = re.sub(r"\[(.*?)\]\([^)]*\)", r"\1", cell)  # [text](link)
 
         return cell.strip()
 
@@ -403,8 +409,14 @@ class SummaryProcessor:
             True if content appears to be a summary
         """
         summary_indicators = [
-            "summary", "walkthrough", "changes", "new features",
-            "documentation", "tests", "overview", "highlights"
+            "summary",
+            "walkthrough",
+            "changes",
+            "new features",
+            "documentation",
+            "tests",
+            "overview",
+            "highlights",
         ]
 
         content_lower = content.lower()

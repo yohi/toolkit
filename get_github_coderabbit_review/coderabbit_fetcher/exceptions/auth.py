@@ -18,7 +18,4 @@ class GitHubAuthenticationError(CodeRabbitFetcherError):
         Args:
             message: Error message with authentication guidance
         """
-        super().__init__(
-            message,
-            details="Run 'gh auth login' to authenticate with GitHub CLI"
-        )
+        super().__init__(message, details="Run 'gh auth login' to authenticate with GitHub CLI")

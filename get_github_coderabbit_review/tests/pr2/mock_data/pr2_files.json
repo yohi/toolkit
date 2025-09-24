@@ -1,0 +1,54 @@
+{
+  "files": [
+    {
+      "path": ".gitignore",
+      "additions": 201,
+      "deletions": 0
+    },
+    {
+      "path": ".specs/tasks.md",
+      "additions": 6,
+      "deletions": 4
+    },
+    {
+      "path": "lazygit-llm/config/config.yml.example",
+      "additions": 49,
+      "deletions": 0
+    },
+    {
+      "path": "lazygit-llm/lazygit_llm/__init__.py",
+      "additions": 10,
+      "deletions": 0
+    },
+    {
+      "path": "lazygit-llm/lazygit_llm/api_providers/__init__.py",
+      "additions": 51,
+      "deletions": 0
+    },
+    {
+      "path": "lazygit-llm/lazygit_llm/base_provider.py",
+      "additions": 170,
+      "deletions": 0
+    },
+    {
+      "path": "lazygit-llm/lazygit_llm/cli_providers/__init__.py",
+      "additions": 51,
+      "deletions": 0
+    },
+    {
+      "path": "lazygit-llm/lazygit_llm/main.py",
+      "additions": 204,
+      "deletions": 0
+    },
+    {
+      "path": "requirements.txt",
+      "additions": 28,
+      "deletions": 0
+    },
+    {
+      "path": "setup.py",
+      "additions": 66,
+      "deletions": 0
+    }
+  ]
+}

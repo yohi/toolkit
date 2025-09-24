@@ -1,11 +1,12 @@
 """Unit tests for ReviewProcessor class."""
 
-import pytest
-
-from coderabbit_fetcher.processors.review_processor import ReviewProcessor
-from coderabbit_fetcher.models.review_comment import ReviewComment, NitpickComment, OutsideDiffComment
 from coderabbit_fetcher.models import ActionableComment, AIAgentPrompt
-from coderabbit_fetcher.exceptions import CommentParsingError
+from coderabbit_fetcher.models.review_comment import (
+    NitpickComment,
+    OutsideDiffComment,
+    ReviewComment,
+)
+from coderabbit_fetcher.processors.review_processor import ReviewProcessor
 
 
 class TestReviewProcessor:
@@ -30,7 +31,7 @@ class TestReviewProcessor:
 ### Other observations:
 
 Some general feedback about the implementation approach.
-"""
+""",
         }
 
         # Sample review comment with nitpick items
@@ -46,7 +47,7 @@ Some general feedback about the implementation approach.
 - `README.md:25` - Fix typo in documentation
 
 These are minor suggestions for better code quality.
-"""
+""",
         }
 
         # Sample outside diff comment
@@ -63,7 +64,7 @@ These are minor suggestions for better code quality.
 - `config/settings.json:5` - Configuration needs updating
 
 </details>
-"""
+""",
         }
 
         # Sample AI agent prompt
@@ -87,7 +88,7 @@ and ensure the salt is properly handled.
 </details>
 
 This suggestion will improve security.
-"""
+""",
         }
 
         # Complex review with multiple sections
@@ -124,7 +125,7 @@ salt generation; update all related authentication functions.
 ```
 
 </details>
-"""
+""",
         }
 
     def test_extract_actionable_count(self):
@@ -167,9 +168,7 @@ salt generation; update all related authentication functions.
 
     def test_extract_nitpick_comments(self):
         """Test extraction of nitpick comments."""
-        nitpick_comments = self.processor.extract_nitpick_comments(
-            self.nitpick_review["body"]
-        )
+        nitpick_comments = self.processor.extract_nitpick_comments(self.nitpick_review["body"])
 
         assert len(nitpick_comments) >= 1
 
@@ -196,9 +195,7 @@ salt generation; update all related authentication functions.
 
     def test_extract_ai_agent_prompts(self):
         """Test extraction of AI agent prompts."""
-        ai_prompts = self.processor.extract_ai_agent_prompts(
-            self.ai_prompt_review["body"]
-        )
+        ai_prompts = self.processor.extract_ai_agent_prompts(self.ai_prompt_review["body"])
 
         assert len(ai_prompts) >= 1
 
@@ -385,7 +382,7 @@ salt generation; update all related authentication functions.
 ### 🧹 軽微な指摘
 
 - `src/utils.py:15` - 変数名をより分かりやすくしてください
-"""
+""",
         }
 
         result = self.processor.process_review_comment(japanese_review)
@@ -393,7 +390,9 @@ salt generation; update all related authentication functions.
         assert isinstance(result, ReviewComment)
         assert result.actionable_count == 3
         # Content should be processed even if in Japanese
-        assert len(result.actionable_comments) >= 0  # May or may not find items due to pattern matching
+        assert (
+            len(result.actionable_comments) >= 0
+        )  # May or may not find items due to pattern matching
 
     def test_malformed_comment_handling(self):
         """Test handling of malformed comments."""
@@ -407,7 +406,7 @@ salt generation; update all related authentication functions.
             - Incomplete item
             - `file.py - Missing colon
             - file.py::: - Too many colons
-            """
+            """,
         }
 
         # Should not raise an exception
@@ -423,11 +422,7 @@ salt generation; update all related authentication functions.
         large_body += "- file.py:1 - Issue description\n" * 1000
         large_body += "\n" + "Some filler content. " * 10000
 
-        large_comment = {
-            "id": 123463,
-            "user": {"login": "coderabbitai[bot]"},
-            "body": large_body
-        }
+        large_comment = {"id": 123463, "user": {"login": "coderabbitai[bot]"}, "body": large_body}
 
         # Should complete within reasonable time
         result = self.processor.process_review_comment(large_comment)

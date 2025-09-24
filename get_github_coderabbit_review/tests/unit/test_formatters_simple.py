@@ -2,8 +2,9 @@
 
 import json
 from datetime import datetime
-from coderabbit_fetcher.formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter
-from coderabbit_fetcher.models import AnalyzedComments, SummaryComment, CommentMetadata
+
+from coderabbit_fetcher.formatters import JSONFormatter, MarkdownFormatter, PlainTextFormatter
+from coderabbit_fetcher.models import AnalyzedComments, CommentMetadata, SummaryComment
 
 
 def test_basic_markdown_formatter():
@@ -21,7 +22,7 @@ def test_basic_markdown_formatter():
         coderabbit_comments=1,
         resolved_comments=0,
         actionable_comments=0,
-        processing_time_seconds=1.0
+        processing_time_seconds=1.0,
     )
 
     comments = AnalyzedComments(
@@ -32,12 +33,12 @@ def test_basic_markdown_formatter():
                 test_changes=[],
                 walkthrough="Test walkthrough",
                 changes_table=[],
-                raw_content="Test content"
+                raw_content="Test content",
             )
         ],
         review_comments=[],
         unresolved_threads=[],
-        metadata=metadata
+        metadata=metadata,
     )
 
     result = formatter.format(persona, comments)
@@ -62,7 +63,7 @@ def test_basic_json_formatter():
         coderabbit_comments=1,
         resolved_comments=0,
         actionable_comments=0,
-        processing_time_seconds=1.0
+        processing_time_seconds=1.0,
     )
 
     comments = AnalyzedComments(
@@ -73,12 +74,12 @@ def test_basic_json_formatter():
                 test_changes=[],
                 walkthrough="JSON walkthrough",
                 changes_table=[],
-                raw_content="JSON content"
+                raw_content="JSON content",
             )
         ],
         review_comments=[],
         unresolved_threads=[],
-        metadata=metadata
+        metadata=metadata,
     )
 
     result = formatter.format(persona, comments)
@@ -104,7 +105,7 @@ def test_basic_plaintext_formatter():
         coderabbit_comments=1,
         resolved_comments=0,
         actionable_comments=0,
-        processing_time_seconds=1.0
+        processing_time_seconds=1.0,
     )
 
     comments = AnalyzedComments(
@@ -115,12 +116,12 @@ def test_basic_plaintext_formatter():
                 test_changes=[],
                 walkthrough="Plain walkthrough",
                 changes_table=[],
-                raw_content="Plain content"
+                raw_content="Plain content",
             )
         ],
         review_comments=[],
         unresolved_threads=[],
-        metadata=metadata
+        metadata=metadata,
     )
 
     result = formatter.format(persona, comments)

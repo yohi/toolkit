@@ -1,0 +1,122 @@
+name: 🔒 Security Scanning
+
+on:
+  push:
+    paths:
+      - "get_github_coderabbit_review/**"
+      - "!get_github_coderabbit_review/**.md"
+    branches: [main, develop]
+  pull_request:
+    paths:
+      - "get_github_coderabbit_review/**"
+      - "!get_github_coderabbit_review/**.md"
+    branches: [main, develop]
+  schedule:
+    # 毎日 午前2時（JST 11時）にセキュリティスキャン実行
+    - cron: "0 2 * * *"
+
+env:
+  PROJECT_DIR: get_github_coderabbit_review
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # 🔒 セキュリティ脆弱性スキャン
+  security-scan:
+    name: 🔒 Security Vulnerability Scan
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 📦 Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: 🔧 Install dependencies
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          uv sync --dev
+          uv pip install safety bandit semgrep
+
+      - name: 🔍 Run safety check (dependency vulnerabilities)
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          echo "🔍 Checking for known security vulnerabilities in dependencies..."
+          uv run safety check --json --output safety-report.json || true
+          if [ -f safety-report.json ]; then
+            echo "📋 Safety check completed"
+            cat safety-report.json
+          fi
+        continue-on-error: true
+
+      - name: 🔒 Run bandit security linting
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          echo "🔒 Running bandit security analysis..."
+          uv run bandit -r coderabbit_fetcher/ -f json -o bandit-report.json || true
+          if [ -f bandit-report.json ]; then
+            echo "📋 Bandit analysis completed"
+            cat bandit-report.json
+          fi
+        continue-on-error: true
+
+      - name: 🛡️ Run semgrep security analysis
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          echo "🛡️ Running semgrep security analysis..."
+          uv run semgrep --config=auto coderabbit_fetcher/ --json --output=semgrep-report.json || true
+          if [ -f semgrep-report.json ]; then
+            echo "📋 Semgrep analysis completed"
+            cat semgrep-report.json
+          fi
+        continue-on-error: true
+
+      - name: 📤 Upload security reports
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            ${{ env.PROJECT_DIR }}/safety-report.json
+            ${{ env.PROJECT_DIR }}/bandit-report.json
+            ${{ env.PROJECT_DIR }}/semgrep-report.json
+
+      - name: 📊 Generate security summary
+        if: always()
+        run: |
+          echo "## 🔒 Security Scan Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Scan Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Tool | Status | Description |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|---------|-------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔍 Safety | ${{ job.steps.safety.outcome == 'success' && '✅ Passed' || '⚠️ Issues Found' }} | Dependency vulnerability check |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔒 Bandit | ${{ job.steps.bandit.outcome == 'success' && '✅ Passed' || '⚠️ Issues Found' }} | Security linting |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🛡️ Semgrep | ${{ job.steps.semgrep.outcome == 'success' && '✅ Passed' || '⚠️ Issues Found' }} | Advanced security analysis |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "📄 Detailed reports are available in the artifacts section." >> $GITHUB_STEP_SUMMARY
+
+  # 🕵️ GitHub Security Advisories
+  dependency-review:
+    name: 🕵️ Dependency Review
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🕵️ Dependency Review
+        uses: actions/dependency-review-action@v3
+        with:
+          base-ref: ${{ github.event.pull_request.base.sha }}
+          head-ref: ${{ github.event.pull_request.head.sha }}
+          fail-on-severity: moderate
+          comment-summary-in-pr: true

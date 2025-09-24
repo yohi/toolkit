@@ -3,17 +3,17 @@
 from .test_performance import (
     PerformanceTestBase,
     TestCommentAnalysisPerformance,
-    TestFormattingPerformance,
     TestEndToEndPerformance,
+    TestFormattingPerformance,
+    TestPerformanceRegression,
     TestScalabilityLimits,
-    TestPerformanceRegression
 )
 
 __all__ = [
-    'PerformanceTestBase',
-    'TestCommentAnalysisPerformance',
-    'TestFormattingPerformance',
-    'TestEndToEndPerformance',
-    'TestScalabilityLimits',
-    'TestPerformanceRegression',
+    "PerformanceTestBase",
+    "TestCommentAnalysisPerformance",
+    "TestFormattingPerformance",
+    "TestEndToEndPerformance",
+    "TestScalabilityLimits",
+    "TestPerformanceRegression",
 ]

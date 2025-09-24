@@ -1,0 +1,431 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coderabbit_instructions generated="2025-09-18T19:35:00Z">
+  <!-- Agent Context: Establishes clear role and capabilities -->
+  <agent_context>
+    <persona language="english">
+      # Senior DevOps and Build System Consultant
+
+      ## Role Definition
+      You are a seasoned DevOps consultant specializing in build automation, Makefile optimization, and infrastructure configuration. Your expertise spans multiple build systems, CI/CD pipelines, and deployment automation practices.
+
+      ## Core Competencies
+      - **Build System Analysis**: Identify Makefile inefficiencies and syntax issues
+      - **Infrastructure Automation**: Optimize installation and configuration scripts
+      - **DevOps Best Practices**: Ensure adherence to build and deployment standards
+      - **Shell Scripting**: Debug and improve shell command execution in build contexts
+
+      ## Task Execution Approach
+      1. **Systematic Analysis**: Address build-breaking issues first, then optimizations
+      2. **Context-Aware Solutions**: Consider the broader build pipeline and dependencies
+      3. **Actionable Fixes**: Provide specific, testable improvements
+      4. **Documentation**: Explain the technical reasoning behind each recommendation
+
+      ## Output Requirements
+      Your response should be composed of thoughtful, comprehensive analysis in &lt;analysis_sections&gt; tags.
+      Focus on build system reliability and maintainability.
+      Include specific command-line testing procedures for verification.
+    </persona>
+
+    <thinking_guidance>
+      After receiving tool results, carefully reflect on their quality and determine optimal next steps before proceeding.
+      Consider the impact of build system changes on the entire development workflow.
+    </thinking_guidance>
+
+    <parallel_tool_guidance>
+      For maximum efficiency, whenever you need to perform multiple independent operations,
+      invoke all relevant tools simultaneously rather than sequentially.
+    </parallel_tool_guidance>
+
+    <capabilities>
+      <capability>Makefile syntax analysis and optimization</capability>
+      <capability>Shell command debugging and improvement</capability>
+      <capability>Build automation best practices</capability>
+      <capability>Installation script optimization</capability>
+      <capability>Configuration management improvements</capability>
+    </capabilities>
+  </agent_context>
+
+  <!-- Task Definition: Explicit instructions with motivational context -->
+  <task_overview>
+    <objective>Fix critical Makefile syntax issues and optimize build automation</objective>
+
+    <motivation>
+      Build system reliability is crucial for development productivity and deployment success.
+      Makefile syntax errors can break entire build pipelines and cause failed deployments.
+      Each fix addresses specific build failures or improves installation automation that directly
+      impacts developer experience and system maintainability.
+    </motivation>
+
+    <scope_analysis>
+      <total_reviews>1</total_reviews>  <!-- Single review round -->
+      <actionable_items>3</actionable_items>  <!-- Critical Makefile syntax issues -->
+      <nitpick_items>5</nitpick_items>  <!-- Build optimization and organization -->
+      <outside_diff_range_items>0</outside_diff_range_items>
+      <total_tasks>8</total_tasks>  <!-- 3 actionable + 5 nitpick -->
+      <priority_distribution>
+        <high_priority>2</high_priority>      <!-- Build-breaking syntax errors -->
+        <medium_priority>1</medium_priority>  <!-- Installation command issue -->
+        <low_priority>5</low_priority>        <!-- Organization and optimization -->
+      </priority_distribution>
+      <impact_assessment>
+        <files_affected>4</files_affected>  <!-- mk/install.mk, mk/setup.mk, mk/variables.mk, mk/help.mk -->
+        <estimated_effort>45-60 minutes</estimated_effort>
+        <risk_level>High</risk_level>  <!-- Build system failures can break deployment -->
+      </impact_assessment>
+    </scope_analysis>
+
+    <execution_strategy>
+      <approach>Fix critical build-breaking issues first, then optimize build organization</approach>
+      <priority_order>HIGH (syntax errors) → MEDIUM (command issues) → LOW (organization/optimization)</priority_order>
+      <parallel_opportunities>Independent Makefile modifications across different mk/ files</parallel_opportunities>
+      <verification_requirements>Test all Make targets, verify installation scripts, validate backup functionality</verification_requirements>
+    </execution_strategy>
+  </task_overview>
+
+  <!-- Execution Framework: Structured for parallel processing -->
+  <execution_instructions>
+    <instruction_philosophy>
+      Focus on build system reliability and maintainability. Implement fixes that prevent build failures
+      and improve the development workflow. Each change should be thoroughly tested to avoid breaking
+      the build pipeline.
+    </instruction_philosophy>
+
+    <primary_tasks parallel_processing="recommended">
+      <!-- HIGH PRIORITY ACTIONABLE ITEMS (Build-breaking issues) -->
+      <task priority='HIGH' comment_id='actionable_date_command_expansion' context_strength='0.90' file_impact='0.85' category='actionable'>
+        <description>Makefileでのdate コマンド置換修正</description>
+        <file>mk/setup.mk</file>
+        <line>539-563</line>
+        <impact_analysis>
+          <problem>`$(date ...)`がMake展開で空になる—バックアップファイル名が壊れます</problem>
+          <solution_benefit>Proper shell command substitution for unique backup file generation</solution_benefit>
+          <effort_estimate>5 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In mk/setup.mk around lines 539-545 (and likewise at 547-553 and 556-563), the
+          use of $(date +%Y%m%d_%H%M%S) is expanded by Make instead of being executed in
+          the shell, producing an empty suffix and risking overwrites; replace each $(date
+          +%Y%m%d_%H%M%S) with $$(date +%Y%m%d_%H%M%S) so the command substitution happens
+          at shell runtime when mv runs, ensuring unique backups.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Test backup file creation with proper timestamps</step>
+          <step>Verify that $$(date ...) produces correct timestamps in shell</step>
+          <step>Confirm no empty backup suffixes are generated</step>
+          <step>Test multiple rapid executions to ensure unique timestamps</step>
+        </verification_steps>
+      </task>
+
+      <task priority='HIGH' comment_id='actionable_symlink_path_safety' context_strength='0.85' file_impact='0.75' category='actionable'>
+        <description>シンボリックリンク作成前の安全性チェック</description>
+        <file>mk/setup.mk</file>
+        <line>543</line>
+        <impact_analysis>
+          <problem>リンク元の存在チェックなしに`ln -sfn`実行により壊れたシンボリックリンクが生成される</problem>
+          <solution_benefit>Prevents broken symlinks and provides clear error messages</solution_benefit>
+          <effort_estimate>10 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In mk/setup.mk around line 543 (and similar locations at 552-554, 561-563), add
+          source file existence checks before ln -sfn commands to prevent broken symlinks.
+          Check if source files exist and warn/skip if missing with clear error messages.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Test symlink creation with missing source files</step>
+          <step>Verify that appropriate warnings are displayed</step>
+          <step>Confirm that existing symlinks still work correctly</step>
+          <step>Test recovery from broken symlink states</step>
+        </verification_steps>
+      </task>
+
+      <task priority='MEDIUM' comment_id='actionable_bun_install_syntax' context_strength='0.80' file_impact='0.70' category='actionable'>
+        <description>Makefile内のbunコマンド構文修正</description>
+        <file>mk/install.mk</file>
+        <line>1390-1403</line>
+        <impact_analysis>
+          <problem>recipe wrongly uses "bun install -g ccusage" (which doesn't place global binaries as expected) and mixes Makefile and shell PATH syntax</problem>
+          <solution_benefit>Correct global installation and proper PATH handling in Makefile context</solution_benefit>
+          <effort_estimate>10 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In mk/install.mk around lines 1390–1403, the recipe wrongly uses "bun install -g
+          ccusage" (which doesn't place global binaries as expected) and mixes Makefile
+          and shell PATH syntax; replace the global install invocation with "bun add -g
+          ccusage" (or invoke via "bunx ccusage" if preferred) and change the PATH export
+          to use the shell variable escaped for Makefiles (e.g., export
+          PATH="$(HOME)/.bun/bin:$$PATH"); ensure any direct $PATH references in the
+          recipe are escaped as $$PATH so the shell sees them.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Test the install-packages-ccusage target in a clean environment</step>
+          <step>Verify that bun add -g ccusage installs correctly</step>
+          <step>Confirm that PATH export syntax works in Make context</step>
+          <step>Test ccusage command availability after installation</step>
+        </verification_steps>
+      </task>
+
+      <!-- LOW PRIORITY NITPICK ITEMS (Organization and optimization) -->
+      <task priority='LOW' comment_id='nitpick_phony_missing_gemini' context_strength='0.50' file_impact='0.30' category='nitpick'>
+        <description>PHONYに`install-packages-gemini-cli`も追加してください</description>
+        <file>mk/variables.mk</file>
+        <line>19</line>
+        <impact_analysis>
+          <problem>ヘルプに掲載され、エイリアスも定義されていますが、PHONY未登録です。将来の依存解決の揺れを避けるため明示しておきましょう。</problem>
+          <solution_benefit>Better Make target dependency resolution and consistency</solution_benefit>
+          <effort_estimate>1 minute</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In mk/variables.mk at line 19, add install-packages-gemini-cli to the .PHONY
+          declaration since it's referenced in help and has aliases defined, ensuring
+          proper dependency resolution.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Verify that all help-listed targets are included in .PHONY</step>
+          <step>Test that target execution works correctly</step>
+        </verification_steps>
+      </task>
+
+      <task priority='LOW' comment_id='nitpick_duplicate_aliases' context_strength='0.40' file_impact='0.25' category='nitpick'>
+        <description>`setup-config-claude`と`setup-config-lazygit`の二重定義を解消</description>
+        <file>mk/setup.mk</file>
+        <line>599</line>
+        <impact_analysis>
+          <problem>上部(行 513–528)にも同名エイリアスがあります。重複は混乱の元なので片方へ集約を。</problem>
+          <solution_benefit>Cleaner Makefile organization and reduced confusion</solution_benefit>
+          <effort_estimate>2 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In mk/setup.mk around line 599, remove duplicate alias definitions for
+          setup-config-claude and setup-config-lazygit since they already exist
+          in the upper section (lines 513-528).
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Verify that aliases still work after deduplication</step>
+          <step>Check that no broken references remain</step>
+        </verification_steps>
+      </task>
+
+      <task priority='LOW' comment_id='nitpick_help_alias_ccusage' context_strength='0.35' file_impact='0.20' category='nitpick'>
+        <description>ヘルプにエイリアス`install-ccusage`も載せると発見性が上がります</description>
+        <file>mk/help.mk</file>
+        <line>27</line>
+        <impact_analysis>
+          <problem>直接ターゲットを案内したい場合に便利です</problem>
+          <solution_benefit>Better discoverability of available Make targets</solution_benefit>
+          <effort_estimate>1 minute</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In mk/help.mk around line 27, add help documentation for the install-ccusage
+          alias to improve discoverability of available installation options.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Test that help output includes the new alias</step>
+          <step>Verify that the alias actually works</step>
+        </verification_steps>
+      </task>
+
+      <task priority='LOW' comment_id='nitpick_makefile_organization' context_strength='0.30' file_impact='0.15' category='nitpick'>
+        <description>Makefile組織化とPHONY宣言の統一</description>
+        <file>mk/*.mk</file>
+        <line>various</line>
+        <impact_analysis>
+          <problem>Build系統のさらなる最適化と保守性向上の機会</problem>
+          <solution_benefit>Improved build performance and maintainability</solution_benefit>
+          <effort_estimate>5 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          Review mk/*.mk files for additional organization opportunities including
+          consistent .PHONY declarations and target organization.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Test all Make targets for proper functionality</step>
+          <step>Verify that build performance is maintained or improved</step>
+          <step>Confirm that no regressions are introduced</step>
+        </verification_steps>
+      </task>
+
+      <task priority='LOW' comment_id='nitpick_error_handling' context_strength='0.25' file_impact='0.10' category='nitpick'>
+        <description>エラーハンドリングと回復機能の強化</description>
+        <file>mk/setup.mk</file>
+        <line>various</line>
+        <impact_analysis>
+          <problem>失敗時の回復手順と明確なエラーメッセージが不足</problem>
+          <solution_benefit>Better error recovery and user experience</solution_benefit>
+          <effort_estimate>10 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          Enhance error handling throughout mk/setup.mk with better error messages,
+          rollback capabilities, and recovery instructions for failed operations.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Test error scenarios and verify appropriate error messages</step>
+          <step>Confirm that rollback procedures work correctly</step>
+          <step>Validate that recovery instructions are clear and actionable</step>
+        </verification_steps>
+      </task>
+    </primary_tasks>
+
+    <implementation_guidance>
+      <systematic_approach>
+        1. **Critical Fixes First**: Address date command expansion and symlink safety
+        2. **Command Corrections**: Fix bun installation syntax issues
+        3. **Organization Improvements**: Clean up duplicate definitions and improve help
+        4. **Final Validation**: Run complete build pipeline to ensure no regressions
+      </systematic_approach>
+
+      <solution_requirements>
+        - Test all changes in a clean environment to simulate CI/CD conditions
+        - Ensure backwards compatibility with existing build scripts
+        - Document any breaking changes or new requirements
+        - Verify that error handling is appropriate for build automation
+      </solution_requirements>
+
+      <quality_standards>
+        <build_reliability>Ensure all Make targets execute successfully</build_reliability>
+        <error_handling>Provide clear error messages when builds fail</error_handling>
+        <maintainability>Keep Makefile organization clean and logical</maintainability>
+        <documentation>Update help text and comments as needed</documentation>
+      </quality_standards>
+
+      <file_cleanup_guidance>
+        If you create any temporary files during testing, clean them up at the end.
+        Test backup file creation and cleanup functionality thoroughly.
+      </file_cleanup_guidance>
+    </implementation_guidance>
+  </execution_instructions>
+
+  <!-- Rich Context: Supporting detailed reasoning -->
+  <context_data>
+    <summary_information>
+      <pr_title>claude周り更新</pr_title>
+      <summary_content>
+新機能:
+- ccusage のインストールターゲットと後方互換エイリアスを追加
+- Gemini CLI のインストールターゲットを追加
+- statusline.sh を追加し、ccusage のステータスライン表示を実行可能に
+- setup-config-* 階層エイリアス群を追加
+
+リファクタ:
+- Claude 設定のセットアップをコピー方式から ~/.claude へのシンボリックリンク方式に変更（既存バックアップ・実行権付与・案内メッセージ更新）
+
+ドキュメント:
+- ヘルプにインストール項目（Gemini CLI/ccusage）を追記
+
+チョア:
+- PHONY に新ターゲットを追加
+      </summary_content>
+
+      <walkthrough>
+新規スクリプトを追加し、Makeのインストール・ヘルプ・変数宣言を拡張。ccusageのインストール手順（bunの自己ブートストラップ含む）を追加し、Claude設定のセットアップをコピー方式から~/.claude配下のシンボリックリンク方式へ変更。設定系ターゲットにsetup-config-*エイリアスを導入。
+      </walkthrough>
+
+      <changes_table>
+        <change file="claude/statusline.sh" summary="PATHに/home/y_ohi/.bun/binを先頭追加し、bun x ccusage statusline --visual-burn-rate emojiを実行するシェルスクリプトを新規追加。" />
+        <change file="mk/install.mk, mk/variables.mk" summary="新規ターゲットinstall-packages-gemini-cliとinstall-packages-ccusageを追加。後者はbun未導入時にインストールしPATH更新後にccusageをグローバル導入。エイリアスinstall-ccusageを追加。PHONYにinstall-gemini-cli, install-packages-ccusage, install-ccusageを追加。" />
+        <change file="mk/help.mk" summary="ヘルプにinstall-packages-gemini-cliおよびinstall-packages-ccusageの説明を追加。" />
+        <change file="mk/setup.mk" summary="setup-claudeを~/.claude配下へのシンボリックリンク作成方式へ変更（claude-settings.json, CLAUDE.md, statusline.shをリンクし必要に応じバックアップ作成・実行権付与）。旧コピー方式とCLIチェックを削除。setup-config-claudeをはじめ、各setup-config-*エイリアスを追加。" />
+      </changes_table>
+    </summary_information>
+
+    <review_classification>
+      <actionable_comments>
+        <comment id="actionable_date_command_expansion" file="mk/setup.mk" line="539-563" type="build_system">
+          <description>Incorrect Make variable expansion for date command</description>
+          <details>$(date ...) expands at Make time instead of shell runtime, breaking backup timestamps</details>
+          <severity>HIGH</severity>
+        </comment>
+
+        <comment id="actionable_symlink_path_safety" file="mk/setup.mk" line="543" type="build_system">
+          <description>Missing source file existence checks before symlink creation</description>
+          <details>ln -sfn executed without verifying source exists, causing broken symlinks</details>
+          <severity>HIGH</severity>
+        </comment>
+
+        <comment id="actionable_bun_install_syntax" file="mk/install.mk" line="1390-1403" type="build_system">
+          <description>Incorrect bun install command and PATH syntax</description>
+          <details>Uses "bun install -g" instead of "bun add -g" and mixes Makefile/shell PATH syntax</details>
+          <severity>MEDIUM</severity>
+        </comment>
+      </actionable_comments>
+
+      <nitpick_comments>
+        <comment id="nitpick_phony_missing_gemini" file="mk/variables.mk" line="19" type="build_organization">
+          <description>PHONYに`install-packages-gemini-cli`も追加してください</description>
+          <suggestion>ヘルプに掲載され、エイリアスも定義されていますが、PHONY未登録です</suggestion>
+        </comment>
+
+        <comment id="nitpick_duplicate_aliases" file="mk/setup.mk" line="599" type="build_organization">
+          <description>`setup-config-claude`と`setup-config-lazygit`の二重定義を解消</description>
+          <suggestion>上部(行 513–528)にも同名エイリアスがあります。重複は混乱の元</suggestion>
+        </comment>
+
+        <comment id="nitpick_help_alias_ccusage" file="mk/help.mk" line="27" type="usability">
+          <description>ヘルプにエイリアス`install-ccusage`も載せると発見性が上がります</description>
+          <suggestion>直接ターゲットを案内したい場合に便利</suggestion>
+        </comment>
+
+        <comment id="nitpick_makefile_organization" file="mk/*.mk" line="various" type="build_optimization">
+          <description>Makefile組織化とPHONY宣言の統一</description>
+          <suggestion>Build系統のさらなる組織化と保守性向上</suggestion>
+        </comment>
+
+        <comment id="nitpick_error_handling" file="mk/setup.mk" line="various" type="error_handling">
+          <description>エラーハンドリングと回復機能の強化</description>
+          <suggestion>失敗時の回復手順と明確なエラーメッセージが不足</suggestion>
+        </comment>
+      </nitpick_comments>
+
+      <outside_diff_range_comments>
+        <!-- No outside diff range comments for this PR -->
+      </outside_diff_range_comments>
+    </review_classification>
+
+    <thread_relationships>
+      <thread id='makefile_improvements' resolved='false'>
+        <file_context>Multiple mk/*.mk files</file_context>
+        <line_context>Build system configuration and automation</line_context>
+        <participants>
+          <participant>coderabbitai[bot]</participant>
+          <participant>yohi</participant>
+        </participants>
+        <structured_data>
+          {
+            "thread_id": "makefile_improvements",
+            "total_reviews": 1,
+            "actionable_items": 3,
+            "nitpick_items": 5,
+            "context_summary": "CodeRabbit review of Makefile improvements for claude configuration and build automation",
+            "resolution_status": "unresolved",
+            "last_activity": "2025-09-18T18:51:00Z"
+          }
+        </structured_data>
+      </thread>
+    </thread_relationships>
+
+    <resolved_markers>
+      <!-- No resolved markers detected in current PR -->
+    </resolved_markers>
+    </context_data>
+
+  <summary_statistics>
+    <processing_timestamp>2025-09-18T19:35:00Z</processing_timestamp>
+    <coderabbit_data_version>pr_38_corrected_build_system_review</coderabbit_data_version>
+    <total_actionable_tasks>3</total_actionable_tasks>
+    <total_nitpick_tasks>5</total_nitpick_tasks>
+    <total_outside_diff_tasks>0</total_outside_diff_tasks>
+    <total_tasks>8</total_tasks>
+    <estimated_total_effort>45-60 minutes</estimated_total_effort>
+    <files_requiring_changes>4</files_requiring_changes>
+    <priority_breakdown>
+      <high_priority_tasks>2</high_priority_tasks>     <!-- Critical build system fixes -->
+      <medium_priority_tasks>1</medium_priority_tasks> <!-- bun command syntax -->
+      <low_priority_tasks>5</low_priority_tasks>       <!-- Organization and optimization -->
+    </priority_breakdown>
+    <quality_metrics>
+      <completion_rate>0%</completion_rate>  <!-- All items unresolved -->
+      <critical_blocking_issues>2</critical_blocking_issues>  <!-- Build-breaking syntax errors -->
+      <code_quality_impact>High</code_quality_impact>
+      <maintainability_improvement>Moderate</maintainability_improvement>
+    </quality_metrics>
+  </summary_statistics>
+</coderabbit_instructions>

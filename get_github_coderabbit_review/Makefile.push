@@ -1,0 +1,38 @@
+# Quick Push Makefile for Development
+# Usage: make -f Makefile.push <target>
+
+.PHONY: quick-push safe-push force-push help
+
+# Quick push skipping pre-commit (development only)
+quick-push:
+	@echo "🚀 Quick push (skipping pre-commit)..."
+	git push --no-verify
+
+# Safe push with minimal checks
+safe-push:
+	@echo "🔍 Running minimal checks..."
+	@command -v pre-commit >/dev/null || { echo "❌ pre-commit が見つかりません。インストールしてください。"; exit 1; }
+	@if [ -d "coderabbit_fetcher/cli" ]; then \
+		pre-commit run --files coderabbit_fetcher/cli/*.py; \
+	else \
+		echo "⚠️ coderabbit_fetcher/cli directory not found, skipping file-specific checks"; \
+		pre-commit run --all-files; \
+	fi
+	@echo "🚀 Pushing with minimal verification..."
+	git push origin HEAD
+
+# Force push for emergency (use with caution)
+force-push:
+	@echo "⚠️  FORCE PUSH - Use with extreme caution!"
+	@if [ "$(CONFIRM)" != "1" ]; then echo "❌ 安全対策: CONFIRM=1 を付けて再実行してください (例: make -f Makefile.push force-push CONFIRM=1)"; exit 1; fi
+	@echo "Press Ctrl+C within 5 seconds to cancel..."
+	@sleep 5
+	git push --force-with-lease --no-verify origin HEAD
+
+# Show available targets
+help:
+	@echo "Available targets:"
+	@echo "  quick-push  - Push without pre-commit (development)"
+	@echo "  safe-push   - Push with minimal checks only"
+	@echo "  force-push  - Emergency force push (dangerous)"
+	@echo "  help        - Show this help message"

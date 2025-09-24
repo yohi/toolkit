@@ -1,0 +1,17 @@
+{
+  "additions": 836,
+  "author": {
+    "id": "MDQ6VXNlcjUzNDQ5ODU=",
+    "is_bot": false,
+    "login": "yohi",
+    "name": "Yusuke Ohi"
+  },
+  "baseRefName": "master",
+  "body": "LazyGit LLM Commit Message Generator の基本プロジェクト構造を実装：\r\n\r\n- LazyGit LLM専用ディレクトリ構造作成 (lazygit-llm/)\r\n- ベースプロバイダーインターフェース定義 (base_provider.py)\r\n- メインエントリーポイント作成 (main.py)\r\n- API/CLIプロバイダーディレクトリとレジストリ作成\r\n- 設定ファイル例・setup.py・requirements.txt作成\r\n- 日本語コメント完備、Google Style Guide準拠\r\n- デグレチェック完了: 既存ファイル保護確認済み\r\n- タスクリスト更新: .specs/tasks.md L3-9\r\n\r\nTask-01: Set up project structure and core interfaces\r\nRequirements: 1.1, 2.1, 5.1\r\nDesign-ref: .specs/design.md\r\nAffected: lazygit-llm/ (new), .specs/tasks.md\r\nTest: 基本構造作成完了\r\n\r\n🤖 Generated with [Claude Code](https://claude.ai/code)\r\n\r\nCo-Authored-By: Claude <noreply@anthropic.com>",
+  "changedFiles": 10,
+  "deletions": 4,
+  "headRefName": "feature/01-task01_project-structure",
+  "number": 2,
+  "title": "feat(task-01): Implement project structure and core interfaces",
+  "url": "https://github.com/yohi/lazygit-llm-commit-generator/pull/2"
+}

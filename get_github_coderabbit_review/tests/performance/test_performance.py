@@ -1,19 +1,19 @@
 """Performance tests for CodeRabbit Comment Fetcher."""
 
-import unittest
-import time
-import tempfile
-import os
 import json
-import psutil
-from unittest.mock import patch, MagicMock
-from typing import List, Dict, Any
+import os
+import tempfile
+import time
+import unittest
+from typing import Any, Dict, List
+from unittest.mock import patch
 
-from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionConfig
+import psutil
 from coderabbit_fetcher.comment_analyzer import CommentAnalyzer
 from coderabbit_fetcher.formatters.markdown import MarkdownFormatter
+from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionConfig
+
 from tests.fixtures.github_responses import generate_mock_comments
-from tests.fixtures.sample_data import SAMPLE_LARGE_DATASET
 
 
 class PerformanceTestBase(unittest.TestCase):
@@ -31,11 +31,11 @@ class PerformanceTestBase(unittest.TestCase):
             for file in os.listdir(self.temp_dir):
                 try:
                     os.unlink(os.path.join(self.temp_dir, file))
-                except:
+                except OSError:
                     pass
             try:
                 os.rmdir(self.temp_dir)
-            except:
+            except OSError:
                 pass
 
     def measure_execution_time(self, func, *args, **kwargs):
@@ -90,9 +90,7 @@ class TestCommentAnalysisPerformance(PerformanceTestBase):
         comments = self.generate_large_comment_dataset(10)
         analyzer = CommentAnalyzer()
 
-        result, execution_time = self.measure_execution_time(
-            analyzer.analyze_comments, comments
-        )
+        result, execution_time = self.measure_execution_time(analyzer.analyze_comments, comments)
 
         # Small dataset should be very fast
         self.assertLess(execution_time, 1.0)  # < 1 second
@@ -104,9 +102,7 @@ class TestCommentAnalysisPerformance(PerformanceTestBase):
         comments = self.generate_large_comment_dataset(100)
         analyzer = CommentAnalyzer()
 
-        result, execution_time = self.measure_execution_time(
-            analyzer.analyze_comments, comments
-        )
+        result, execution_time = self.measure_execution_time(analyzer.analyze_comments, comments)
 
         # Medium dataset should still be fast
         self.assertLess(execution_time, 5.0)  # < 5 seconds
@@ -117,9 +113,7 @@ class TestCommentAnalysisPerformance(PerformanceTestBase):
         comments = self.generate_large_comment_dataset(1000)
         analyzer = CommentAnalyzer()
 
-        result, execution_time = self.measure_execution_time(
-            analyzer.analyze_comments, comments
-        )
+        result, execution_time = self.measure_execution_time(analyzer.analyze_comments, comments)
 
         # Large dataset should complete within reasonable time
         self.assertLess(execution_time, 15.0)  # < 15 seconds
@@ -130,9 +124,7 @@ class TestCommentAnalysisPerformance(PerformanceTestBase):
         comments = self.generate_large_comment_dataset(5000)
         analyzer = CommentAnalyzer()
 
-        result, execution_time = self.measure_execution_time(
-            analyzer.analyze_comments, comments
-        )
+        result, execution_time = self.measure_execution_time(analyzer.analyze_comments, comments)
 
         # Very large dataset should still be manageable
         self.assertLess(execution_time, 30.0)  # < 30 seconds
@@ -145,9 +137,7 @@ class TestCommentAnalysisPerformance(PerformanceTestBase):
         comments = self.generate_large_comment_dataset(1000)
         analyzer = CommentAnalyzer()
 
-        result, memory_increase = self.measure_memory_usage(
-            analyzer.analyze_comments, comments
-        )
+        result, memory_increase = self.measure_memory_usage(analyzer.analyze_comments, comments)
 
         # Memory usage should be reasonable (< 50MB for 1000 comments)
         self.assertLess(memory_increase, 50 * 1024 * 1024)  # < 50MB
@@ -182,7 +172,7 @@ class TestCommentAnalysisPerformance(PerformanceTestBase):
 
     def test_resolved_marker_detection_performance(self):
         """Test performance of resolved marker detection."""
-        from coderabbit_fetcher.resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
+        from coderabbit_fetcher.resolved_marker import ResolvedMarkerConfig, ResolvedMarkerManager
 
         # Generate comments with and without resolved markers
         comments = []
@@ -190,11 +180,13 @@ class TestCommentAnalysisPerformance(PerformanceTestBase):
             comment = {
                 "id": i,
                 "user": "coderabbitai[bot]",
-                "body": f"Comment {i}" + (
+                "body": f"Comment {i}"
+                + (
                     "\n[CR_RESOLUTION_CONFIRMED:TECHNICAL_ISSUE_RESOLVED]\n✅ Resolved\n[/CR_RESOLUTION_CONFIRMED]"
-                    if i % 3 == 0 else ""
+                    if i % 3 == 0
+                    else ""
                 ),
-                "is_coderabbit": True
+                "is_coderabbit": True,
             }
             comments.append(comment)
 
@@ -224,14 +216,12 @@ class TestFormattingPerformance(PerformanceTestBase):
             threads={},
             summary_comment=None,
             review_comments=[],
-            metadata={"total_comments": len(comments)}
+            metadata={"total_comments": len(comments)},
         )
 
         formatter = MarkdownFormatter()
 
-        result, execution_time = self.measure_execution_time(
-            formatter.format, analyzed, {}
-        )
+        result, execution_time = self.measure_execution_time(formatter.format, analyzed, {})
 
         # Formatting should be efficient
         self.assertLess(execution_time, 10.0)  # < 10 seconds
@@ -249,14 +239,12 @@ class TestFormattingPerformance(PerformanceTestBase):
             threads={},
             summary_comment=None,
             review_comments=[],
-            metadata={"total_comments": len(comments)}
+            metadata={"total_comments": len(comments)},
         )
 
         formatter = JsonFormatter()
 
-        result, execution_time = self.measure_execution_time(
-            formatter.format, analyzed, {}
-        )
+        result, execution_time = self.measure_execution_time(formatter.format, analyzed, {})
 
         # JSON formatting should be very fast
         self.assertLess(execution_time, 5.0)  # < 5 seconds
@@ -277,7 +265,7 @@ class TestFormattingPerformance(PerformanceTestBase):
                 "user": "coderabbitai[bot]",
                 "body": "Large comment content. " * 1000,  # ~25KB per comment
                 "created_at": "2025-08-27T17:00:00Z",
-                "is_coderabbit": True
+                "is_coderabbit": True,
             }
             large_comments.append(comment)
 
@@ -286,14 +274,12 @@ class TestFormattingPerformance(PerformanceTestBase):
             threads={},
             summary_comment=None,
             review_comments=[],
-            metadata={"total_comments": len(large_comments)}
+            metadata={"total_comments": len(large_comments)},
         )
 
         formatter = MarkdownFormatter()
 
-        result, memory_increase = self.measure_memory_usage(
-            formatter.format, analyzed, {}
-        )
+        result, memory_increase = self.measure_memory_usage(formatter.format, analyzed, {})
 
         # Memory usage should be reasonable even for large content
         self.assertLess(memory_increase, 100 * 1024 * 1024)  # < 100MB
@@ -303,9 +289,9 @@ class TestFormattingPerformance(PerformanceTestBase):
 class TestEndToEndPerformance(PerformanceTestBase):
     """Test end-to-end workflow performance."""
 
-    @patch('coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.check_authentication')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.validate')
+    @patch("coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.check_authentication")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.validate")
     def test_complete_workflow_performance_small(self, mock_validate, mock_auth, mock_fetch):
         """Test complete workflow performance with small dataset."""
         # Mock responses
@@ -313,29 +299,27 @@ class TestEndToEndPerformance(PerformanceTestBase):
         mock_auth.return_value = True
         mock_fetch.return_value = {
             "pr_data": {"number": 123, "title": "Test PR"},
-            "comments": self.generate_large_comment_dataset(50)
+            "comments": self.generate_large_comment_dataset(50),
         }
 
         output_file = os.path.join(self.temp_dir, "small_output.md")
         config = ExecutionConfig(
             pr_url="https://github.com/owner/repo/pull/123",
             output_format="markdown",
-            output_file=output_file
+            output_file=output_file,
         )
 
         orchestrator = CodeRabbitOrchestrator(config)
 
-        result, execution_time = self.measure_execution_time(
-            orchestrator.execute
-        )
+        result, execution_time = self.measure_execution_time(orchestrator.execute)
 
         # Small workflow should be very fast
         self.assertLess(execution_time, 5.0)  # < 5 seconds
         self.assertTrue(result["success"])
 
-    @patch('coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.check_authentication')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.validate')
+    @patch("coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.check_authentication")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.validate")
     def test_complete_workflow_performance_large(self, mock_validate, mock_auth, mock_fetch):
         """Test complete workflow performance with large dataset."""
         # Mock responses with large dataset
@@ -343,7 +327,7 @@ class TestEndToEndPerformance(PerformanceTestBase):
         mock_auth.return_value = True
         mock_fetch.return_value = {
             "pr_data": {"number": 999, "title": "Large PR"},
-            "comments": self.generate_large_comment_dataset(1000)
+            "comments": self.generate_large_comment_dataset(1000),
         }
 
         output_file = os.path.join(self.temp_dir, "large_output.json")
@@ -351,14 +335,12 @@ class TestEndToEndPerformance(PerformanceTestBase):
             pr_url="https://github.com/owner/repo/pull/999",
             output_format="json",
             output_file=output_file,
-            timeout_seconds=60
+            timeout_seconds=60,
         )
 
         orchestrator = CodeRabbitOrchestrator(config)
 
-        result, execution_time = self.measure_execution_time(
-            orchestrator.execute
-        )
+        result, execution_time = self.measure_execution_time(orchestrator.execute)
 
         # Large workflow should complete within reasonable time
         self.assertLess(execution_time, 30.0)  # < 30 seconds
@@ -369,28 +351,25 @@ class TestEndToEndPerformance(PerformanceTestBase):
         file_size = os.path.getsize(output_file)
         self.assertGreater(file_size, 10000)  # > 10KB
 
-    @patch('coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.check_authentication')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.validate')
+    @patch("coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.check_authentication")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.validate")
     def test_workflow_memory_efficiency(self, mock_validate, mock_auth, mock_fetch):
         """Test workflow memory efficiency."""
         mock_validate.return_value = {"valid": True, "issues": [], "warnings": []}
         mock_auth.return_value = True
         mock_fetch.return_value = {
             "pr_data": {"number": 500, "title": "Memory Test PR"},
-            "comments": self.generate_large_comment_dataset(500)
+            "comments": self.generate_large_comment_dataset(500),
         }
 
         config = ExecutionConfig(
-            pr_url="https://github.com/owner/repo/pull/500",
-            output_format="markdown"
+            pr_url="https://github.com/owner/repo/pull/500", output_format="markdown"
         )
 
         orchestrator = CodeRabbitOrchestrator(config)
 
-        result, memory_increase = self.measure_memory_usage(
-            orchestrator.execute
-        )
+        result, memory_increase = self.measure_memory_usage(orchestrator.execute)
 
         # Memory usage should be reasonable
         self.assertLess(memory_increase, 100 * 1024 * 1024)  # < 100MB
@@ -405,20 +384,25 @@ class TestEndToEndPerformance(PerformanceTestBase):
         execution_times = []
 
         def run_workflow():
-            with patch('coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments') as mock_fetch, \
-                 patch('coderabbit_fetcher.github_client.GitHubClient.check_authentication') as mock_auth, \
-                 patch('coderabbit_fetcher.github_client.GitHubClient.validate') as mock_validate:
+            with (
+                patch(
+                    "coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments"
+                ) as mock_fetch,
+                patch(
+                    "coderabbit_fetcher.github_client.GitHubClient.check_authentication"
+                ) as mock_auth,
+                patch("coderabbit_fetcher.github_client.GitHubClient.validate") as mock_validate,
+            ):
 
                 mock_validate.return_value = {"valid": True, "issues": [], "warnings": []}
                 mock_auth.return_value = True
                 mock_fetch.return_value = {
                     "pr_data": {"number": 123, "title": "Concurrent Test"},
-                    "comments": self.generate_large_comment_dataset(100)
+                    "comments": self.generate_large_comment_dataset(100),
                 }
 
                 config = ExecutionConfig(
-                    pr_url="https://github.com/owner/repo/pull/123",
-                    output_format="json"
+                    pr_url="https://github.com/owner/repo/pull/123", output_format="json"
                 )
 
                 orchestrator = CodeRabbitOrchestrator(config)
@@ -495,7 +479,7 @@ class TestScalabilityLimits(PerformanceTestBase):
                     "id": i,
                     "user": "coderabbitai[bot]",
                     "body": "Large content " * 10000,  # ~130KB per comment
-                    "is_coderabbit": True
+                    "is_coderabbit": True,
                 }
                 large_dataset.append(comment)
 
@@ -531,9 +515,7 @@ class TestPerformanceRegression(PerformanceTestBase):
         # Measure multiple runs for consistency
         execution_times = []
         for _ in range(5):
-            _, execution_time = self.measure_execution_time(
-                analyzer.analyze_comments, comments
-            )
+            _, execution_time = self.measure_execution_time(analyzer.analyze_comments, comments)
             execution_times.append(execution_time)
 
         avg_time = sum(execution_times) / len(execution_times)
@@ -545,13 +527,13 @@ class TestPerformanceRegression(PerformanceTestBase):
         self.assertLess(avg_time, 3.0)  # Reasonable baseline
 
         # Log baseline metrics for future comparison
-        print(f"Baseline performance metrics:")
+        print("Baseline performance metrics:")
         print(f"  Average time: {avg_time:.3f}s")
         print(f"  Min time: {min_time:.3f}s")
         print(f"  Max time: {max_time:.3f}s")
         print(f"  Variation: {max_time - min_time:.3f}s")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Run performance tests with verbose output
     unittest.main(verbosity=2)

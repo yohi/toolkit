@@ -1,0 +1,483 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coderabbit_instructions generated="2025-09-18T19:15:00Z">
+  <!-- Agent Context: Establishes clear role and capabilities -->
+  <agent_context>
+    <persona language="english">
+      # Senior Software Development Consultant
+
+      ## Role Definition
+      You are a seasoned software development consultant specializing in code quality, security, and architectural excellence. Your expertise spans multiple programming languages, frameworks, and industry best practices.
+
+      ## Core Competencies
+      - **Code Quality Analysis**: Identify maintainability, readability, and performance issues
+      - **Security Assessment**: Detect vulnerabilities and recommend secure coding practices
+      - **Architecture Review**: Evaluate design patterns and structural improvements
+      - **Best Practice Enforcement**: Ensure adherence to industry standards and conventions
+
+      ## Task Execution Approach
+      1. **Systematic Analysis**: Address issues by priority level (HIGH → MEDIUM → LOW)
+      2. **Contextual Solutions**: Provide solutions that consider the broader codebase context
+      3. **Actionable Recommendations**: Deliver specific, implementable improvements
+      4. **Educational Value**: Explain the "why" behind each recommendation
+
+      ## Output Requirements
+      Your response should be composed of thoughtful, comprehensive analysis in &lt;analysis_sections&gt; tags.
+      Go beyond the basics to create a fully-featured implementation.
+      Include as many relevant features and interactions as possible.
+    </persona>
+
+    <thinking_guidance>
+      After receiving tool results, carefully reflect on their quality and determine optimal next steps before proceeding.
+      Use your thinking to plan and iterate based on this new information, and then take the best next action.
+    </thinking_guidance>
+
+    <parallel_tool_guidance>
+      For maximum efficiency, whenever you need to perform multiple independent operations,
+      invoke all relevant tools simultaneously rather than sequentially.
+    </parallel_tool_guidance>
+
+    <capabilities>
+      <capability>Multi-language code analysis and review</capability>
+      <capability>Security vulnerability identification</capability>
+      <capability>Performance optimization recommendations</capability>
+      <capability>Architecture and design pattern evaluation</capability>
+      <capability>Best practice enforcement and education</capability>
+    </capabilities>
+  </agent_context>
+
+  <!-- Task Definition: Explicit instructions with motivational context -->
+  <task_overview>
+    <objective>Transform CodeRabbit feedback into systematic code quality improvements</objective>
+
+    <motivation>
+      Code review feedback represents critical insights for maintaining high-quality, secure, and maintainable software.
+      Each recommendation addresses specific technical debt, security concerns, or performance opportunities that directly
+      impact user experience and development velocity. Your implementation should work correctly for all valid inputs, not just test cases.
+    </motivation>
+
+    <scope_analysis>
+      <total_reviews>5</total_reviews>  <!-- 5 review rounds -->
+      <actionable_items>4</actionable_items>  <!-- 未解決のみ - latest review (excluding outside diff overlap) -->
+      <nitpick_items>82</nitpick_items>  <!-- 累積全履歴 -->
+      <outside_diff_range_items>1</outside_diff_range_items>  <!-- Duplicate main.py elimination -->
+      <total_tasks>87</total_tasks>  <!-- 4 actionable + 82 nitpick + 1 outside diff range -->
+      <priority_distribution>
+        <high_priority>1</high_priority>      <!-- Template injection vulnerability -->
+        <medium_priority>3</medium_priority>  <!-- Missing imports, unused variables -->
+        <low_priority>83</low_priority>       <!-- Style, documentation formatting -->
+      </priority_distribution>
+      <impact_assessment>
+        <files_affected>9</files_affected>  <!-- Multiple reviews across many files -->
+        <estimated_effort>4-6 hours</estimated_effort>  <!-- Including duplicate elimination -->
+        <risk_level>Medium</risk_level>  <!-- Template injection + missing imports -->
+      </impact_assessment>
+    </scope_analysis>
+
+    <execution_strategy>
+      <approach>Priority-based implementation starting with security fix, followed by missing imports, then bulk style fixes</approach>
+      <priority_order>HIGH (template injection) → MEDIUM (imports/variables) → LOW (style/docs batch processing)</priority_order>
+      <parallel_opportunities>Independent file modifications, bulk style fixes across multiple files</parallel_opportunities>
+      <verification_requirements>Test template injection fix, validate exception handling, run comprehensive linting</verification_requirements>
+    </execution_strategy>
+  </task_overview>
+
+  <!-- Execution Framework: Structured for parallel processing -->
+  <execution_instructions>
+    <instruction_philosophy>
+      Tell Claude what to do, not what to avoid. Focus on robust, general solutions that work for all valid inputs.
+      Implement the actual logic that solves the problem generally, not just specific test cases.
+    </instruction_philosophy>
+
+    <primary_tasks parallel_processing="recommended">
+      <!-- HIGH PRIORITY SECURITY ISSUES -->
+      <task priority='HIGH' comment_id='actionable_template_injection' context_strength='0.95' file_impact='0.85' category='actionable'>
+        <description>重大: `str.format`はdiff内の`{}`で壊れます。`Template.safe_substitute`へ置換を。</description>
+        <file>lazygit-llm/src/base_provider.py</file>
+        <line>91-103</line>
+        <impact_analysis>
+          <problem>JSON/テンプレ入りのdiffに`{`/`}`があるとKeyErrorで落ちます</problem>
+          <solution_benefit>Safe handling of arbitrary diff content, backward compatibility maintained</solution_benefit>
+          <effort_estimate>15 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/src/base_provider.py around lines 91 to 103, _format_prompt
+          currently uses str.format which breaks on raw `{}` in diffs; change it to use
+          string.Template.safe_substitute with a `$diff` placeholder: update the method to
+          accept the prompt_template, detect and replace any legacy `{diff}` occurrences
+          with `$diff` before creating a string.Template, then call
+          safe_substitute({'diff': diff}) to produce the formatted prompt; also update any
+          configuration/examples that use `{diff}` to use `$diff` instead to keep examples
+          consistent.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Test with diffs containing JSON objects with braces</step>
+          <step>Verify backward compatibility with existing {diff} templates</step>
+          <step>Run unit tests to ensure no regressions</step>
+        </verification_steps>
+      </task>
+
+      <!-- MEDIUM PRIORITY ACTIONABLE ITEMS (4 unresolved from rounds 1 & 4) -->
+      <task priority='MEDIUM' comment_id='actionable_missing_imports' context_strength='0.75' file_impact='0.90' category='actionable'>
+        <description>インポート先が見つかりません — 修正/確認が必要</description>
+        <file>lazygit-llm/lazygit_llm/main.py</file>
+        <line>27-31</line>
+        <impact_analysis>
+          <problem>ConfigManager, GitDiffProcessor, ProviderFactory, MessageFormatter をインポートしていますが、対応するモジュールファイルが見つかりません</problem>
+          <solution_benefit>Proper module structure and import resolution</solution_benefit>
+          <effort_estimate>30 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/main.py around lines 27-31, the imports for
+          ConfigManager, GitDiffProcessor, ProviderFactory, MessageFormatter reference
+          modules that don't exist in the repository; either implement these missing
+          modules, correct the import paths to point to existing modules, or document
+          these as external dependencies with proper installation instructions.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Verify all imported modules exist and are accessible</step>
+          <step>Test that the main.py can be imported without errors</step>
+          <step>Update documentation if external dependencies are required</step>
+        </verification_steps>
+      </task>
+
+      <task priority='MEDIUM' comment_id='actionable_unused_variable_179' context_strength='0.60' file_impact='0.40' category='actionable'>
+        <description>未使用変数`e`の削除</description>
+        <file>lazygit-llm/lazygit_llm/main.py</file>
+        <line>179</line>
+        <impact_analysis>
+          <problem>Local variable `e` is assigned to but never used</problem>
+          <solution_benefit>Cleaner code, eliminates linter warnings</solution_benefit>
+          <effort_estimate>2 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/main.py at line 179, remove the unused variable
+          assignment `e` from the except clause since the exception is not used.
+          Change `except ProviderTimeoutError as e:` to `except ProviderTimeoutError:`.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Verify that exception handling still works correctly</step>
+          <step>Run linting tools to confirm warning is eliminated</step>
+        </verification_steps>
+      </task>
+
+      <task priority='MEDIUM' comment_id='actionable_unused_variable_184' context_strength='0.60' file_impact='0.40' category='actionable'>
+        <description>未使用変数`e`の削除</description>
+        <file>lazygit-llm/lazygit_llm/main.py</file>
+        <line>184</line>
+        <impact_analysis>
+          <problem>Local variable `e` is assigned to but never used</problem>
+          <solution_benefit>Cleaner code, eliminates linter warnings</solution_benefit>
+          <effort_estimate>2 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/main.py at line 184, remove the unused variable
+          assignment `e` from the except clause since the exception is not used.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Verify that exception handling still works correctly</step>
+          <step>Run linting tools to confirm warning is eliminated</step>
+        </verification_steps>
+      </task>
+
+      <!-- LOW PRIORITY NITPICK ITEMS - Representative sample of 82 total -->
+      <task priority='LOW' comment_id='nitpick_docstring_brackets_api' context_strength='0.30' file_impact='0.20' category='nitpick'>
+        <description>docstring内の全角括弧を半角に修正</description>
+        <file>lazygit-llm/lazygit_llm/api_providers/__init__.py</file>
+        <line>47</line>
+        <impact_analysis>
+          <problem>Line 47のdocstringに全角括弧が含まれています</problem>
+          <solution_benefit>Consistent documentation formatting</solution_benefit>
+          <effort_estimate>1 minute</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/api_providers/__init__.py at line 47, replace
+          full-width parentheses with half-width ones in the docstring.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Check that docstring formatting is consistent</step>
+          <step>Run documentation linting tools</step>
+        </verification_steps>
+      </task>
+
+      <task priority='LOW' comment_id='nitpick_all_sort_api' context_strength='0.30' file_impact='0.20' category='nitpick'>
+        <description>__all__のソート順を修正</description>
+        <file>lazygit-llm/lazygit_llm/api_providers/__init__.py</file>
+        <line>51</line>
+        <impact_analysis>
+          <problem>__all__リストをアルファベット順にソートすることを推奨します</problem>
+          <solution_benefit>Better code organization and consistency</solution_benefit>
+          <effort_estimate>1 minute</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/api_providers/__init__.py at line 51, sort the
+          __all__ list alphabetically for better organization.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Verify that all exported names are still accessible</step>
+          <step>Run import tests to ensure no regressions</step>
+        </verification_steps>
+      </task>
+
+      <!-- OUTSIDE DIFF RANGE COMMENTS -->
+      <task priority='MEDIUM' comment_id='outside_diff_duplicate_main' context_strength='0.80' file_impact='0.95' category='outside_diff'>
+        <description>重複を排除してラッパー化(推奨全置換パッチ)</description>
+        <file>lazygit-llm/src/main.py</file>
+        <line>1-209</line>
+        <impact_analysis>
+          <problem>最小ラッパーに置き換え、ドキュメントのパイプ例も削除。setup.pyは既にlazygit_llm.main:mainを指しているため、src/main.pyは重複実装</problem>
+          <solution_benefit>Eliminates code duplication and reduces maintenance burden</solution_benefit>
+          <effort_estimate>20 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          The file lazygit-llm/src/main.py (lines 1-209) is a duplicate implementation
+          of the main functionality already present in lazygit_llm.main:main. Since
+          setup.py already points to the correct entry point, replace src/main.py with
+          a minimal wrapper that imports and calls the main function from lazygit_llm.main,
+          and remove any redundant documentation examples.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Test that the CLI entry point still works correctly</step>
+          <step>Verify that all functionality is preserved</step>
+          <step>Update any documentation that references the old structure</step>
+        </verification_steps>
+      </task>
+
+      <!-- BULK PROCESSING GUIDANCE FOR REMAINING 80 NITPICK ITEMS -->
+      <task_group priority='LOW' category='nitpick_bulk' estimated_items='80'>
+        <description>Bulk style and formatting improvements across multiple files</description>
+        <common_patterns>
+          <pattern type="docstring_improvements" count="15">Fix docstring formatting issues across API and CLI providers</pattern>
+          <pattern type="import_optimization" count="8">Optimize import statements and __all__ declarations</pattern>
+          <pattern type="exception_handling" count="12">Improve exception handling patterns and message clarity</pattern>
+          <pattern type="code_style_consistency" count="20">Ensure consistent code style across modules</pattern>
+          <pattern type="configuration_improvements" count="5">Enhance configuration examples and validation</pattern>
+          <pattern type="gitignore_enhancements" count="7">Improve .gitignore patterns and organization</pattern>
+          <pattern type="setup_refinements" count="6">Refine setup.py and packaging configuration</pattern>
+          <pattern type="task_documentation" count="7">Update task specifications and documentation</pattern>
+        </common_patterns>
+        <batch_processing_guidance>
+          These 80 additional nitpick items should be processed in batches by file type or pattern similarity.
+          Focus on completing similar tasks together for efficiency.
+        </batch_processing_guidance>
+      </task_group>
+    </primary_tasks>
+
+    <implementation_guidance>
+      <systematic_approach>
+        1. **Security First**: Address template injection vulnerability immediately
+        2. **Import Resolution**: Fix missing module imports to enable proper testing
+        3. **Code Cleanup**: Remove unused variables and improve exception handling
+        4. **Duplicate Elimination**: Replace duplicate main.py with minimal wrapper
+        5. **Batch Processing**: Group similar nitpick items for efficient resolution
+        6. **Quality Assurance**: Run comprehensive linting after each batch
+      </systematic_approach>
+
+      <solution_requirements>
+        <!-- Claude 4 Best Practice: Focus on robust, general solutions -->
+        - Implement solutions that work for all valid inputs, not just test cases
+        - Consider edge cases and error handling in all modifications
+        - Ensure solutions are maintainable and follow established patterns
+        - Document any architectural decisions or trade-offs made
+      </solution_requirements>
+
+      <quality_standards>
+        <code_quality>Follow existing conventions, maintain readability, add appropriate comments</code_quality>
+        <security>Validate all inputs, avoid introduction of new vulnerabilities</security>
+        <performance>Consider impact on execution speed and memory usage</performance>
+        <maintainability>Write code that future developers can easily understand and modify</maintainability>
+      </quality_standards>
+
+      <file_cleanup_guidance>
+        If you create any temporary new files, scripts, or helper files for iteration,
+        clean up these files by removing them at the end of the task.
+      </file_cleanup_guidance>
+    </implementation_guidance>
+  </execution_instructions>
+
+  <!-- Rich Context: Supporting detailed reasoning -->
+  <context_data>
+    <summary_information>
+      <pr_title>feat(task-01): Implement project structure and core interfaces</pr_title>
+      <summary_content>
+LazyGit LLM Commit Message Generator の基本プロジェクト構造を実装：
+
+* LazyGit LLM専用ディレクトリ構造作成 (lazygit-llm/)
+* ベースプロバイダーインターフェース定義 (base_provider.py)
+* メインエントリーポイント作成 (main.py)
+* API/CLIプロバイダーディレクトリとレジストリ作成
+* 設定ファイル例・setup.py・requirements.txt作成
+* 日本語コメント完備、Google Style Guide準拠
+* デグレチェック完了: 既存ファイル保護確認済み
+* タスクリスト更新: .specs/tasks.md L3-9
+      </summary_content>
+
+      <walkthrough>
+新規パッケージ「lazygit-llm」を追加し、CLIエントリポイント、抽象プロバイダ基底クラス、API/CLIプロバイダ用レジストリ、設定例、パッケージング関連（setup.py／requirements.txt／.gitignore）、メタデータ、及び仕様タスク更新を導入。メイン実行フロー（設定→差分取得→プロバイダ→メッセージ整形→出力）と設定テスト機能を実装。
+      </walkthrough>
+
+      <changes_table>
+        <change file=".specs/tasks.md" summary="タスク1を「完了」に更新し、5つの具体的完了項目に差し替え" />
+        <change file="lazygit-llm/config/config.yml.example" summary="LLM用設定例を追加（provider/model/api_key/prompt_template/timeout/max_tokens/additional_params）" />
+        <change file="requirements.txt, setup.py, .gitignore" summary="依存関係宣言と配布設定を追加（console_scripts: lazygit-llm-generate）" />
+        <change file="lazygit-llm/lazygit_llm/__init__.py" summary="バージョン、作者、説明のメタデータを追加" />
+        <change file="lazygit-llm/lazygit_llm/base_provider.py" summary="抽象基底クラスを新設（設定検証、プロンプト整形、レスポンス検証、例外階層、タイムアウト／トークン既定）" />
+        <change file="lazygit-llm/lazygit_llm/api_providers/__init__.py" summary="APIプロバイダ用レジストリ（登録／取得／一覧）を追加" />
+        <change file="lazygit-llm/lazygit_llm/cli_providers/__init__.py" summary="CLIベースプロバイダ用レジストリ（登録／取得／一覧）を追加" />
+        <change file="lazygit-llm/lazygit_llm/main.py" summary="CLI実装を追加（引数解析、ロギング、設定読込／検証、設定テスト、Git差分処理、プロバイダ実行、メッセージ整形、標準出力、エラー処理と終了コード）" />
+      </changes_table>
+    </summary_information>
+
+    <review_classification>
+      <actionable_comments>
+        <!-- Round 1: 7 actionable comments posted, 3 resolved -->
+        <!-- Round 4: 1 actionable comment posted, 1 resolved -->
+        <!-- Total: 4 unresolved actionable comments (excluding 4 resolved) -->
+
+        <comment id="actionable_template_injection" file="lazygit-llm/src/base_provider.py" line="91-103" type="security">
+          <description>Template injection vulnerability in _format_prompt</description>
+          <details>str.format breaks on diffs containing JSON/template with {} characters</details>
+          <severity>HIGH</severity>
+        </comment>
+
+        <comment id="actionable_missing_imports" file="lazygit-llm/lazygit_llm/main.py" line="27-31" type="import_error">
+          <description>Missing module imports</description>
+          <details>ConfigManager, GitDiffProcessor, ProviderFactory, MessageFormatter modules not found</details>
+          <severity>MEDIUM</severity>
+        </comment>
+
+        <comment id="actionable_unused_variable_179" file="lazygit-llm/lazygit_llm/main.py" line="179" type="code_quality">
+          <description>Unused variable in exception handler</description>
+          <details>Local variable 'e' is assigned but never used</details>
+          <severity>MEDIUM</severity>
+        </comment>
+
+        <comment id="actionable_unused_variable_184" file="lazygit-llm/lazygit_llm/main.py" line="184" type="code_quality">
+          <description>Unused variable in exception handler</description>
+          <details>Local variable 'e' is assigned but never used</details>
+          <severity>MEDIUM</severity>
+        </comment>
+      </actionable_comments>
+
+      <nitpick_comments>
+        <!-- Sample of 82 total nitpick items -->
+        <comment id="nitpick_api_docstring" file="lazygit-llm/lazygit_llm/api_providers/__init__.py" line="47" type="docstring_formatting">
+          <description>docstring内の全角括弧を半角に修正</description>
+          <suggestion>Line 47のdocstringに全角括弧が含まれています</suggestion>
+        </comment>
+
+        <comment id="nitpick_api_all_sort" file="lazygit-llm/lazygit_llm/api_providers/__init__.py" line="51" type="code_style">
+          <description>__all__のソート順を修正</description>
+          <suggestion>__all__リストをアルファベット順にソートすることを推奨します</suggestion>
+        </comment>
+
+        <comment id="nitpick_cli_docstring" file="lazygit-llm/lazygit_llm/cli_providers/__init__.py" line="46" type="docstring_formatting">
+          <description>docstring内の全角括弧を半角に修正</description>
+          <suggestion>Line 46のdocstringに全角括弧が含まれています</suggestion>
+        </comment>
+
+        <comment id="nitpick_cli_all_sort" file="lazygit-llm/lazygit_llm/cli_providers/__init__.py" line="51" type="code_style">
+          <description>__all__のソート順を修正</description>
+          <suggestion>__all__リストをアルファベット順にソートすることを推奨します</suggestion>
+        </comment>
+
+        <!-- Additional nitpick items grouped by category for the remaining 78 items -->
+        <nitpick_group category="gitignore_improvements" count="7">
+          <description>coverage系の重複を整理、バックアップパターンの重複削除、環境変数ファイルの網羅性強化</description>
+          <files>.gitignore</files>
+        </nitpick_group>
+
+        <nitpick_group category="config_improvements" count="2">
+          <description>環境変数参照の展開明記、プレースホルダの安全な置換方式への変更</description>
+          <files>lazygit-llm/config/config.yml.example</files>
+        </nitpick_group>
+
+        <nitpick_group category="src_formatting" count="18">
+          <description>全角括弧の半角化、バージョン管理の単一ソース化、ロガーのNullHandler追加</description>
+          <files>lazygit-llm/src/*.py</files>
+        </nitpick_group>
+
+        <nitpick_group category="setup_improvements" count="3">
+          <description>URLの実リポジトリへの更新、LICENSEファイル同梱確認、依存関係の修正</description>
+          <files>setup.py</files>
+        </nitpick_group>
+
+        <nitpick_group category="main_optimizations" count="15">
+          <description>処理順序最適化、例外処理改善、ドキュメント整合性向上</description>
+          <files>lazygit-llm/src/main.py, lazygit-llm/lazygit_llm/main.py</files>
+        </nitpick_group>
+
+        <nitpick_group category="provider_enhancements" count="12">
+          <description>型ガード追加、一覧ソート、公開API明示化</description>
+          <files>lazygit-llm/src/base_provider.py, lazygit-llm/lazygit_llm/base_provider.py</files>
+        </nitpick_group>
+
+        <nitpick_group category="misc_style" count="25">
+          <description>その他のスタイル、型ヒント、ログ改善等の細かい調整</description>
+          <files>Various files</files>
+        </nitpick_group>
+      </nitpick_comments>
+
+      <outside_diff_range_comments>
+        <comment id="outside_diff_duplicate_main" file="lazygit-llm/src/main.py" line="1-209" type="duplicate_code">
+          <description>重複を排除してラッパー化(推奨全置換パッチ)</description>
+          <suggestion>最小ラッパーに置き換え、ドキュメントのパイプ例も削除。setup.pyは既にlazygit_llm.main:mainを指しているため、src/main.pyは重複実装</suggestion>
+        </comment>
+      </outside_diff_range_comments>
+    </review_classification>
+
+    <thread_relationships>
+      <thread id='review_thread_main' resolved='false'>
+        <file_context>Multiple files across lazygit-llm project</file_context>
+        <line_context>Various lines across 5 review rounds</line_context>
+        <participants>
+          <participant>coderabbitai[bot]</participant>
+          <participant>yohi</participant>
+        </participants>
+        <review_rounds>
+          <round number="1" timestamp="2025-09-17T04:17:41Z" actionable="7" nitpick="18" />
+          <round number="2" timestamp="2025-09-17T08:50:59Z" actionable="0" nitpick="7" />
+          <round number="3" timestamp="2025-09-17T15:42:33Z" actionable="0" nitpick="21" />
+          <round number="4" timestamp="2025-09-17T16:02:54Z" actionable="1" nitpick="28" />
+          <round number="5" timestamp="2025-09-17T21:06:47Z" actionable="0" nitpick="8" />
+        </review_rounds>
+        <structured_data>
+          {
+            "thread_id": "review_thread_main",
+            "total_reviews": 5,
+            "cumulative_actionable": 4,
+            "cumulative_nitpick": 82,
+            "context_summary": "CodeRabbit review of LazyGit LLM project across multiple development iterations",
+            "resolution_status": "partially_resolved",
+            "last_activity": "2025-09-17T21:06:47Z"
+          }
+        </structured_data>
+      </thread>
+    </thread_relationships>
+
+    <resolved_markers>
+      <!-- No resolved markers detected in current PR -->
+    </resolved_markers>
+  </context_data>
+
+  <summary_statistics>
+    <processing_timestamp>2025-09-18T19:15:00Z</processing_timestamp>
+    <coderabbit_data_version>pr_2_comprehensive_review_data</coderabbit_data_version>
+    <total_actionable_tasks>4</total_actionable_tasks>
+    <total_nitpick_tasks>82</total_nitpick_tasks>
+    <total_outside_diff_tasks>1</total_outside_diff_tasks>
+    <total_tasks>87</total_tasks>
+    <estimated_total_effort>4-6 hours</estimated_total_effort>
+    <files_requiring_changes>9</files_requiring_changes>
+    <priority_breakdown>
+      <high_priority_tasks>1</high_priority_tasks>     <!-- Template injection vulnerability -->
+      <medium_priority_tasks>4</medium_priority_tasks> <!-- 3 actionable + 1 outside diff duplicate -->
+      <low_priority_tasks>82</low_priority_tasks>      <!-- Style and formatting -->
+    </priority_breakdown>
+    <quality_metrics>
+      <completion_rate>0%</completion_rate>  <!-- All items unresolved -->
+      <critical_blocking_issues>1</critical_blocking_issues>  <!-- Template injection vulnerability -->
+      <code_quality_impact>High</code_quality_impact>
+      <maintainability_improvement>Significant</maintainability_improvement>
+    </quality_metrics>
+  </summary_statistics>
+</coderabbit_instructions>

@@ -1,0 +1,138 @@
+name: 🎨 Code Linting & Formatting
+
+on:
+  push:
+    paths:
+      - "get_github_coderabbit_review/**/*.py"
+      - "get_github_coderabbit_review/pyproject.toml"
+    branches: [main, develop, "task-*", "feature-*"]
+  pull_request:
+    paths:
+      - "get_github_coderabbit_review/**/*.py"
+      - "get_github_coderabbit_review/pyproject.toml"
+    branches: [main, develop]
+
+env:
+  PROJECT_DIR: get_github_coderabbit_review
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # 🎨 コードフォーマット＆リント
+  lint-and-format:
+    name: 🎨 Lint & Format
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 📦 Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: 🔧 Install dependencies
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          uv sync --dev
+          uv pip install ruff mypy black isort
+
+      - name: 🔍 Run ruff linting
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          echo "🔍 Running ruff linting..."
+          uv run ruff check coderabbit_fetcher/ --output-format=github
+
+      - name: 🎨 Check code formatting with black
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          echo "🎨 Checking code formatting..."
+          uv run black --check --diff coderabbit_fetcher/
+
+      - name: 🔢 Check import sorting with isort
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          echo "🔢 Checking import sorting..."
+          uv run isort --check-only --diff coderabbit_fetcher/
+
+      - name: 🏷️ Run mypy type checking
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          echo "🏷️ Running type checking..."
+          uv run mypy coderabbit_fetcher/ --show-error-codes
+        continue-on-error: true
+
+      - name: 📊 Generate lint summary
+        if: always()
+        run: |
+          echo "## 🎨 Code Quality Report" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📋 Lint Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Tool | Status | Description |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|---------|-------------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔍 Ruff | ${{ job.steps.ruff.outcome == 'success' && '✅ Passed' || '❌ Failed' }} | Code linting and style checks |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🎨 Black | ${{ job.steps.black.outcome == 'success' && '✅ Passed' || '❌ Failed' }} | Code formatting validation |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🔢 isort | ${{ job.steps.isort.outcome == 'success' && '✅ Passed' || '❌ Failed' }} | Import sorting validation |" >> $GITHUB_STEP_SUMMARY
+          echo "| 🏷️ mypy | ${{ job.steps.mypy.outcome == 'success' && '✅ Passed' || '⚠️ Warning' }} | Type checking (non-blocking) |" >> $GITHUB_STEP_SUMMARY
+
+  # 🔧 自動修正（プッシュ時のみ）
+  auto-fix:
+    name: 🔧 Auto-fix Formatting
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref != 'refs/heads/main'
+    needs: lint-and-format
+
+    steps:
+      - name: 📥 Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🐍 Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: 📦 Install uv
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: 🔧 Install dependencies
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          uv sync --dev
+          uv pip install ruff black isort
+
+      - name: 🎨 Auto-format with black
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          uv run black coderabbit_fetcher/
+
+      - name: 🔢 Auto-sort imports with isort
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          uv run isort coderabbit_fetcher/
+
+      - name: 🔍 Auto-fix with ruff
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: |
+          uv run ruff check coderabbit_fetcher/ --fix
+
+      - name: 📤 Commit auto-fixes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add -A
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "🔧 Auto-fix: Apply code formatting and linting fixes"
+            git push
+          fi

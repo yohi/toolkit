@@ -1,18 +1,16 @@
 """Base formatter abstract class for CodeRabbit comment output."""
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
-from datetime import datetime
+from datetime import datetime, timezone
+from typing import Any, Dict, List
 
 from ..models import (
-    AnalyzedComments,
-    SummaryComment,
-    ReviewComment,
-    ThreadContext,
-    AIAgentPrompt,
     ActionableComment,
+    AIAgentPrompt,
+    AnalyzedComments,
     NitpickComment,
-    OutsideDiffComment
+    OutsideDiffComment,
+    ThreadContext,
 )
 
 
@@ -21,15 +19,16 @@ class BaseFormatter(ABC):
 
     def __init__(self):
         """Initialize base formatter."""
-        self.timestamp = datetime.now()
+        self.timestamp = datetime.now(tz=timezone.utc)
 
     @abstractmethod
-    def format(self, persona: str, analyzed_comments: AnalyzedComments) -> str:
+    def format(self, persona: str, analyzed_comments: AnalyzedComments, quiet: bool = False) -> str:
         """Format analyzed comments with persona.
 
         Args:
             persona: AI persona prompt string
             analyzed_comments: Analyzed CodeRabbit comments
+            quiet: Use quiet mode for minimal AI-optimized output
 
         Returns:
             Formatted output string
@@ -78,22 +77,24 @@ class BaseFormatter(ABC):
         sections.append("## Thread Context")
         sections.append(f"**Thread ID**: {getattr(thread, 'thread_id', 'N/A')}")
         sections.append(f"**Resolution Status**: {thread.resolution_status}")
-        sections.append(f"**Comment Count**: {getattr(thread, 'comment_count', len(thread.chronological_order))}")
+        sections.append(
+            f"**Comment Count**: {getattr(thread, 'comment_count', len(thread.chronological_order))}"
+        )
 
         # File Context
-        if hasattr(thread, 'file_context') and thread.file_context:
+        if hasattr(thread, "file_context") and thread.file_context:
             sections.append(f"**File**: {thread.file_context}")
 
-        if hasattr(thread, 'line_context') and thread.line_context:
+        if hasattr(thread, "line_context") and thread.line_context:
             sections.append(f"**Line**: {thread.line_context}")
 
         # Participants
-        if hasattr(thread, 'participants') and thread.participants:
+        if hasattr(thread, "participants") and thread.participants:
             participants_str = ", ".join(thread.participants)
             sections.append(f"**Participants**: {participants_str}")
 
         # AI Summary
-        if hasattr(thread, 'ai_summary') and thread.ai_summary:
+        if hasattr(thread, "ai_summary") and thread.ai_summary:
             sections.append("### AI Summary")
             sections.append(thread.ai_summary)
 
@@ -119,8 +120,8 @@ class BaseFormatter(ABC):
         sections = []
         for i, comment in enumerate(comments, 1):
             sections.append(f"{i}. **{comment.title}**")
-            if comment.description:
-                sections.append(f"   {comment.description}")
+            if comment.issue_description:
+                sections.append(f"   {comment.issue_description}")
             if comment.file_path:
                 sections.append(f"   File: {comment.file_path}")
             if comment.line_number:
@@ -167,8 +168,8 @@ class BaseFormatter(ABC):
         sections = []
         for i, comment in enumerate(comments, 1):
             sections.append(f"{i}. **{comment.issue}**")
-            if comment.description:
-                sections.append(f"   {comment.description}")
+            if comment.issue_description:
+                sections.append(f"   {comment.issue_description}")
             if comment.file_path:
                 sections.append(f"   File: {comment.file_path}")
             if comment.line_range:
@@ -202,9 +203,13 @@ class BaseFormatter(ABC):
             "timestamp": self.timestamp.isoformat(),
             "total_comments": total_comments,
             "total_threads": total_threads,
-            "summary_count": len(analyzed_comments.summary_comments) if analyzed_comments.summary_comments else 0,
-            "review_count": len(analyzed_comments.review_comments) if analyzed_comments.review_comments else 0,
-            "formatter_type": self.__class__.__name__
+            "summary_count": (
+                len(analyzed_comments.summary_comments) if analyzed_comments.summary_comments else 0
+            ),
+            "review_count": (
+                len(analyzed_comments.review_comments) if analyzed_comments.review_comments else 0
+            ),
+            "formatter_type": self.__class__.__name__,
         }
 
     def get_visual_markers(self) -> Dict[str, str]:
@@ -223,7 +228,7 @@ class BaseFormatter(ABC):
             "bug": "🐛",
             "enhancement": "✨",
             "documentation": "📝",
-            "refactor": "♻️"
+            "refactor": "♻️",
         }
 
     def _sanitize_content(self, content: str) -> str:
@@ -239,9 +244,9 @@ class BaseFormatter(ABC):
             return ""
 
         # Remove potentially problematic characters but preserve formatting
-        sanitized = content.replace('\x00', '')  # Remove null bytes
-        sanitized = sanitized.replace('\r\n', '\n')  # Normalize line endings
-        sanitized = sanitized.replace('\r', '\n')  # Handle Mac line endings
+        sanitized = content.replace("\x00", "")  # Remove null bytes
+        sanitized = sanitized.replace("\r\n", "\n")  # Normalize line endings
+        sanitized = sanitized.replace("\r", "\n")  # Handle Mac line endings
 
         return sanitized
 
@@ -258,7 +263,7 @@ class BaseFormatter(ABC):
         if not content or len(content) <= max_length:
             return content
 
-        return content[:max_length-3] + "..."
+        return content[: max_length - 3] + "..."
 
     def _extract_priority_level(self, comment_content: str) -> str:
         """Extract priority level from comment content.
@@ -273,14 +278,28 @@ class BaseFormatter(ABC):
 
         # High priority indicators
         high_priority_keywords = [
-            'critical', 'security', 'vulnerability', 'error', 'exception',
-            'breaking', 'urgent', 'important', 'must fix', 'required'
+            "critical",
+            "security",
+            "vulnerability",
+            "error",
+            "exception",
+            "breaking",
+            "urgent",
+            "important",
+            "must fix",
+            "required",
         ]
 
         # Medium priority indicators
         medium_priority_keywords = [
-            'should', 'recommend', 'suggest', 'improve', 'optimize',
-            'performance', 'consider', 'enhancement'
+            "should",
+            "recommend",
+            "suggest",
+            "improve",
+            "optimize",
+            "performance",
+            "consider",
+            "enhancement",
         ]
 
         # Check for high priority
