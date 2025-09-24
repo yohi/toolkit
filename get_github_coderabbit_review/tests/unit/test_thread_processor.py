@@ -367,18 +367,27 @@ class TestThreadProcessor:
     
     def test_complexity_factors(self):
         """Test specific complexity factors."""
-        # Create a high complexity scenario
+        # Create a high complexity scenario with mock comments
+        from coderabbit_fetcher.models.thread_context import ResolutionStatus
+        mock_comments = []
+        for i in range(10):
+            user_login = f"user{i % 4}" if i % 4 < 3 else "coderabbitai[bot]"
+            mock_comments.append({
+                "id": 4000 + i,
+                "user": {"login": user_login},
+                "created_at": f"2025-01-01T{10 + i}:00:00Z",
+                "body": f"Comment {i}",
+                "path": "src/important.py",
+                "line": 45
+            })
+
         high_complexity_context = ThreadContext(
             thread_id="test",
-            root_comment_id="test",
-            file_context="src/important.py",
-            participants=["user1", "user2", "user3", "coderabbitai[bot]"],
-            comment_count=10,
-            coderabbit_comment_count=3,
-            is_resolved=False,
-            context_summary="Complex discussion",
-            ai_summary="",
-            chronological_comments=[]
+            main_comment=mock_comments[0],
+            replies=mock_comments[1:],
+            resolution_status=ResolutionStatus.UNRESOLVED,
+            contextual_summary="Complex discussion",
+            chronological_order=mock_comments
         )
         
         complexity = self.processor.analyze_thread_complexity(high_complexity_context)

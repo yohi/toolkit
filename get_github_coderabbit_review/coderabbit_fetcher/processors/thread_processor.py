@@ -1,11 +1,12 @@
 """Thread processing and context analysis for CodeRabbit comments."""
 
 import re
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any
 from datetime import datetime, timezone
 from collections import defaultdict
 
 from ..models import ThreadContext
+from ..models.thread_context import ResolutionStatus
 from ..exceptions import CommentParsingError
 
 
@@ -42,7 +43,9 @@ class ThreadProcessor:
             sorted_comments = self._sort_comments_chronologically(thread_comments)
             # Extract thread metadata
             root_comment = sorted_comments[0]
-            thread_id = str(root_comment.get("id", "unknown"))
+            if not root_comment.get("id"):
+                raise CommentParsingError("Missing root comment id")
+            thread_id = str(root_comment["id"])
             file_context = root_comment.get("path", "")
             line_context = self._extract_line_context(root_comment)
             
@@ -64,18 +67,17 @@ class ThreadProcessor:
             # Generate AI-friendly structured format
             ai_summary = self._generate_ai_summary(sorted_comments, context_summary)
             
+            # Prepare data for new ThreadContext structure
+            replies = sorted_comments[1:] if len(sorted_comments) > 1 else []
+            resolution_status = ResolutionStatus.RESOLVED if is_resolved else ResolutionStatus.UNRESOLVED
+
             return ThreadContext(
                 thread_id=thread_id,
-                root_comment_id=str(root_comment.get("id", "")),
-                file_context=file_context,
-                line_context=line_context,
-                participants=participants,
-                comment_count=len(sorted_comments),
-                coderabbit_comment_count=len(coderabbit_comments),
-                is_resolved=is_resolved,
-                context_summary=context_summary,
-                ai_summary=ai_summary,
-                chronological_comments=sorted_comments
+                main_comment=root_comment,
+                replies=replies,
+                resolution_status=resolution_status,
+                contextual_summary=context_summary,
+                chronological_order=sorted_comments
             )
             
         except Exception as e:

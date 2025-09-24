@@ -68,13 +68,13 @@ class ArgumentParser:
         if persona_file and not persona_file.is_file():
             from ..exceptions import PersonaFileError
             raise PersonaFileError(f"Persona file not found: {persona_file}")
-        
+
         # Validate output format (expects normalized format)
         allowed_formats = {"markdown", "json", "plain"}
         if output_format not in allowed_formats:
             from ..exceptions import CodeRabbitFetcherError
             raise CodeRabbitFetcherError(f"Unsupported output_format: {output_format}")
-        
+
         # Validate resolved marker
         if not resolved_marker.strip():
             from ..exceptions import CodeRabbitFetcherError
@@ -106,10 +106,10 @@ class ArgumentParser:
         """
         if verbose:
             console.print("🔍 [blue]Validating inputs...[/blue]")
-        
+
         # Normalize output format early for consistent handling
         output_format = output_format.lower().strip()
-        
+
         # Validate inputs
         self.validate_inputs(pr_url, persona_file, output_format, resolved_marker)
 
@@ -161,7 +161,7 @@ class ArgumentParser:
             output_file.write_text(formatted_output, encoding="utf-8")
         else:
             console.print(formatted_output)
-        
+
         # Post resolution request if requested
         review_comments: list = []
         if isinstance(analyzed_comments, dict):

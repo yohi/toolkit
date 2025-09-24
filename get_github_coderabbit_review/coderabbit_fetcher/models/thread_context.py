@@ -128,3 +128,106 @@ class ThreadContext(BaseCodeRabbitModel):
         self.replies.append(reply)
         self.chronological_order = self._build_chronological_order()
         self.contextual_summary = self._generate_contextual_summary()
+
+    # Backward compatibility properties
+    @property
+    def root_comment_id(self) -> str:
+        """Get root comment ID for backward compatibility."""
+        return str(self.main_comment.get("id", ""))
+
+    @property
+    def file_context(self) -> str:
+        """Get file context for backward compatibility."""
+        return self.main_comment.get("path", "")
+
+    @property
+    def line_context(self) -> str:
+        """Get line context for backward compatibility."""
+        # Check for direct line field first
+        line = self.main_comment.get("line")
+        if line is not None:
+            return str(line)
+
+        # Check for start_line/end_line range
+        start_line = self.main_comment.get("start_line")
+        end_line = self.main_comment.get("end_line")
+        if start_line is not None and end_line is not None:
+            return f"{start_line}-{end_line}"
+        elif start_line is not None:
+            return str(start_line)
+
+        # Extract line information from diff_hunk, url or other fields
+        diff_hunk = self.main_comment.get("diff_hunk", "")
+        if diff_hunk and "@@ -" in diff_hunk:
+            # Extract line number from diff hunk
+            try:
+                line_info = diff_hunk.split("@@")[1].strip().split()[1]
+                if line_info.startswith("+"):
+                    return line_info[1:].split(",")[0]
+            except (IndexError, ValueError):
+                pass
+
+        # Try to extract from other sources
+        url = self.main_comment.get("url", "")
+        if "#L" in url:
+            try:
+                return url.split("#L")[1].split("-")[0]
+            except IndexError:
+                pass
+
+        # Try to extract line numbers from body
+        body = self.main_comment.get("body", "")
+        import re
+        line_match = re.search(r'line (\d+)', body.lower())
+        if line_match:
+            return line_match.group(1)
+
+        return ""
+
+    @property
+    def participants(self) -> List[str]:
+        """Get participants list for backward compatibility."""
+        authors = {self.main_comment.get("user", {}).get("login")}
+        authors.update(
+            reply.get("user", {}).get("login")
+            for reply in self.replies
+        )
+        # Remove None values and sort
+        authors.discard(None)
+        return sorted(list(authors))
+
+    @property
+    def comment_count(self) -> int:
+        """Get comment count for backward compatibility."""
+        return len(self.chronological_order)
+
+    @property
+    def coderabbit_comment_count(self) -> int:
+        """Get CodeRabbit comment count for backward compatibility."""
+        coderabbit_author = "coderabbitai[bot]"
+        count = 0
+        for comment in self.chronological_order:
+            if comment.get("user", {}).get("login") == coderabbit_author:
+                count += 1
+        return count
+
+    @property
+    def is_resolved(self) -> bool:
+        """Get resolution status as boolean for backward compatibility."""
+        return self.resolution_status == ResolutionStatus.RESOLVED
+
+    @property
+    def context_summary(self) -> str:
+        """Get context summary for backward compatibility."""
+        return self.contextual_summary
+
+    @property
+    def ai_summary(self) -> str:
+        """Get AI summary for backward compatibility."""
+        # Generate basic AI summary from available data
+        return f"Thread: {self.contextual_summary}"
+
+    @property
+    def chronological_comments(self) -> List[Dict[str, Any]]:
+        """Get chronological comments for backward compatibility."""
+        return self.chronological_order
