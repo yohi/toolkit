@@ -77,9 +77,9 @@ class ThreadProcessor:
         Returns:
             List of ThreadContext objects, one for each thread
         """
-        # Check for empty comments before processing
+        # Handle empty comments as a normal case - return empty list
         if not comments:
-            raise CommentParsingError("Empty comments list provided")
+            return []
 
         try:
             # Group comments into threads

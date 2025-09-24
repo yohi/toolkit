@@ -539,3 +539,11 @@ class TestThreadProcessor:
         # Should have processed the valid thread
         assert len(contexts) >= 1
         assert all(isinstance(ctx, ThreadContext) for ctx in contexts)
+
+    def test_build_thread_context_empty_comments(self):
+        """Test that empty comments list returns empty result instead of raising exception."""
+        # Empty comments should return empty list, not raise exception
+        contexts = self.processor.build_thread_context([])
+
+        assert isinstance(contexts, list)
+        assert len(contexts) == 0
