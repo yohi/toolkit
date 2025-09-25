@@ -1,9 +1,16 @@
-"""Formatters for CodeRabbit comment output."""
+"""
+Formatters package for CodeRabbit Comment Fetcher.
 
-from .base_formatter import BaseFormatter
-from .markdown_formatter import MarkdownFormatter
+This package provides various output formatters for processing and displaying
+CodeRabbit comments in different formats.
+"""
+
+from .base import BaseFormatter
+from .markdown import MarkdownFormatter
 from .json_formatter import JSONFormatter
-from .plaintext_formatter import PlainTextFormatter
+from .plain import PlainTextFormatter
+
+__version__ = "1.0.0"
 
 __all__ = [
     "BaseFormatter",

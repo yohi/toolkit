@@ -22,7 +22,7 @@ class TestGitHubClient:
 
     def test_parse_pr_url_valid(self):
         """Test parsing valid PR URLs."""
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
 
         test_cases = [
             ("https://github.com/owner/repo/pull/123", ("owner", "repo", 123)),
@@ -36,7 +36,7 @@ class TestGitHubClient:
 
     def test_parse_pr_url_invalid(self):
         """Test parsing invalid PR URLs."""
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
 
         invalid_urls = [
             "https://github.com/owner/repo",
@@ -55,7 +55,7 @@ class TestGitHubClient:
         """Test successful authentication check."""
         mock_run.return_value = Mock(returncode=0)
 
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
         assert client.check_authentication() is True
 
     @patch('subprocess.run')
@@ -63,7 +63,7 @@ class TestGitHubClient:
         """Test failed authentication check."""
         mock_run.return_value = Mock(returncode=1)
 
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
         assert client.check_authentication() is False
 
     @patch('subprocess.run')
@@ -71,7 +71,7 @@ class TestGitHubClient:
         """Test authentication check timeout."""
         mock_run.side_effect = subprocess.TimeoutExpired(['gh', 'auth', 'status'], 10)
 
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
         with pytest.raises(GitHubAuthenticationError):
             client.check_authentication()
 
@@ -85,7 +85,7 @@ class TestGitHubClient:
             stderr=""
         )
 
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
         result = client._execute_gh_command(["api", "user"])
 
         assert result == test_data
@@ -100,7 +100,7 @@ class TestGitHubClient:
             stderr="rate limit exceeded"
         )
 
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
         with pytest.raises(APIRateLimitError):
             client._execute_gh_command(["api", "user"])
 
@@ -113,7 +113,7 @@ class TestGitHubClient:
             stderr="not found"
         )
 
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
         with pytest.raises(CodeRabbitFetcherError):
             client._execute_gh_command(["api", "nonexistent"])
 
@@ -126,7 +126,7 @@ class TestGitHubClient:
             stderr="authentication required"
         )
 
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
         with pytest.raises(GitHubAuthenticationError):
             client._execute_gh_command(["api", "user"])
 
@@ -139,7 +139,7 @@ class TestGitHubClient:
             stderr=""
         )
 
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
         with pytest.raises(CodeRabbitFetcherError):
             client._execute_gh_command(["api", "user"])
 
@@ -153,7 +153,7 @@ class TestGitHubClient:
             Mock(returncode=0, stdout=json.dumps(test_data), stderr="")
         ]
 
-        client = GitHubClient(max_retries=1, retry_delay=0.1)
+        client = GitHubClient(max_retries=1, retry_delay=0.1, check_gh_cli=False)
         result = client._execute_gh_command(["api", "user"])
 
         assert result == test_data
@@ -173,7 +173,7 @@ class TestGitHubClient:
 
         mock_execute.side_effect = [test_pr_data, test_review_comments]
 
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
         result = client.fetch_pr_comments("https://github.com/owner/repo/pull/123")
 
         assert result["number"] == 123
@@ -182,21 +182,26 @@ class TestGitHubClient:
 
     @patch.object(GitHubClient, '_execute_gh_command')
     def test_post_comment(self, mock_execute):
-        """Test posting a comment."""
-        mock_execute.return_value = {}
+        """Test posting a comment via gh api."""
+        mock_execute.return_value = {"id": 12345, "body": "Test comment"}
 
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
         result = client.post_comment("https://github.com/owner/repo/pull/123", "Test comment")
 
         assert result is True
-        mock_execute.assert_called_once()
+        # gh api対応の正確な引数をチェック
+        mock_execute.assert_called_once_with([
+            "api", "repos/owner/repo/issues/123/comments",
+            "--method", "POST",
+            "--raw-field", "body=Test comment",
+        ])
 
     @patch.object(GitHubClient, '_execute_gh_command')
     def test_post_comment_failure(self, mock_execute):
         """Test comment posting failure."""
         mock_execute.side_effect = CodeRabbitFetcherError("Posting failed")
 
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
         result = client.post_comment("https://github.com/owner/repo/pull/123", "Test comment")
 
         assert result is False
@@ -210,14 +215,14 @@ class TestGitHubClient:
             stderr=""
         )
 
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
         username = client.get_authenticated_user()
 
         assert username == "testuser"
 
     def test_extract_rate_limit_reset(self):
         """Test extracting rate limit reset time."""
-        client = GitHubClient()
+        client = GitHubClient(check_gh_cli=False)
 
         # Test with reset time in stderr
         stderr_with_time = "rate limit exceeded, resets at 2023-12-01T12:00:00Z"

@@ -4,7 +4,7 @@ import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 
-from .base_formatter import BaseFormatter
+from .base import BaseFormatter
 from ..models import (
     AnalyzedComments,
     SummaryComment,

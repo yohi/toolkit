@@ -77,18 +77,18 @@ sequenceDiagram
     def test_is_summary_comment_with_full_summary(self):
         """Test summary detection with full CodeRabbit summary."""
         body = self.sample_summary["body"]
-        assert self.processor._is_summary_comment(body) is True
-
+        assert self.processor.is_summary_comment(body) is True
+    
     def test_is_summary_comment_with_minimal_summary(self):
         """Test summary detection with minimal summary."""
         body = self.minimal_summary["body"]
-        assert self.processor._is_summary_comment(body) is True
-
+        assert self.processor.is_summary_comment(body) is True
+    
     def test_is_summary_comment_with_non_summary(self):
         """Test summary detection with non-summary content."""
         body = self.non_summary_comment["body"]
-        assert self.processor._is_summary_comment(body) is False
-
+        assert self.processor.is_summary_comment(body) is False
+    
     def test_is_summary_comment_with_various_formats(self):
         """Test summary detection with various header formats."""
         test_cases = [
@@ -101,8 +101,8 @@ sequenceDiagram
 
         for header in test_cases:
             body = f"{header}\n\nSome content here."
-            assert self.processor._is_summary_comment(body) is True
-
+            assert self.processor.is_summary_comment(body) is True
+    
     def test_extract_new_features(self):
         """Test extraction of new features."""
         content = self.sample_summary["body"]
@@ -399,8 +399,8 @@ sequenceDiagram
         """
 
         # Basic summary detection should work
-        assert self.processor._is_summary_comment(content) is True
-
+        assert self.processor.is_summary_comment(content) is True
+        
         # Feature extraction might not work perfectly with Japanese patterns
         # but the system should not crash
         features = self.processor._extract_new_features(content)
