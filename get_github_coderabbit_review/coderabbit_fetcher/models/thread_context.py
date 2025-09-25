@@ -25,17 +25,16 @@ class ThreadContext(BaseCodeRabbitModel):
     about a comment thread for AI consumption.
     """
 
+    thread_id: str
     main_comment: Dict[str, Any]
     replies: List[Dict[str, Any]] = Field(default_factory=list)
     resolution_status: ResolutionStatus = ResolutionStatus.UNRESOLVED
     chronological_order: List[Dict[str, Any]] = Field(default_factory=list)
     contextual_summary: str = ""
-    thread_id: str
 
     def __init__(self, **data) -> None:
         """Initialize thread context with auto-generated summary."""
         super().__init__(**data)
-
         # Auto-generate contextual summary if not provided
         if not self.contextual_summary:
             self.contextual_summary = self._generate_contextual_summary()
@@ -56,7 +55,7 @@ class ThreadContext(BaseCodeRabbitModel):
         summary_parts = [
             f"Thread with {total_comments} comment(s)",
             f"Started by {main_author}",
-            f"Status: {self.resolution_status.value}"
+            f"Status: {self.resolution_status}"
         ]
 
         if self.replies:

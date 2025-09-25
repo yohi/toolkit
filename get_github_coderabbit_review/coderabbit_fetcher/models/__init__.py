@@ -19,7 +19,7 @@ __all__ = [
     "SummaryComment",
     "ChangeEntry",
     "ReviewComment",
-    "BasicReviewComment", 
+    "BasicReviewComment",
     "NitpickComment",
     "OutsideDiffComment",
     "ActionableComment",

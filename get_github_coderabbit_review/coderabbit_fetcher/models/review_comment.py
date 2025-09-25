@@ -63,5 +63,14 @@ class ReviewComment(BaseModel):
         """String representation of the review comment."""
         return f"ReviewComment(actionable={self.actionable_count}, nitpick={len(self.nitpick_comments)}, outside_diff={len(self.outside_diff_comments)})"
 
+    @property
+    def has_ai_prompts(self) -> bool:
+        """Check if this review comment has AI agent prompts.
+
+        Returns:
+            True if there are AI agent prompts
+        """
+        return len(self.ai_agent_prompts) > 0
+
 # Backward compatibility alias for simpler review comments
 SimpleReviewComment = BasicReviewComment
