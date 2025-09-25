@@ -299,10 +299,15 @@ class TestThreadProcessor:
 
     def test_process_thread_empty(self):
         """Test processing of empty thread."""
-        with pytest.raises(CommentParsingError) as exc_info:
-            self.processor.process_thread([])
+        result = self.processor.process_thread([])
 
-        assert "Empty thread provided" in str(exc_info.value)
+        # Empty thread should return a valid ThreadContext with default values
+        assert result.thread_id == "empty"
+        assert result.main_comment["id"] == "empty"
+        assert result.main_comment["body"] == "Empty thread"
+        assert len(result.replies) == 0
+        assert result.resolution_status == "unresolved"
+        assert result.contextual_summary == "Empty thread"
 
     def test_group_comments_into_threads(self):
         """Test grouping comments into threads."""

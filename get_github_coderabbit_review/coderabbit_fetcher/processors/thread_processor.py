@@ -33,9 +33,18 @@ class ThreadProcessor:
         Raises:
             CommentParsingError: If thread cannot be processed
         """
+        if not thread_comments:
+            # Return early for empty thread - this is a normal case
+            return ThreadContext(
+                thread_id="empty",
+                main_comment={"id": "empty", "body": "Empty thread", "user": {"login": "system"}},
+                replies=[],
+                resolution_status="unresolved",
+                chronological_order=[],
+                contextual_summary="Empty thread"
+            )
+
         try:
-            if not thread_comments:
-                raise CommentParsingError("Empty thread provided")
 
             # Sort comments chronologically
             sorted_comments = self._sort_comments_chronologically(thread_comments)
@@ -43,11 +52,6 @@ class ThreadProcessor:
             # Extract thread metadata
             root_comment = sorted_comments[0]
             thread_id = str(root_comment.get("id", "unknown"))
-            file_context = root_comment.get("path", "")
-            line_context = self._extract_line_context(root_comment)
-
-            # Analyze thread participants
-            participants = self._analyze_participants(sorted_comments)
 
             # Determine resolution status
             is_resolved = self._determine_resolution_status(sorted_comments)
@@ -55,27 +59,19 @@ class ThreadProcessor:
             # Generate contextual summary
             context_summary = self._generate_context_summary(sorted_comments)
 
-            # Extract CodeRabbit comments only
-            coderabbit_comments = [
-                c for c in sorted_comments
-                if c.get("user", {}).get("login") == self.coderabbit_author
-            ]
+            # Extract replies (all comments except the root comment)
+            replies = sorted_comments[1:] if len(sorted_comments) > 1 else []
 
-            # Generate AI-friendly structured format
-            ai_summary = self._generate_ai_summary(sorted_comments, context_summary)
+            # Determine resolution status
+            resolution_status = "resolved" if is_resolved else "unresolved"
 
             return ThreadContext(
                 thread_id=thread_id,
-                root_comment_id=str(root_comment.get("id", "")),
-                file_context=file_context,
-                line_context=line_context,
-                participants=participants,
-                comment_count=len(sorted_comments),
-                coderabbit_comment_count=len(coderabbit_comments),
-                is_resolved=is_resolved,
-                context_summary=context_summary,
-                ai_summary=ai_summary,
-                chronological_comments=sorted_comments
+                main_comment=root_comment,
+                replies=replies,
+                resolution_status=resolution_status,
+                chronological_order=sorted_comments,
+                contextual_summary=context_summary
             )
 
         except Exception as e:
@@ -90,21 +86,28 @@ class ThreadProcessor:
         Returns:
             List of ThreadContext objects, one for each thread
         """
-        # Group comments into threads
-        threads = self._group_comments_into_threads(comments)
+        if not comments:
+            return []
 
-        # Process each thread
-        thread_contexts = []
-        for thread_comments in threads:
-            if thread_comments:  # Only process non-empty threads
-                try:
-                    context = self.process_thread(thread_comments)
-                    thread_contexts.append(context)
-                except CommentParsingError:
-                    # Skip problematic threads but continue processing others
-                    continue
+        try:
+            # Group comments into threads
+            threads = self._group_comments_into_threads(comments)
 
-        return thread_contexts
+            # Process each thread
+            thread_contexts = []
+            for thread_comments in threads:
+                if thread_comments:  # Only process non-empty threads
+                    try:
+                        context = self.process_thread(thread_comments)
+                        thread_contexts.append(context)
+                    except CommentParsingError:
+                        # Skip problematic threads but continue processing others
+                        continue
+
+        except Exception as e:
+            raise CommentParsingError from e
+        else:
+            return thread_contexts
 
     def _sort_comments_chronologically(self, comments: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Sort comments in chronological order.
@@ -283,7 +286,7 @@ class ThreadProcessor:
             return "Empty thread"
 
         root_comment = comments[0]
-        user_count = len(set(c.get("user", {}).get("login") for c in comments))
+        user_count = len(set((c.get("user", {}) or {}).get("login") or "unknown" for c in comments))
         coderabbit_count = sum(
             1 for c in comments
             if c.get("user", {}).get("login") == self.coderabbit_author
@@ -378,7 +381,7 @@ class ThreadProcessor:
         ai_summary_parts.append("## Thread Context")
         ai_summary_parts.append(f"- **File**: {root_comment.get('path', 'Unknown')}")
         ai_summary_parts.append(f"- **Line**: {self._extract_line_context(root_comment) or 'Unknown'}")
-        ai_summary_parts.append(f"- **Participants**: {len(set(c.get('user', {}).get('login') for c in comments))}")
+        ai_summary_parts.append(f"- **Participants**: {len(set(((c.get('user', {}) or {}).get('login') or 'unknown') for c in comments))}")
         ai_summary_parts.append(f"- **Total Comments**: {len(comments)}")
         ai_summary_parts.append(f"- **CodeRabbit Comments**: {len(coderabbit_comments)}")
 
