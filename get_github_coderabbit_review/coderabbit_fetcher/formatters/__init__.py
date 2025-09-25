@@ -5,10 +5,10 @@ This package provides various output formatters for processing and displaying
 CodeRabbit comments in different formats.
 """
 
-from .base import BaseFormatter
-from .markdown import MarkdownFormatter
+from .base_formatter import BaseFormatter
+from .markdown_formatter import MarkdownFormatter
 from .json_formatter import JSONFormatter
-from .plain import PlainTextFormatter
+from .plaintext_formatter import PlainTextFormatter
 
 __version__ = "1.0.0"
 
