@@ -429,14 +429,29 @@ class JSONFormatter(BaseFormatter):
         Returns:
             Comment source string
         """
-        if hasattr(comment, 'user'):
-            user_login = getattr(comment, 'user', {}).get('login', '').lower()
-            if 'coderabbit' in user_login:
-                return "coderabbit"
-            else:
-                return "human"
+        # First normalize comment to handle both dict and object
+        if isinstance(comment, dict):
+            user = comment.get('user')
         else:
+            user = getattr(comment, 'user', None)
+
+        # Then normalize user similarly
+        if user is None:
             return "unknown"
+
+        if isinstance(user, dict):
+            user_login = user.get('login', '')
+        else:
+            user_login = getattr(user, 'login', '')
+
+        if not user_login:
+            return "unknown"
+
+        user_login = user_login.lower()
+        if 'coderabbit' in user_login:
+            return "coderabbit"
+        else:
+            return "human"
 
     def _json_serializer(self, obj) -> str:
         """Custom JSON serializer for datetime and other objects.
