@@ -20,24 +20,12 @@ A Python tool for fetching and formatting CodeRabbit comments from GitHub pull r
 
 ## Installation
 
-### Using uvx (Recommended)
+### From Source (Local Development)
 
 ```bash
-uvx coderabbit-comment-fetcher https://github.com/owner/repo/pull/123
-```
-
-### Using pip
-
-```bash
-pip install coderabbit-comment-fetcher
-```
-
-### From Source
-
-```bash
-git clone https://github.com/yohi/coderabbit-comment-fetcher.git
-cd coderabbit-comment-fetcher
-pip install -e .
+git clone https://github.com/yohi/toolkit.git
+cd toolkit/get_github_coderabbit_review
+python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/owner/repo/pull/123
 ```
 
 ## Quick Start
@@ -49,17 +37,17 @@ pip install -e .
 
 2. **Fetch CodeRabbit comments**:
    ```bash
-   coderabbit-fetch https://github.com/owner/repo/pull/123
+   python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/owner/repo/pull/123
    ```
 
 3. **Generate JSON output**:
    ```bash
-   coderabbit-fetch https://github.com/owner/repo/pull/123 --output-format json
+   python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/owner/repo/pull/123 --output-format json
    ```
 
 4. **Use custom persona**:
    ```bash
-   coderabbit-fetch https://github.com/owner/repo/pull/123 --persona-file my-persona.txt
+   python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/owner/repo/pull/123 --persona-file my-persona.txt
    ```
 
 ## Usage
@@ -67,7 +55,7 @@ pip install -e .
 ### Basic Command
 
 ```bash
-coderabbit-fetch <PR_URL> [OPTIONS]
+python -m get_github_coderabbit_review.coderabbit_fetcher <PR_URL> [OPTIONS]
 ```
 
 ### Options
@@ -84,12 +72,12 @@ coderabbit-fetch <PR_URL> [OPTIONS]
 
 **Basic usage**:
 ```bash
-coderabbit-fetch https://github.com/microsoft/vscode/pull/12345
+python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/microsoft/vscode/pull/12345
 ```
 
 **JSON output with custom persona**:
 ```bash
-coderabbit-fetch https://github.com/microsoft/vscode/pull/12345 \
+python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/microsoft/vscode/pull/12345 \
   --output-format json \
   --persona-file reviewer-persona.txt \
   --output-file review-summary.json
@@ -97,7 +85,7 @@ coderabbit-fetch https://github.com/microsoft/vscode/pull/12345 \
 
 **Request resolution from CodeRabbit**:
 ```bash
-coderabbit-fetch https://github.com/microsoft/vscode/pull/12345 \
+python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/microsoft/vscode/pull/12345 \
   --request-resolution \
   --resolved-marker "✅ RESOLVED"
 ```
@@ -198,8 +186,8 @@ The tool provides clear error messages for common issues:
 ### Setup Development Environment
 
 ```bash
-git clone https://github.com/yohi/coderabbit-comment-fetcher.git
-cd coderabbit-comment-fetcher
+git clone https://github.com/yohi/toolkit.git
+cd toolkit/get_github_coderabbit_review
 pip install -e ".[dev]"
 ```
 

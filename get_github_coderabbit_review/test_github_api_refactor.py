@@ -189,9 +189,12 @@ def test_ci_environment_safety():
     # Simulate CI environment where gh might not be available
     with patch('subprocess.run') as mock_run:
         # Test different CI failure scenarios
+        def unauthenticated_response(*args, **kwargs):
+            return MagicMock(returncode=1, stderr="Not authenticated")
+        
         scenarios = [
             ("gh not installed", FileNotFoundError("gh: command not found")),
-            ("gh not authenticated", MagicMock(returncode=1, stderr="Not authenticated")),
+            ("gh not authenticated", unauthenticated_response),
             ("network timeout", subprocess.TimeoutExpired("gh", 10)),
         ]
 
