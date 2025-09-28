@@ -57,7 +57,7 @@ class CodeRabbitFetcherCLI:
     def setup_managers(self, resolved_marker: str, post_resolution_request: bool) -> None:
         """Initialize manager components."""
         # Setup resolved marker manager
-        marker_config = ResolvedMarkerConfig(resolved_marker=resolved_marker)
+        marker_config = ResolvedMarkerConfig(default_marker=resolved_marker)
         self.resolved_marker_manager = ResolvedMarkerManager(marker_config)
 
         # Setup comment analyzer
