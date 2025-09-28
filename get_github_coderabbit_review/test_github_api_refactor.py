@@ -12,7 +12,7 @@ project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from coderabbit_fetcher.github_client import GitHubClient, GitHubAPIError
-from coderabbit_fetcher.exceptions import GitHubAuthenticationError
+from coderabbit_fetcher.exceptions import GitHubAuthenticationError, InvalidPRUrlError
 
 
 def test_post_comment_api():
@@ -107,16 +107,22 @@ def test_error_handling():
         client.parse_pr_url("invalid-url")
         print("❌ Should have raised InvalidPRUrlError")
         return False
-    except Exception as e:
+    except InvalidPRUrlError as e:
         print(f"✅ Invalid URL handling: {type(e).__name__}")
+    except Exception as e:
+        print(f"❌ Unexpected exception type: {type(e).__name__}, expected InvalidPRUrlError")
+        return False
 
     # Test empty URL
     try:
         client.parse_pr_url("")
         print("❌ Should have raised InvalidPRUrlError")
         return False
-    except Exception as e:
+    except InvalidPRUrlError as e:
         print(f"✅ Empty URL handling: {type(e).__name__}")
+    except Exception as e:
+        print(f"❌ Unexpected exception type: {type(e).__name__}, expected InvalidPRUrlError")
+        return False
 
     return True
 

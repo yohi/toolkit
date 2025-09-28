@@ -196,7 +196,7 @@ The tool provides clear error messages for common issues:
 ```bash
 git clone https://github.com/yohi/toolkit.git
 cd toolkit
-pip install -e "get_github_coderabbit_review[dev]"
+pip install -e "./get_github_coderabbit_review[dev]"
 ```
 
 ### Run Tests
