@@ -206,7 +206,32 @@ pip install -e ".[dev]"
 ### Run Tests
 
 ```bash
+# Run all tests
 pytest
+
+# Run tests excluding slow performance tests
+pytest -m "not slow"
+
+# Run only unit tests
+pytest tests/unit/
+
+# Run with coverage
+pytest --cov=coderabbit_fetcher --cov-report=html
+```
+
+#### Performance Tests
+
+Performance tests are marked with `@pytest.mark.slow` and can be resource-intensive. In CI environments with limited resources, you can skip them by setting:
+
+```bash
+export CI_LOW_RESOURCE=true
+pytest  # Performance tests will be automatically skipped
+```
+
+Or run only performance tests:
+
+```bash
+pytest -m slow
 ```
 
 ### Code Quality
