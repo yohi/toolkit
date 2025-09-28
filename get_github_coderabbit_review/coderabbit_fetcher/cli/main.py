@@ -458,8 +458,9 @@ def run_validate_marker_command(marker: str) -> int:
     try:
         from ..resolved_marker import ResolvedMarkerConfig, ResolvedMarkerManager
 
-        config = ResolvedMarkerConfig(resolved_marker=marker)
-        validation = config.validate_marker()
+        # Use ResolvedMarkerManager's validate_marker method instead of config
+        manager = ResolvedMarkerManager()
+        validation = manager.validate_marker(marker)
 
         if validation["valid"]:
             print("✅ Marker is valid")
@@ -468,9 +469,8 @@ def run_validate_marker_command(marker: str) -> int:
             for issue in validation["issues"]:
                 print(f"   • {issue}", file=sys.stderr)
 
-        # Calculate uniqueness score
-        manager = ResolvedMarkerManager()
-        score = manager._calculate_uniqueness_score(marker)
+        # Use public API to calculate uniqueness score
+        score = manager.calculate_uniqueness_score(marker)
 
         print(f"\n📊 Uniqueness Score: {score:.2f}/1.0")
         if score < 0.3:
@@ -489,12 +489,21 @@ def run_validate_marker_command(marker: str) -> int:
 
 def run_version_command() -> int:
     """Run the version command."""
+    version = "development"
+
     try:
-        # Try to get version from package metadata
+        # First, try to import the required modules
         from importlib.metadata import version as get_version, PackageNotFoundError
-        version = get_version('coderabbit-comment-fetcher')
-    except (ImportError, PackageNotFoundError):
+    except ImportError:
+        # If import fails, use development version
         version = "development"
+    else:
+        # If import succeeds, try to get the actual version
+        try:
+            version = get_version('coderabbit-comment-fetcher')
+        except PackageNotFoundError:
+            # If package is not found, use development version
+            version = "development"
 
     print(f"CodeRabbit Comment Fetcher v{version}")
     print("Python script for extracting and formatting CodeRabbit comments")
