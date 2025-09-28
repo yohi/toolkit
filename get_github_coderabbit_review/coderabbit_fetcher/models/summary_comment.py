@@ -4,6 +4,7 @@ Summary comment data model.
 
 from typing import List, Optional
 
+from pydantic import Field
 from .base import BaseCodeRabbitModel
 
 
@@ -28,12 +29,12 @@ class SummaryComment(BaseCodeRabbitModel):
     Represents the "Summary by CodeRabbit" comment that provides
     an overview of changes in the pull request.
     """
-
-    new_features: List[str] = []
-    documentation_changes: List[str] = []
-    test_changes: List[str] = []
+    
+    new_features: List[str] = Field(default_factory=list)
+    documentation_changes: List[str] = Field(default_factory=list)
+    test_changes: List[str] = Field(default_factory=list)
     walkthrough: str = ""
-    changes_table: List[ChangeEntry] = []
+    changes_table: List[ChangeEntry] = Field(default_factory=list)
     sequence_diagram: Optional[str] = None
     raw_content: str
 
@@ -80,11 +81,11 @@ class SummaryComment(BaseCodeRabbitModel):
         Returns:
             Total count of changes mentioned
         """
+        # Note: changes_table is excluded to avoid duplicate counts
         return (
-            len(self.new_features) +
-            len(self.documentation_changes) +
-            len(self.test_changes) +
-            len(self.changes_table)
+            len(self.new_features) + 
+            len(self.documentation_changes) + 
+            len(self.test_changes)
         )
 
     def get_formatted_walkthrough(self, max_length: int = 500) -> str:

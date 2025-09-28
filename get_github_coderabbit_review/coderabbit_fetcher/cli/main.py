@@ -7,8 +7,6 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, TextIO
 import json
 
-# import click  # Will be added in later version
-
 from ..exceptions import CodeRabbitFetcherError, GitHubAuthenticationError, InvalidPRUrlError
 from ..github_client import GitHubClient, GitHubAPIError
 from ..comment_analyzer import CommentAnalyzer
