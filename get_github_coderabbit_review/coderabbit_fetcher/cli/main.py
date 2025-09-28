@@ -52,7 +52,7 @@ class CodeRabbitFetcherCLI:
             print("   1. Install GitHub CLI: https://cli.github.com/", file=sys.stderr)
             print("   2. Run: gh auth login", file=sys.stderr)
             print("   3. Follow the authentication prompts", file=sys.stderr)
-            raise CLIError("GitHub CLI authentication required")
+            raise CLIError("GitHub CLI authentication required") from e
 
     def setup_managers(self, resolved_marker: str, post_resolution_request: bool) -> None:
         """Initialize manager components."""
@@ -80,7 +80,7 @@ class CodeRabbitFetcherCLI:
         except InvalidPRUrlError as e:
             print(f"❌ Invalid PR URL: {e}", file=sys.stderr)
             print("\n💡 Expected format: https://github.com/owner/repo/pull/123", file=sys.stderr)
-            raise CLIError("Invalid pull request URL")
+            raise CLIError("Invalid pull request URL") from e
 
     def load_persona(self, persona_file: Optional[str]) -> str:
         """Load persona content."""
@@ -89,9 +89,9 @@ class CodeRabbitFetcherCLI:
                 return self.persona_manager.load_persona_file(persona_file)
             else:
                 return self.persona_manager.get_default_persona()
-        except Exception as e:
+        except (FileNotFoundError, PermissionError, ValueError) as e:
             print(f"❌ Persona Error: {e}", file=sys.stderr)
-            raise CLIError("Failed to load persona")
+            raise CLIError("Failed to load persona") from e
 
     def fetch_and_analyze_comments(self, pr_url: str) -> Any:  # Returns AnalyzedComments
         """Fetch and analyze PR comments."""
@@ -119,10 +119,10 @@ class CodeRabbitFetcherCLI:
 
         except GitHubAPIError as e:
             print(f"❌ GitHub API Error: {e}", file=sys.stderr)
-            raise CLIError("Failed to fetch PR data")
-        except Exception as e:
+            raise CLIError("Failed to fetch PR data") from e
+        except (ValueError, KeyError, TypeError) as e:
             print(f"❌ Analysis Error: {e}", file=sys.stderr)
-            raise CLIError("Failed to analyze comments")
+            raise CLIError("Failed to analyze comments") from e
 
     def format_output(self, persona: str, analyzed_comments: Any, output_format: str) -> str:
         """Format analyzed comments for output."""
@@ -135,13 +135,13 @@ class CodeRabbitFetcherCLI:
 
             formatter = formatters.get(output_format)
             if not formatter:
-                raise CLIError(f"Unsupported output format: {output_format}")
+                raise ValueError(f"Unsupported output format: {output_format}")
 
             return formatter.format(persona, analyzed_comments)
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError) as e:
             print(f"❌ Formatting Error: {e}", file=sys.stderr)
-            raise CLIError("Failed to format output")
+            raise CLIError("Failed to format output") from e
 
     def post_resolution_request(self, pr_url: str, analyzed_comments: Any) -> None:
         """Post resolution request if enabled."""
@@ -162,7 +162,7 @@ class CodeRabbitFetcherCLI:
             else:
                 print(f"❌ Failed to post resolution request: {result['error']}", file=sys.stderr)
 
-        except Exception as e:
+        except (ValueError, TypeError, AttributeError, GitHubAPIError) as e:
             print(f"❌ Resolution Request Error: {e}", file=sys.stderr)
             # Don't raise CLIError here - posting failure shouldn't stop the main output
 
@@ -199,9 +199,9 @@ class CodeRabbitFetcherCLI:
             else:
                 print(content)
 
-        except Exception as e:
+        except (OSError, IOError, PermissionError) as e:
             print(f"❌ Output Error: {e}", file=sys.stderr)
-            raise CLIError("Failed to write output")
+            raise CLIError("Failed to write output") from e
 
     def display_statistics(self, analyzed_comments: Any) -> None:
         """Display processing statistics."""
@@ -429,7 +429,7 @@ def run_validate_command() -> int:
                 remaining = core_limit.get("remaining", "unknown")
                 limit = core_limit.get("limit", "unknown")
                 print(f"\n📊 API Rate Limit: {remaining}/{limit} remaining")
-            except Exception as e:
+            except (GitHubAPIError, ValueError, KeyError) as e:
                 print(f"\n⚠️  Could not check rate limit: {e}")
 
         if validation_result["issues"]:
@@ -483,9 +483,9 @@ def run_version_command() -> int:
     """Run the version command."""
     try:
         # Try to get version from package metadata
-        from importlib.metadata import version as get_version
+        from importlib.metadata import version as get_version, PackageNotFoundError
         version = get_version('coderabbit-comment-fetcher')
-    except:
+    except (ImportError, PackageNotFoundError):
         version = "development"
 
     print(f"CodeRabbit Comment Fetcher v{version}")
@@ -577,7 +577,7 @@ def main():
             return run_validate_marker_command(args.validate_marker)
 
         # Main fetch command (requires pr_url)
-        if not hasattr(args, 'pr_url') or not args.pr_url:
+        if not args.pr_url:
             print("❌ PR URL is required for fetch command", file=sys.stderr)
             parser.print_help()
             return 1

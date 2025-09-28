@@ -182,7 +182,11 @@ class CommentPoster:
                 "comment_url": result.get("html_url"),
                 "message": comment_message,
                 "pr_url": pr_url,
-                "context_included": bool(additional_context),
+                "context_included": (
+                    self.config.include_context
+                    and bool(additional_context)
+                    and "Context:" in comment_message
+                ),
                 "message_length": len(comment_message),
                 "posted_at": result.get("created_at")
             }
