@@ -215,9 +215,35 @@ pytest -m "not slow"
 # Run only unit tests
 pytest tests/unit/
 
+# Run CI-safe tests (no external dependencies)
+pytest tests/test_github_client_safe.py
+
+# Run legacy test suite
+python test_github_api_refactor.py
+
 # Run with coverage
 pytest --cov=coderabbit_fetcher --cov-report=html
 ```
+
+#### CI-Safe Testing
+
+The project includes comprehensive CI-safe tests that work without external dependencies:
+
+- **`tests/test_github_client_safe.py`**: Pytest-based test suite with full mocking
+- **`test_github_api_refactor.py`**: Legacy test suite with enhanced mocking
+
+Both test suites use extensive mocking to avoid:
+- GitHub CLI (gh) installation requirements
+- GitHub authentication dependencies
+- Network connectivity requirements
+- External service dependencies
+
+**Key Features:**
+- ✅ Works in Docker containers
+- ✅ Works in GitHub Actions
+- ✅ Works in restricted environments
+- ✅ No authentication required
+- ✅ No network access required
 
 #### Performance Tests
 

@@ -4,30 +4,44 @@
 import json
 import sys
 from pathlib import Path
+from unittest.mock import patch, MagicMock
+import subprocess
 
 # Add the project root to Python path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
 from coderabbit_fetcher.github_client import GitHubClient, GitHubAPIError
+from coderabbit_fetcher.exceptions import GitHubAuthenticationError
 
 
 def test_post_comment_api():
     """Test the new REST API-based comment posting."""
     print("🧪 Testing GitHub API comment posting...")
 
-    client = GitHubClient()
+    # Mock the subprocess.run calls to avoid actual gh command execution
+    with patch('subprocess.run') as mock_run:
+        # Mock successful authentication check
+        mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="")
 
-    # Check authentication first
-    try:
-        if not client.is_authenticated():
-            print("❌ GitHub CLI is not authenticated. Please run 'gh auth login'")
+        try:
+            client = GitHubClient()
+            print("✅ GitHubClient initialized successfully (mocked authentication)")
+        except Exception as e:
+            print(f"❌ GitHubClient initialization failed: {e}")
             return False
-    except Exception as e:
-        print(f"❌ Authentication check failed: {e}")
-        return False
 
-    print("✅ GitHub CLI authentication verified")
+    # Test authentication check with proper mocking
+    with patch.object(client, 'is_authenticated', return_value=True):
+        try:
+            if not client.is_authenticated():
+                print("❌ GitHub CLI is not authenticated. Please run 'gh auth login'")
+                return False
+        except Exception as e:
+            print(f"❌ Authentication check failed: {e}")
+            return False
+
+        print("✅ GitHub CLI authentication verified (mocked)")
 
     # Test URL parsing
     test_url = "https://github.com/octocat/Hello-World/pull/1"
@@ -77,7 +91,16 @@ def test_error_handling():
     """Test error handling scenarios."""
     print("\n🚨 Testing error handling...")
 
-    client = GitHubClient()
+    # Mock the subprocess.run calls to avoid actual gh command execution
+    with patch('subprocess.run') as mock_run:
+        # Mock successful authentication check
+        mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="")
+
+        try:
+            client = GitHubClient()
+        except Exception as e:
+            print(f"❌ GitHubClient initialization failed: {e}")
+            return False
 
     # Test invalid URL
     try:
@@ -95,6 +118,98 @@ def test_error_handling():
     except Exception as e:
         print(f"✅ Empty URL handling: {type(e).__name__}")
 
+    return True
+
+
+def test_github_client_initialization():
+    """Test GitHubClient initialization with different scenarios."""
+    print("\n🔧 Testing GitHubClient initialization scenarios...")
+
+    # Test 1: Successful initialization with mocked authentication
+    print("  Test 1: Successful initialization (mocked)")
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="")
+        try:
+            client = GitHubClient()
+            print("    ✅ Initialization successful")
+        except Exception as e:
+            print(f"    ❌ Initialization failed: {e}")
+            return False
+
+    # Test 2: Handle gh command not found
+    print("  Test 2: Handle missing gh command")
+    with patch('subprocess.run') as mock_run:
+        mock_run.side_effect = FileNotFoundError("gh command not found")
+        try:
+            client = GitHubClient()
+            print("    ❌ Should have raised GitHubAuthenticationError")
+            return False
+        except GitHubAuthenticationError as e:
+            print(f"    ✅ Correctly handled missing gh: {e}")
+        except Exception as e:
+            print(f"    ❌ Unexpected error: {e}")
+            return False
+
+    # Test 3: Handle authentication failure
+    print("  Test 3: Handle authentication failure")
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value = MagicMock(returncode=1, stderr="Not authenticated", stdout="")
+        try:
+            client = GitHubClient()
+            print("    ❌ Should have raised GitHubAuthenticationError")
+            return False
+        except GitHubAuthenticationError as e:
+            print(f"    ✅ Correctly handled auth failure: {e}")
+        except Exception as e:
+            print(f"    ❌ Unexpected error: {e}")
+            return False
+
+    # Test 4: Handle timeout
+    print("  Test 4: Handle command timeout")
+    with patch('subprocess.run') as mock_run:
+        mock_run.side_effect = subprocess.TimeoutExpired("gh", 10)
+        try:
+            client = GitHubClient()
+            print("    ❌ Should have raised GitHubAuthenticationError")
+            return False
+        except GitHubAuthenticationError as e:
+            print(f"    ✅ Correctly handled timeout: {e}")
+        except Exception as e:
+            print(f"    ❌ Unexpected error: {e}")
+            return False
+
+    print("  🎯 All initialization tests passed!")
+    return True
+
+
+def test_ci_environment_safety():
+    """Test that the code works safely in CI environments."""
+    print("\n🏗️ Testing CI environment safety...")
+
+    # Simulate CI environment where gh might not be available
+    with patch('subprocess.run') as mock_run:
+        # Test different CI failure scenarios
+        scenarios = [
+            ("gh not installed", FileNotFoundError("gh: command not found")),
+            ("gh not authenticated", MagicMock(returncode=1, stderr="Not authenticated")),
+            ("network timeout", subprocess.TimeoutExpired("gh", 10)),
+        ]
+
+        for scenario_name, side_effect in scenarios:
+            print(f"  Testing: {scenario_name}")
+            mock_run.side_effect = side_effect
+
+            try:
+                client = GitHubClient()
+                print(f"    ❌ Should have failed for {scenario_name}")
+                return False
+            except GitHubAuthenticationError:
+                print(f"    ✅ Correctly handled: {scenario_name}")
+            except Exception as e:
+                print(f"    ❌ Unexpected error for {scenario_name}: {e}")
+                return False
+
+    print("  🎯 CI environment safety tests passed!")
     return True
 
 
@@ -151,7 +266,9 @@ def main():
     tests = [
         test_post_comment_api,
         test_comment_structure,
-        test_error_handling
+        test_error_handling,
+        test_github_client_initialization,
+        test_ci_environment_safety
     ]
 
     passed = 0
