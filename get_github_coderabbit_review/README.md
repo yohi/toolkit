@@ -206,8 +206,49 @@ pip install -e ".[dev]"
 ### Run Tests
 
 ```bash
+# Run all tests
 pytest
+
+# Run tests excluding slow performance tests
+pytest -m "not slow"
+
+# Run only unit tests
+pytest tests/unit/
+
+# Run with coverage
+pytest --cov=coderabbit_fetcher --cov-report=html
 ```
+
+#### Performance Tests
+
+Performance tests are marked with `@pytest.mark.slow` and `@pytest.mark.performance` and can be resource-intensive. They are designed to be robust in CI environments but can be controlled with environment variables:
+
+**Skip performance tests in CI:**
+```bash
+export CI_LOW_RESOURCE=true
+# or
+export SKIP_PERF_TESTS=true
+pytest  # Performance tests will be automatically skipped
+```
+
+**Run only performance tests:**
+```bash
+pytest -m "slow and performance"
+```
+
+**Run tests excluding performance tests:**
+```bash
+pytest -m "not performance"
+```
+
+**Configure performance test thresholds:**
+```bash
+# Set custom threshold (default: 3.0s local, 5.0s CI)
+export PERF_TEST_THRESHOLD=2.0
+pytest -m performance
+```
+
+Performance tests focus on functional correctness and log timing information rather than enforcing strict timing constraints to prevent flaky CI failures.
 
 ### Code Quality
 

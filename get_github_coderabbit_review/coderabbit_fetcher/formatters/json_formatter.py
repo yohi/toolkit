@@ -168,6 +168,7 @@ class JSONFormatter(BaseFormatter):
                 "has_sequence_diagram": summary.has_sequence_diagram
             }
 
+            # Include raw content if enabled and available
             if self.include_raw_content and hasattr(summary, "raw_content"):
                 summary_dict["raw_content"] = summary.raw_content
 
@@ -198,6 +199,7 @@ class JSONFormatter(BaseFormatter):
                                   else bool(getattr(review, "ai_agent_prompts", []))
             }
 
+            # Include raw content if enabled and available
             if self.include_raw_content and hasattr(review, "raw_content"):
                 review_dict["raw_content"] = review.raw_content
 
@@ -306,10 +308,12 @@ class JSONFormatter(BaseFormatter):
             if hasattr(comment, 'created_at'):
                 comment_dict["timestamp"] = getattr(comment, 'created_at', None)
 
-            # Add author if available
+            # Add author if available with safe user handling
             if hasattr(comment, "user"):
                 user = getattr(comment, "user", None)
-                if isinstance(user, dict):
+                if user is None:
+                    author = "Unknown"
+                elif isinstance(user, dict):
                     author = user.get("login", "Unknown")
                 elif hasattr(user, "login"):
                     author = getattr(user, "login", "Unknown")

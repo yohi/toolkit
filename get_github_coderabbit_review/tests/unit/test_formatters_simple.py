@@ -10,7 +10,7 @@ def test_basic_markdown_formatter():
     """Test basic markdown formatter functionality."""
     formatter = MarkdownFormatter()
     persona = "You are a test reviewer."
-    
+
     metadata = CommentMetadata(
         pr_number=123,
         pr_title="Test PR",
@@ -23,7 +23,7 @@ def test_basic_markdown_formatter():
         actionable_comments=0,
         processing_time_seconds=1.0
     )
-    
+
     comments = AnalyzedComments(
         summary_comments=[
             SummaryComment(
@@ -39,9 +39,9 @@ def test_basic_markdown_formatter():
         unresolved_threads=[],
         metadata=metadata
     )
-    
+
     result = formatter.format(persona, comments)
-    
+
     assert isinstance(result, str)
     assert len(result) > 0
     assert "CodeRabbit Analysis Report" in result
@@ -52,7 +52,7 @@ def test_basic_json_formatter():
     """Test basic JSON formatter functionality."""
     formatter = JSONFormatter()
     persona = "You are a test reviewer."
-    
+
     metadata = CommentMetadata(
         pr_number=124,
         pr_title="JSON Test PR",
@@ -64,7 +64,7 @@ def test_basic_json_formatter():
         actionable_comments=0,
         processing_time_seconds=1.0
     )
-    
+
     comments = AnalyzedComments(
         summary_comments=[
             SummaryComment(
@@ -80,9 +80,9 @@ def test_basic_json_formatter():
         unresolved_threads=[],
         metadata=metadata
     )
-    
+
     result = formatter.format(persona, comments)
-    
+
     assert isinstance(result, str)
     parsed = json.loads(result)
     assert isinstance(parsed, dict)
@@ -94,7 +94,7 @@ def test_basic_plaintext_formatter():
     """Test basic plaintext formatter functionality."""
     formatter = PlainTextFormatter()
     persona = "You are a test reviewer."
-    
+
     metadata = CommentMetadata(
         pr_number=125,
         pr_title="Plain Test PR",
@@ -106,7 +106,7 @@ def test_basic_plaintext_formatter():
         actionable_comments=0,
         processing_time_seconds=1.0
     )
-    
+
     comments = AnalyzedComments(
         summary_comments=[
             SummaryComment(
@@ -122,9 +122,9 @@ def test_basic_plaintext_formatter():
         unresolved_threads=[],
         metadata=metadata
     )
-    
+
     result = formatter.format(persona, comments)
-    
+
     assert isinstance(result, str)
     assert len(result) > 0
     assert "CODERABBIT ANALYSIS REPORT" in result
