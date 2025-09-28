@@ -277,6 +277,7 @@ Performance tests focus on functional correctness and log timing information rat
 Run the comprehensive API refactoring test:
 
 ```bash
+cd get_github_coderabbit_review
 python test_github_api_refactor.py
 ```
 
