@@ -82,8 +82,8 @@ class JSONFormatter(BaseFormatter):
         Returns:
             JSON-serializable dictionary
         """
-        # Safe attribute access
-        chronological_order = getattr(thread, 'chronological_order', [])
+        # Safe attribute access with None coercion
+        chronological_order = getattr(thread, 'chronological_order', []) or []
         resolution_status = getattr(thread, 'resolution_status', None)
         comment_count = getattr(thread, 'comment_count', None)
 
