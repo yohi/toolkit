@@ -1,8 +1,12 @@
 """Core comment analysis and filtering functionality."""
 
+import logging
 import time
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+
+# Module-level logger
+logger = logging.getLogger(__name__)
 
 from .models import (
     AnalyzedComments,
@@ -143,10 +147,11 @@ class CommentAnalyzer:
         if "reviews" in pr_data:
             for review in pr_data["reviews"]:
                 # Add the review itself as a comment
-                if "body" in review and review["body"]:
+                body = review.get("body")
+                if body:
                     review_comment = {
                         "id": review.get("id"),
-                        "body": review["body"],
+                        "body": body,
                         "user": review.get("user", {}),
                         "created_at": review.get("created_at"),
                         "comment_type": "review"
@@ -209,10 +214,12 @@ class CommentAnalyzer:
             try:
                 summary = self.summary_processor.process_summary_comment(comment)
                 processed.append(summary)
-            except Exception as e:
+            except (ValueError, KeyError, TypeError) as e:
                 # Log error but continue processing
-                import logging
-                logging.warning(f"Failed to process summary comment {comment.get('id')}: {e}")
+                logger.warning("Failed to process summary comment %s: %s", comment.get('id'), e, exc_info=True)
+            except (KeyboardInterrupt, SystemExit):
+                # Re-raise critical exceptions
+                raise
 
         return processed
 
@@ -225,10 +232,12 @@ class CommentAnalyzer:
                 review = self.review_processor.process_review_comment(comment)
                 processed.append(review)
                 self.stats.actionable_comments += review.actionable_count
-            except Exception as e:
+            except (ValueError, KeyError, TypeError, AttributeError) as e:
                 # Log error but continue processing
-                import logging
-                logging.warning(f"Failed to process review comment {comment.get('id')}: {e}")
+                logger.warning("Failed to process review comment %s: %s", comment.get('id'), e, exc_info=True)
+            except (KeyboardInterrupt, SystemExit):
+                # Re-raise critical exceptions
+                raise
 
         return processed
 
@@ -238,11 +247,13 @@ class CommentAnalyzer:
             threads = self.thread_processor.process_comments_to_threads(comments)
             self.stats.threads_processed = len(threads)
             return threads
-        except Exception as e:
+        except (ValueError, KeyError, TypeError) as e:
             # Log error and return empty list
-            import logging
-            logging.warning(f"Failed to process thread comments: {e}")
+            logger.warning("Failed to process thread comments: %s", e, exc_info=True)
             return []
+        except (KeyboardInterrupt, SystemExit):
+            # Re-raise critical exceptions
+            raise
 
     def _filter_resolved_threads(self, threads: List[ThreadContext]) -> List[ThreadContext]:
         """Filter out resolved threads using resolved marker detection."""
@@ -308,8 +319,8 @@ class CommentAnalyzer:
             "threads_processed": self.stats.threads_processed,
             "processing_time_seconds": self.stats.processing_time_seconds,
             "resolution_rate": (
-                self.stats.resolved_comments / self.stats.coderabbit_comments
-                if self.stats.coderabbit_comments > 0 else 0.0
+                0.0 if self.stats.coderabbit_comments == 0
+                else self.stats.resolved_comments / self.stats.coderabbit_comments
             )
         }
 

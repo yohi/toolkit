@@ -32,16 +32,24 @@ class GitHubClient:
     and managing authentication through the GitHub CLI.
     """
 
-    def __init__(self, max_retries: int = 3, retry_delay: float = 1.0) -> None:
+    def __init__(
+        self, 
+        max_retries: int = 3, 
+        retry_delay: float = 1.0,
+        check_gh_cli: bool = True
+    ) -> None:
         """Initialize GitHub client.
 
         Args:
             max_retries: Maximum number of retries for failed requests
             retry_delay: Base delay between retries in seconds
+            check_gh_cli: Whether to check GitHub CLI availability on initialization
         """
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        self._check_gh_cli_availability()
+        
+        if check_gh_cli:
+            self._check_gh_cli_availability()
 
     def _check_gh_cli_availability(self) -> None:
         """Check if GitHub CLI is available on the system.
@@ -195,7 +203,9 @@ class GitHubClient:
                     f"GitHub CLI command timed out after {timeout} seconds"
                 )
                 if attempt < self.max_retries:
-                    console.print(f"⏳ [yellow]Command timed out, retrying... (attempt {attempt + 1}/{self.max_retries})[/yellow]")
+                    wait_time = self.retry_delay * (2 ** attempt)  # Exponential backoff
+                    console.print(f"⏳ [yellow]Command timed out, retrying in {wait_time}s... (attempt {attempt + 1}/{self.max_retries})[/yellow]")
+                    time.sleep(wait_time)
                     continue
             except (APIRateLimitError, GitHubAuthenticationError):
                 # Don't retry these specific errors
@@ -203,7 +213,9 @@ class GitHubClient:
             except Exception as e:
                 last_exception = CodeRabbitFetcherError(f"Unexpected error: {e}")
                 if attempt < self.max_retries:
-                    console.print(f"⏳ [yellow]Unexpected error, retrying... (attempt {attempt + 1}/{self.max_retries})[/yellow]")
+                    wait_time = self.retry_delay * (2 ** attempt)  # Exponential backoff
+                    console.print(f"⏳ [yellow]Unexpected error, retrying in {wait_time}s... (attempt {attempt + 1}/{self.max_retries})[/yellow]")
+                    time.sleep(wait_time)
                     continue
 
         # All retries exhausted
@@ -270,8 +282,7 @@ class GitHubClient:
         # Fetch additional comment details (reviews contain inline comments)
         try:
             review_comments = self._execute_gh_command([
-                "api", f"repos/{owner}/{repo}/pulls/{pr_number}/comments",
-                "--paginate"
+                "api", f"repos/{owner}/{repo}/pulls/{pr_number}/comments?per_page=100"
             ])
 
             # Merge review comments into the main data structure
@@ -306,10 +317,11 @@ class GitHubClient:
         console.print(f"📤 [blue]Posting comment to {owner}/{repo}#{pr_number}[/blue]")
 
         try:
+            # PRはIssueとしてコメントAPIが利用可能
             self._execute_gh_command([
-                "pr", "comment", str(pr_number),
-                "--repo", f"{owner}/{repo}",
-                "--body", comment
+                "api", f"repos/{owner}/{repo}/issues/{pr_number}/comments",
+                "--method", "POST",
+                "--raw-field", f"body={comment}",
             ])
 
             console.print("✅ [green]Comment posted successfully[/green]")

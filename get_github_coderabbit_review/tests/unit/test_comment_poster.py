@@ -473,6 +473,30 @@ class TestResolutionRequestManager:
         assert result["success"] is True
         assert "5 more comments" in result["message"]
 
+    def test_request_resolution_for_numeric_comment_ids(self):
+        """Test requesting resolution with numeric comment IDs."""
+        pr_url = "https://github.com/owner/repo/pull/123"
+        comment_ids = [123456, 789012, 345678]  # Numeric IDs
+
+        self.mock_github_client.post_comment.return_value = {"id": 12345}
+
+        result = self.manager.request_resolution_for_comments(pr_url, comment_ids)
+
+        assert result["success"] is True
+        assert "123456, 789012, 345678" in result["message"]
+
+    def test_request_resolution_for_mixed_comment_ids(self):
+        """Test requesting resolution with mixed string and numeric comment IDs."""
+        pr_url = "https://github.com/owner/repo/pull/123"
+        comment_ids = ["comment1", 123456, "comment3", 789012]  # Mixed types
+
+        self.mock_github_client.post_comment.return_value = {"id": 12345}
+
+        result = self.manager.request_resolution_for_comments(pr_url, comment_ids)
+
+        assert result["success"] is True
+        assert "comment1, 123456, comment3, 789012" in result["message"]
+
     def test_request_resolution_for_comments_no_summary(self):
         """Test requesting resolution without summary."""
         pr_url = "https://github.com/owner/repo/pull/123"

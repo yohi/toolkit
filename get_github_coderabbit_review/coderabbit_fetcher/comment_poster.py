@@ -1,7 +1,6 @@
 """Comment posting functionality for CodeRabbit resolution requests."""
 
-import re
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -167,7 +166,7 @@ class CommentPoster:
         try:
             comment_message = self.config.generate_message(additional_context)
         except InvalidCommentError as e:
-            raise CommentPostingError(f"Failed to generate comment: {e}")
+            raise CommentPostingError("Failed to generate comment") from e
 
         # Validate comment content
         self._validate_comment_content(comment_message)
@@ -182,14 +181,17 @@ class CommentPoster:
                 "comment_url": result.get("html_url"),
                 "message": comment_message,
                 "pr_url": pr_url,
-                "context_included": bool(additional_context),
+                "context_included": (
+                    self.config.include_context
+                    and bool(additional_context)
+                    and "Context:" in comment_message
+                ),
                 "message_length": len(comment_message),
                 "posted_at": result.get("created_at")
             }
 
         except Exception as e:
-            error_msg = f"Failed to post comment to {pr_url}: {str(e)}"
-            raise CommentPostingError(error_msg) from e
+            raise CommentPostingError("Failed to post comment") from e
 
     def generate_resolution_request(self, additional_context: str = "") -> str:
         """Generate a resolution request message without posting.
@@ -348,7 +350,7 @@ class CommentPoster:
         try:
             parsed = urlparse(pr_url)
         except Exception as e:
-            raise PRUrlValidationError(f"Invalid URL format: {e}")
+            raise PRUrlValidationError("Invalid URL format") from e
 
         # Check scheme
         if parsed.scheme not in ["http", "https"]:
@@ -451,20 +453,21 @@ class ResolutionRequestManager:
         self.poster = CommentPoster(github_client, config)
         self.github_client = github_client
 
-    def request_resolution_for_comments(self, pr_url: str, comment_ids: List[str],
+    def request_resolution_for_comments(self, pr_url: str, comment_ids: List[Union[str, int]],
                                       include_summary: bool = True) -> Dict[str, Any]:
         """Request resolution for specific comments in a pull request.
 
         Args:
             pr_url: GitHub pull request URL
-            comment_ids: List of comment IDs to request resolution for
+            comment_ids: List of comment IDs (strings or integers) to request resolution for
             include_summary: Whether to include a summary of comment IDs
 
         Returns:
             Dictionary with request results
         """
         if include_summary and comment_ids:
-            context = f"Requesting resolution verification for comments: {', '.join(comment_ids[:10])}"
+            ids_str = ", ".join(map(str, comment_ids[:10]))
+            context = f"Requesting resolution verification for comments: {ids_str}"
             if len(comment_ids) > 10:
                 context += f" and {len(comment_ids) - 10} more comments"
         else:
