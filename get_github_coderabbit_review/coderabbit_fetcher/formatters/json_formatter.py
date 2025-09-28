@@ -84,15 +84,21 @@ class JSONFormatter(BaseFormatter):
         """
         # Safe attribute access
         chronological_order = getattr(thread, 'chronological_order', [])
+        resolution_status = getattr(thread, 'resolution_status', None)
+        comment_count = getattr(thread, 'comment_count', None)
+
+        # Ensure comment_count is a valid integer
+        if not isinstance(comment_count, int) or comment_count < 0:
+            comment_count = len(chronological_order)
 
         return {
             "thread_id": getattr(thread, 'thread_id', None),
             "root_comment_id": getattr(thread, 'root_comment_id', None),
-            "resolution_status": str(thread.resolution_status),
+            "resolution_status": str(resolution_status) if resolution_status is not None else "unknown",
             "file_context": getattr(thread, 'file_context', None),
             "line_context": getattr(thread, 'line_context', None),
             "participants": getattr(thread, 'participants', []),
-            "comment_count": getattr(thread, 'comment_count', len(chronological_order)),
+            "comment_count": comment_count,
             "coderabbit_comment_count": getattr(thread, 'coderabbit_comment_count', 0),
             "is_resolved": getattr(thread, 'is_resolved', False),
             "context_summary": getattr(thread, 'context_summary', None),
