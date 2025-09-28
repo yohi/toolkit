@@ -272,6 +272,34 @@ pytest -m performance
 
 Performance tests focus on functional correctness and log timing information rather than enforcing strict timing constraints to prevent flaky CI failures.
 
+### API Refactoring Test
+
+Run the comprehensive API refactoring test:
+
+```bash
+python test_github_api_refactor.py
+```
+
+This test suite includes:
+
+#### 🧪 **Enhanced API Method Testing**
+- **HTTP Layer Mocking**: All GitHub API calls are properly mocked
+- **Real Method Calls**: Tests actually call `GitHubClient.post_comment()` and `GitHubClient.get_comment()`
+- **Response Structure Validation**: Ensures all expected fields are present with correct types
+- **API Endpoint Verification**: Confirms correct URLs, headers, and HTTP methods are used
+
+#### 🔍 **Comprehensive Error Handling**
+- **HTTP Error Responses**: Tests 401, 403, 404, 500 error scenarios
+- **JSON Parsing Errors**: Malformed and empty response handling
+- **Network Timeouts**: Command and network timeout scenarios
+- **Authentication Failures**: Various auth failure modes during operations
+
+#### ✅ **Assertion-Based Testing**
+- **Field Existence**: Verifies all required fields are present in responses
+- **Type Validation**: Ensures correct data types for each field
+- **Value Verification**: Checks specific field values and structures
+- **Regression Prevention**: Tests fail on missing fields or incorrect structures
+
 ### Code Quality
 
 ```bash

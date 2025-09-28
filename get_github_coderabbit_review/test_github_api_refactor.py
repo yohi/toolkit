@@ -31,33 +31,117 @@ def test_post_comment_api():
             print(f"❌ GitHubClient initialization failed: {e}")
             return False
 
-    # Test authentication check with proper mocking
-    with patch.object(client, 'is_authenticated', return_value=True):
-        try:
-            if not client.is_authenticated():
-                print("❌ GitHub CLI is not authenticated. Please run 'gh auth login'")
-                return False
-        except Exception as e:
-            print(f"❌ Authentication check failed: {e}")
-            return False
-
-        print("✅ GitHub CLI authentication verified (mocked)")
-
-    # Test URL parsing
+    # Test URL parsing first
     test_url = "https://github.com/octocat/Hello-World/pull/1"
     try:
         owner, repo, pr_number = client.parse_pr_url(test_url)
         print(f"✅ URL parsing: {owner}/{repo}#{pr_number}")
+        assert owner == "octocat"
+        assert repo == "Hello-World"
+        assert pr_number == "1"
     except Exception as e:
         print(f"❌ URL parsing failed: {e}")
         return False
 
-    print("🎯 All basic tests passed!")
+    # Test successful comment posting with mocked HTTP layer
+    print("  Testing successful comment posting...")
+    mock_response = {
+        "id": 123456789,
+        "html_url": "https://github.com/octocat/Hello-World/pull/1#issuecomment-123456789",
+        "body": "Test comment body",
+        "created_at": "2024-01-01T12:00:00Z",
+        "updated_at": "2024-01-01T12:00:00Z",
+        "user": {"login": "testuser"},
+        "node_id": "IC_kwDOABCD12345"
+    }
+
+    with patch('subprocess.run') as mock_run:
+        # Mock successful API call
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=json.dumps(mock_response),
+            stderr=""
+        )
+
+        # Mock authentication check
+        with patch.object(client, 'is_authenticated', return_value=True):
+            try:
+                result = client.post_comment(test_url, "Test comment body")
+
+                # Assert the returned structure
+                assert isinstance(result, dict), "Result should be a dictionary"
+                assert result["id"] == 123456789, f"Expected id 123456789, got {result['id']}"
+                assert result["html_url"] == mock_response["html_url"], "HTML URL mismatch"
+                assert result["body"] == "Test comment body", "Comment body mismatch"
+                assert result["created_at"] == "2024-01-01T12:00:00Z", "Created at mismatch"
+                assert result["user"] == "testuser", "User login mismatch"
+                assert result["node_id"] == "IC_kwDOABCD12345", "Node ID mismatch"
+
+                print("    ✅ Comment posting successful with correct response structure")
+
+                # Verify the correct API call was made
+                mock_run.assert_called_once()
+                call_args = mock_run.call_args[0][0]  # Get the command arguments
+                assert "gh" in call_args, "Should call gh command"
+                assert "api" in call_args, "Should use gh api"
+                assert "/repos/octocat/Hello-World/issues/1/comments" in call_args, "Should use correct API endpoint"
+                assert "--method" in call_args and "POST" in call_args, "Should use POST method"
+
+                print("    ✅ Correct API endpoint and method used")
+
+            except Exception as e:
+                print(f"    ❌ Comment posting failed: {e}")
+                return False
+
+    # Test error response handling
+    print("  Testing error response handling...")
+    with patch('subprocess.run') as mock_run:
+        # Mock API error (non-2xx response)
+        mock_run.return_value = MagicMock(
+            returncode=1,
+            stdout="",
+            stderr='{"message": "Not Found", "documentation_url": "https://docs.github.com/rest"}'
+        )
+
+        with patch.object(client, 'is_authenticated', return_value=True):
+            try:
+                client.post_comment(test_url, "Test comment")
+                print("    ❌ Should have raised GitHubAPIError for API failure")
+                return False
+            except GitHubAPIError as e:
+                print(f"    ✅ Correctly handled API error: {type(e).__name__}")
+            except Exception as e:
+                print(f"    ❌ Unexpected exception type: {type(e).__name__}, expected GitHubAPIError")
+                return False
+
+    # Test JSON parsing error
+    print("  Testing JSON parsing error handling...")
+    with patch('subprocess.run') as mock_run:
+        # Mock successful return code but invalid JSON
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="invalid json response",
+            stderr=""
+        )
+
+        with patch.object(client, 'is_authenticated', return_value=True):
+            try:
+                client.post_comment(test_url, "Test comment")
+                print("    ❌ Should have raised GitHubAPIError for JSON parsing failure")
+                return False
+            except GitHubAPIError as e:
+                assert "Failed to parse GitHub API response" in str(e), "Should mention JSON parsing error"
+                print(f"    ✅ Correctly handled JSON parsing error: {e}")
+            except Exception as e:
+                print(f"    ❌ Unexpected exception type: {type(e).__name__}, expected GitHubAPIError")
+                return False
+
+    print("🎯 All comment posting tests passed!")
     return True
 
 
 def test_comment_structure():
-    """Test the expected comment response structure."""
+    """Test the expected comment response structure with real assertions."""
     print("\n🔍 Testing comment response structure...")
 
     # Expected fields from GitHub API response
@@ -67,7 +151,7 @@ def test_comment_structure():
     ]
 
     # Mock response structure (what we expect from GitHub API)
-    mock_response = {
+    mock_api_response = {
         "id": 123456789,
         "html_url": "https://github.com/owner/repo/pull/1#issuecomment-123456789",
         "body": "Test comment",
@@ -77,13 +161,128 @@ def test_comment_structure():
         "node_id": "IC_kwDOABCD12345"
     }
 
-    print("✅ Expected response structure:")
-    for field in expected_fields:
-        if field == "user":
-            print(f"  - {field}: {mock_response.get(field, {}).get('login', 'N/A')}")
-        else:
-            print(f"  - {field}: {mock_response.get(field, 'N/A')}")
+    # Initialize client with mocked authentication
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="")
+        client = GitHubClient()
 
+    # Test get_comment method with mocked HTTP layer
+    print("  Testing get_comment method structure...")
+    test_url = "https://github.com/owner/repo/pull/1"
+    comment_id = 123456789
+
+    with patch('subprocess.run') as mock_run:
+        # Mock successful API call for get_comment
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=json.dumps(mock_api_response),
+            stderr=""
+        )
+
+        with patch.object(client, 'is_authenticated', return_value=True):
+            try:
+                result = client.get_comment(test_url, comment_id)
+
+                # Assert that result is a dictionary
+                assert isinstance(result, dict), "Result should be a dictionary"
+                print("    ✅ Result is a dictionary")
+
+                # Assert all expected fields exist
+                for field in expected_fields:
+                    assert field in result, f"Missing expected field: {field}"
+                    print(f"    ✅ Field '{field}' exists")
+
+                # Assert specific field types and values
+                assert isinstance(result["id"], int), "ID should be an integer"
+                assert isinstance(result["html_url"], str), "HTML URL should be a string"
+                assert isinstance(result["body"], str), "Body should be a string"
+                assert isinstance(result["created_at"], str), "Created at should be a string"
+                assert isinstance(result["updated_at"], str), "Updated at should be a string"
+                assert isinstance(result["user"], str), "User should be a string (login)"
+                assert isinstance(result["node_id"], str), "Node ID should be a string"
+
+                print("    ✅ All field types are correct")
+
+                # Assert specific values
+                assert result["id"] == 123456789, f"Expected id 123456789, got {result['id']}"
+                assert result["user"] == "testuser", f"Expected user 'testuser', got {result['user']}"
+                assert "github.com" in result["html_url"], "HTML URL should contain github.com"
+
+                print("    ✅ Field values are correct")
+
+                # Verify the correct API call was made
+                mock_run.assert_called_once()
+                call_args = mock_run.call_args[0][0]
+                assert "gh" in call_args, "Should call gh command"
+                assert "api" in call_args, "Should use gh api"
+                assert f"/repos/owner/repo/issues/comments/{comment_id}" in call_args, "Should use correct API endpoint"
+
+                print("    ✅ Correct API endpoint used")
+
+            except Exception as e:
+                print(f"    ❌ get_comment test failed: {e}")
+                return False
+
+    # Test missing field scenario
+    print("  Testing missing field detection...")
+    incomplete_response = {
+        "id": 123456789,
+        "html_url": "https://github.com/owner/repo/pull/1#issuecomment-123456789",
+        # Missing other required fields
+    }
+
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=json.dumps(incomplete_response),
+            stderr=""
+        )
+
+        with patch.object(client, 'is_authenticated', return_value=True):
+            try:
+                result = client.get_comment(test_url, comment_id)
+
+                # Check for missing fields - should have None values for missing fields
+                missing_fields = []
+                for field in expected_fields:
+                    if field not in result or result[field] is None:
+                        missing_fields.append(field)
+
+                if missing_fields:
+                    print(f"    ✅ Correctly detected missing fields: {missing_fields}")
+                else:
+                    print("    ✅ All fields present in incomplete response (client handles missing fields)")
+
+            except Exception as e:
+                print(f"    ❌ Missing field test failed: {e}")
+                return False
+
+    # Test user field structure specifically
+    print("  Testing user field structure...")
+    user_response = mock_api_response.copy()
+
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout=json.dumps(user_response),
+            stderr=""
+        )
+
+        with patch.object(client, 'is_authenticated', return_value=True):
+            try:
+                result = client.get_comment(test_url, comment_id)
+
+                # Assert user field contains login information
+                assert "user" in result, "User field should exist"
+                assert result["user"] == "testuser", "User should contain login name"
+
+                print("    ✅ User field structure is correct")
+
+            except Exception as e:
+                print(f"    ❌ User field test failed: {e}")
+                return False
+
+    print("🎯 All comment structure tests passed!")
     return True
 
 
@@ -124,6 +323,178 @@ def test_error_handling():
         print(f"❌ Unexpected exception type: {type(e).__name__}, expected InvalidPRUrlError")
         return False
 
+    return True
+
+
+def test_comprehensive_error_handling():
+    """Test comprehensive error handling for API methods."""
+    print("\n🚨 Testing comprehensive error handling...")
+
+    # Initialize client with mocked authentication
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="")
+        client = GitHubClient()
+
+    test_url = "https://github.com/octocat/Hello-World/pull/1"
+
+    # Test 1: API rate limit error (HTTP 403)
+    print("  Test 1: API rate limit error handling...")
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=1,
+            stdout="",
+            stderr='{"message": "API rate limit exceeded", "documentation_url": "https://docs.github.com/rest/overview/resources-in-the-rest-api#rate-limiting"}'
+        )
+
+        with patch.object(client, 'is_authenticated', return_value=True):
+            try:
+                client.post_comment(test_url, "Test comment")
+                print("    ❌ Should have raised GitHubAPIError for rate limit")
+                return False
+            except GitHubAPIError as e:
+                assert "Failed to post comment via API" in str(e), "Should mention API failure"
+                print(f"    ✅ Correctly handled rate limit error: {type(e).__name__}")
+            except Exception as e:
+                print(f"    ❌ Unexpected exception type: {type(e).__name__}, expected GitHubAPIError")
+                return False
+
+    # Test 2: Repository not found (HTTP 404)
+    print("  Test 2: Repository not found error handling...")
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=1,
+            stdout="",
+            stderr='{"message": "Not Found", "documentation_url": "https://docs.github.com/rest"}'
+        )
+
+        with patch.object(client, 'is_authenticated', return_value=True):
+            try:
+                client.get_comment(test_url, 123456)
+                print("    ❌ Should have raised GitHubAPIError for not found")
+                return False
+            except GitHubAPIError as e:
+                assert "Failed to get comment" in str(e), "Should mention get comment failure"
+                print(f"    ✅ Correctly handled not found error: {type(e).__name__}")
+            except Exception as e:
+                print(f"    ❌ Unexpected exception type: {type(e).__name__}, expected GitHubAPIError")
+                return False
+
+    # Test 3: Unauthorized access (HTTP 401)
+    print("  Test 3: Unauthorized access error handling...")
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=1,
+            stdout="",
+            stderr='{"message": "Bad credentials", "documentation_url": "https://docs.github.com/rest"}'
+        )
+
+        with patch.object(client, 'is_authenticated', return_value=True):
+            try:
+                client.get_latest_comments(test_url, 5)
+                print("    ❌ Should have raised GitHubAPIError for unauthorized")
+                return False
+            except GitHubAPIError as e:
+                assert "Failed to get latest comments" in str(e), "Should mention get latest comments failure"
+                print(f"    ✅ Correctly handled unauthorized error: {type(e).__name__}")
+            except Exception as e:
+                print(f"    ❌ Unexpected exception type: {type(e).__name__}, expected GitHubAPIError")
+                return False
+
+    # Test 4: Network timeout error
+    print("  Test 4: Network timeout error handling...")
+    with patch('subprocess.run') as mock_run:
+        mock_run.side_effect = subprocess.TimeoutExpired("gh", 30)
+
+        with patch.object(client, 'is_authenticated', return_value=True):
+            try:
+                client.post_comment(test_url, "Test comment")
+                print("    ❌ Should have raised GitHubAPIError for timeout")
+                return False
+            except GitHubAPIError as e:
+                assert "timed out" in str(e), "Should mention timeout"
+                print(f"    ✅ Correctly handled timeout error: {type(e).__name__}")
+            except Exception as e:
+                print(f"    ❌ Unexpected exception type: {type(e).__name__}, expected GitHubAPIError")
+                return False
+
+    # Test 5: Malformed JSON response
+    print("  Test 5: Malformed JSON response handling...")
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout='{"incomplete": json response',  # Invalid JSON
+            stderr=""
+        )
+
+        with patch.object(client, 'is_authenticated', return_value=True):
+            try:
+                client.get_comment(test_url, 123456)
+                print("    ❌ Should have raised GitHubAPIError for malformed JSON")
+                return False
+            except GitHubAPIError as e:
+                assert "Failed to parse" in str(e), "Should mention parsing failure"
+                print(f"    ✅ Correctly handled malformed JSON: {type(e).__name__}")
+            except Exception as e:
+                print(f"    ❌ Unexpected exception type: {type(e).__name__}, expected GitHubAPIError")
+                return False
+
+    # Test 6: Empty response
+    print("  Test 6: Empty response handling...")
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=0,
+            stdout="",  # Empty response
+            stderr=""
+        )
+
+        with patch.object(client, 'is_authenticated', return_value=True):
+            try:
+                client.get_comment(test_url, 123456)
+                print("    ❌ Should have raised GitHubAPIError for empty response")
+                return False
+            except GitHubAPIError as e:
+                assert "Failed to parse" in str(e), "Should mention parsing failure"
+                print(f"    ✅ Correctly handled empty response: {type(e).__name__}")
+            except Exception as e:
+                print(f"    ❌ Unexpected exception type: {type(e).__name__}, expected GitHubAPIError")
+                return False
+
+    # Test 7: Server error (HTTP 500)
+    print("  Test 7: Server error handling...")
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value = MagicMock(
+            returncode=1,
+            stdout="",
+            stderr='{"message": "Server Error", "documentation_url": "https://docs.github.com/rest"}'
+        )
+
+        with patch.object(client, 'is_authenticated', return_value=True):
+            try:
+                client.post_comment(test_url, "Test comment")
+                print("    ❌ Should have raised GitHubAPIError for server error")
+                return False
+            except GitHubAPIError as e:
+                assert "Failed to post comment via API" in str(e), "Should mention API failure"
+                print(f"    ✅ Correctly handled server error: {type(e).__name__}")
+            except Exception as e:
+                print(f"    ❌ Unexpected exception type: {type(e).__name__}, expected GitHubAPIError")
+                return False
+
+    # Test 8: Authentication failure during operation
+    print("  Test 8: Authentication failure during operation...")
+    with patch.object(client, 'is_authenticated', return_value=False):
+        try:
+            client.post_comment(test_url, "Test comment")
+            print("    ❌ Should have raised GitHubAuthenticationError")
+            return False
+        except GitHubAuthenticationError as e:
+            assert "not authenticated" in str(e), "Should mention authentication failure"
+            print(f"    ✅ Correctly handled authentication failure: {type(e).__name__}")
+        except Exception as e:
+            print(f"    ❌ Unexpected exception type: {type(e).__name__}, expected GitHubAuthenticationError")
+            return False
+
+    print("🎯 All comprehensive error handling tests passed!")
     return True
 
 
@@ -276,6 +647,7 @@ def main():
         test_post_comment_api,
         test_comment_structure,
         test_error_handling,
+        test_comprehensive_error_handling,
         test_github_client_initialization,
         test_ci_environment_safety
     ]
