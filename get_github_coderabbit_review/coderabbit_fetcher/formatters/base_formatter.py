@@ -78,7 +78,16 @@ class BaseFormatter(ABC):
         sections.append("## Thread Context")
         sections.append(f"**Thread ID**: {getattr(thread, 'thread_id', 'N/A')}")
         sections.append(f"**Resolution Status**: {thread.resolution_status}")
-        sections.append(f"**Comment Count**: {getattr(thread, 'comment_count', len(thread.chronological_order))}")
+
+        # Safe comment count calculation with proper fallback
+        chronological_order = getattr(thread, 'chronological_order', [])
+        comment_count = getattr(thread, 'comment_count', None)
+
+        # Use explicit comment_count if valid, otherwise fallback to chronological_order length
+        if comment_count is None or not isinstance(comment_count, int) or comment_count < 0:
+            comment_count = len(chronological_order) if chronological_order else 0
+
+        sections.append(f"**Comment Count**: {comment_count}")
 
         # File Context
         if hasattr(thread, 'file_context') and thread.file_context:

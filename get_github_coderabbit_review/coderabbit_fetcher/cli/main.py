@@ -16,8 +16,6 @@ from rich.traceback import install
 from ..exceptions import CodeRabbitFetcherError
 from .parser import ArgumentParser
 
-# Install rich traceback handler for better error display
-install(show_locals=True)
 
 console = Console()
 
@@ -32,6 +30,7 @@ console = Console()
 )
 @click.option(
     "--output-format",
+    "--format",
     "-f",
     type=click.Choice(["markdown", "json", "plain"], case_sensitive=False),
     default="markdown",
@@ -98,7 +97,7 @@ def cli(
             console.print("✅ [green]Successfully processed CodeRabbit comments[/green]")
         else:
             console.print("⚠️ [yellow]Processing completed with warnings[/yellow]")
-
+            sys.exit(result)
     except CodeRabbitFetcherError as e:
         console.print(f"❌ [red]Error: {e}[/red]")
         sys.exit(1)
@@ -114,6 +113,8 @@ def cli(
 
 def main() -> None:
     """Entry point for the CLI application."""
+    # Install rich traceback handler for better error display
+    install(show_locals=True)
     cli()
 
 
