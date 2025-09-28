@@ -1,7 +1,6 @@
 """Comment posting functionality for CodeRabbit resolution requests."""
 
-import re
-from typing import Dict, List, Optional, Any, Tuple
+from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -167,7 +166,7 @@ class CommentPoster:
         try:
             comment_message = self.config.generate_message(additional_context)
         except InvalidCommentError as e:
-            raise CommentPostingError(f"Failed to generate comment: {e}")
+            raise CommentPostingError("Failed to generate comment") from e
 
         # Validate comment content
         self._validate_comment_content(comment_message)
@@ -192,8 +191,7 @@ class CommentPoster:
             }
 
         except Exception as e:
-            error_msg = f"Failed to post comment to {pr_url}: {str(e)}"
-            raise CommentPostingError(error_msg) from e
+            raise CommentPostingError("Failed to post comment") from e
 
     def generate_resolution_request(self, additional_context: str = "") -> str:
         """Generate a resolution request message without posting.
@@ -352,7 +350,7 @@ class CommentPoster:
         try:
             parsed = urlparse(pr_url)
         except Exception as e:
-            raise PRUrlValidationError(f"Invalid URL format: {e}")
+            raise PRUrlValidationError("Invalid URL format") from e
 
         # Check scheme
         if parsed.scheme not in ["http", "https"]:

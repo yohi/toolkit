@@ -9,7 +9,7 @@ import json
 
 from ..exceptions import CodeRabbitFetcherError, GitHubAuthenticationError, InvalidPRUrlError
 from ..github_client import GitHubClient, GitHubAPIError
-from ..comment_analyzer import CommentAnalyzer
+from ..comment_analyzer import CommentAnalyzer, CommentAnalysisError
 from ..persona_manager import PersonaManager
 from ..formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter
 from ..resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
@@ -120,9 +120,12 @@ class CodeRabbitFetcherCLI:
         except GitHubAPIError as e:
             print(f"❌ GitHub API Error: {e}", file=sys.stderr)
             raise CLIError("Failed to fetch PR data") from e
-        except (ValueError, KeyError, TypeError) as e:
-            print(f"❌ Analysis Error: {e}", file=sys.stderr)
+        except CommentAnalysisError as e:
+            print(f"❌ Comment Analysis Error: {e}", file=sys.stderr)
             raise CLIError("Failed to analyze comments") from e
+        except (ValueError, KeyError, TypeError) as e:
+            print(f"❌ Data Processing Error: {e}", file=sys.stderr)
+            raise CLIError("Failed to process data") from e
 
     def format_output(self, persona: str, analyzed_comments: Any, output_format: str) -> str:
         """Format analyzed comments for output."""
@@ -256,10 +259,12 @@ Examples:
         """
     )
 
-    # Required argument
+    # Optional positional argument (required only for fetch command)
     parser.add_argument(
         'pr_url',
-        help='GitHub pull request URL'
+        nargs='?',
+        default=None,
+        help='GitHub pull request URL (omit for --validate/--version/--examples/--validate-marker)'
     )
 
     # Optional arguments
@@ -380,6 +385,9 @@ def run_fetch_command(args) -> int:
         return 0
 
     except CLIError:
+        return 1
+    except CommentAnalysisError as e:
+        print(f"❌ Comment Analysis Error: {e}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         print("\n⚠️  Operation cancelled by user", file=sys.stderr)

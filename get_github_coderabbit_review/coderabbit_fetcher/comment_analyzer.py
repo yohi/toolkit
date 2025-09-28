@@ -5,6 +5,9 @@ import time
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
 
+# Module-level logger
+logger = logging.getLogger(__name__)
+
 from .models import (
     AnalyzedComments,
     SummaryComment,
@@ -213,7 +216,10 @@ class CommentAnalyzer:
                 processed.append(summary)
             except (ValueError, KeyError, TypeError) as e:
                 # Log error but continue processing
-                logging.warning(f"Failed to process summary comment {comment.get('id')}: {e}")
+                logger.warning("Failed to process summary comment %s: %s", comment.get('id'), e, exc_info=True)
+            except (KeyboardInterrupt, SystemExit):
+                # Re-raise critical exceptions
+                raise
 
         return processed
 
@@ -228,7 +234,10 @@ class CommentAnalyzer:
                 self.stats.actionable_comments += review.actionable_count
             except (ValueError, KeyError, TypeError, AttributeError) as e:
                 # Log error but continue processing
-                logging.warning(f"Failed to process review comment {comment.get('id')}: {e}")
+                logger.warning("Failed to process review comment %s: %s", comment.get('id'), e, exc_info=True)
+            except (KeyboardInterrupt, SystemExit):
+                # Re-raise critical exceptions
+                raise
 
         return processed
 
@@ -240,8 +249,11 @@ class CommentAnalyzer:
             return threads
         except (ValueError, KeyError, TypeError) as e:
             # Log error and return empty list
-            logging.warning(f"Failed to process thread comments: {e}")
+            logger.warning("Failed to process thread comments: %s", e, exc_info=True)
             return []
+        except (KeyboardInterrupt, SystemExit):
+            # Re-raise critical exceptions
+            raise
 
     def _filter_resolved_threads(self, threads: List[ThreadContext]) -> List[ThreadContext]:
         """Filter out resolved threads using resolved marker detection."""
