@@ -24,11 +24,15 @@ A Python tool for fetching and formatting CodeRabbit comments from GitHub pull r
 
 ```bash
 git clone https://github.com/yohi/toolkit.git
-cd toolkit/get_github_coderabbit_review
+cd toolkit
 python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/owner/repo/pull/123
 ```
 
+**Note**: Always run commands from the repository root (`toolkit` directory) to ensure proper module resolution.
+
 ## Quick Start
+
+**Prerequisites**: Ensure you're in the repository root directory (`toolkit`).
 
 1. **Authenticate with GitHub CLI**:
    ```bash
@@ -52,6 +56,8 @@ python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/own
 
 ## Usage
 
+**Important**: All commands must be run from the repository root directory (`toolkit`).
+
 ### Basic Command
 
 ```bash
@@ -69,6 +75,8 @@ python -m get_github_coderabbit_review.coderabbit_fetcher <PR_URL> [OPTIONS]
 - `--help, -h`: Show help message
 
 ### Examples
+
+**Note**: Ensure you're in the `toolkit` directory before running these commands.
 
 **Basic usage**:
 ```bash
@@ -187,8 +195,8 @@ The tool provides clear error messages for common issues:
 
 ```bash
 git clone https://github.com/yohi/toolkit.git
-cd toolkit/get_github_coderabbit_review
-pip install -e ".[dev]"
+cd toolkit
+pip install -e "get_github_coderabbit_review[dev]"
 ```
 
 ### Run Tests
@@ -206,8 +214,8 @@ pytest tests/unit/
 # Run CI-safe tests (no external dependencies)
 pytest tests/test_github_client_safe.py
 
-# Run legacy test suite
-python test_github_api_refactor.py
+# Run legacy test suite (from get_github_coderabbit_review directory)
+cd get_github_coderabbit_review && python test_github_api_refactor.py
 
 # Run with coverage
 pytest --cov=coderabbit_fetcher --cov-report=html

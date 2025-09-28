@@ -191,7 +191,7 @@ def test_ci_environment_safety():
         # Test different CI failure scenarios
         def unauthenticated_response(*args, **kwargs):
             return MagicMock(returncode=1, stderr="Not authenticated")
-        
+
         scenarios = [
             ("gh not installed", FileNotFoundError("gh: command not found")),
             ("gh not authenticated", unauthenticated_response),
