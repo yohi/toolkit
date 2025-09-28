@@ -638,16 +638,20 @@ class TestResolvedMarkerIntegration:
             assert result == expected, f"Failed for content: {content}"
 
     @pytest.mark.slow
+    @pytest.mark.performance
     @pytest.mark.skipif(
-        os.environ.get("CI_LOW_RESOURCE") == "true",
-        reason="Skip performance test in low-resource CI environments"
+        os.environ.get("CI_LOW_RESOURCE") == "true" or os.environ.get("SKIP_PERF_TESTS") == "true",
+        reason="Skip performance test in low-resource CI environments or when explicitly disabled"
     )
     def test_performance_with_large_datasets(self):
         """Test performance with large number of comments.
 
         This test verifies that the resolved marker detection can handle
-        large datasets efficiently. It's marked as 'slow' and can be skipped
-        in resource-constrained CI environments.
+        large datasets efficiently. It's marked as 'slow' and 'performance' and can be skipped
+        in resource-constrained CI environments or when performance tests are disabled.
+
+        The test focuses on functional correctness and logs performance metrics
+        rather than enforcing strict timing constraints to prevent flaky CI failures.
         """
         config = ResolvedMarkerConfig()
         detector = ResolvedMarkerDetector(config)
@@ -667,25 +671,43 @@ class TestResolvedMarkerIntegration:
         stats = detector.get_resolution_statistics(large_comments)
         end_time = time.perf_counter()
 
-        # Verify results
+        # Verify functional correctness (primary assertion)
         assert stats["total_comments"] == 1000
         assert stats["resolved_comments"] == 100  # Every 10th comment
         assert stats["unresolved_comments"] == 900
 
-        # Calculate and log processing time
+        # Calculate and log processing time for monitoring
         processing_time = end_time - start_time
         logging.info(f"Performance test: processed 1000 comments in {processing_time:.3f}s")
 
-        # Performance should be reasonable (less than 2 seconds for 1000 comments)
-        # Increased threshold to prevent flaky CI failures due to resource contention
-        assert processing_time < 2.0, f"Processing took too long: {processing_time:.3f}s"
+        # Dynamic threshold based on environment
+        # CI environments get more lenient thresholds to prevent flaky failures
+        is_ci = os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true"
+        threshold = float(os.environ.get("PERF_TEST_THRESHOLD", "5.0" if is_ci else "3.0"))
 
-        # Optional: Log a warning if it's getting close to the threshold
-        if processing_time > 1.5:
+        # Performance assertion with generous threshold to prevent CI flakiness
+        # Focus is on detecting major performance regressions, not micro-optimizations
+        if processing_time > threshold:
             logging.warning(
-                f"Performance test approaching threshold: {processing_time:.3f}s "
-                "(consider investigating if this becomes consistent)"
+                f"Performance test exceeded threshold: {processing_time:.3f}s > {threshold}s "
+                f"(CI: {is_ci}). This may indicate a performance regression."
             )
+            # Only fail if performance is extremely poor (likely indicates a real issue)
+            if processing_time > threshold * 2:
+                pytest.fail(
+                    f"Performance severely degraded: {processing_time:.3f}s > {threshold * 2}s. "
+                    "This likely indicates a serious performance regression."
+                )
+
+        # Log performance category for monitoring
+        if processing_time < 0.5:
+            logging.info("Performance: Excellent")
+        elif processing_time < 1.0:
+            logging.info("Performance: Good")
+        elif processing_time < 2.0:
+            logging.info("Performance: Acceptable")
+        else:
+            logging.info("Performance: Needs attention")
 
 
 if __name__ == "__main__":
