@@ -68,11 +68,12 @@ class GitHubClient:
         """
         return self._authenticated or False
 
-    def fetch_pr_comments(self, pr_url: str) -> Dict[str, Any]:
+    def fetch_pr_comments(self, pr_url: str, timeout: Optional[int] = None) -> Dict[str, Any]:
         """Fetch pull request comments using GitHub CLI.
 
         Args:
             pr_url: GitHub pull request URL
+            timeout: Timeout in seconds for GitHub CLI operations
 
         Returns:
             Dictionary containing PR data and comments
@@ -86,11 +87,12 @@ class GitHubClient:
 
         try:
             # Fetch PR data with comments
+            actual_timeout = timeout if timeout is not None else 60
             result = subprocess.run([
                 "gh", "pr", "view", str(pr_number),
                 "--repo", f"{owner}/{repo}",
                 "--json", "title,body,number,state,url,comments,reviews"
-            ], capture_output=True, text=True, timeout=60)
+            ], capture_output=True, text=True, timeout=actual_timeout)
 
             if result.returncode != 0:
                 error_msg = f"Failed to fetch PR data: {result.stderr.strip()}"
@@ -175,17 +177,13 @@ class GitHubClient:
             if result.returncode != 0:
                 raise GitHubAPIError(f"Failed to post comment: {result.stderr.strip()}")
 
-            # Extract comment URL from output
-            output_lines = result.stdout.strip().split('\n')
-            comment_url = None
-            for line in output_lines:
-                if 'github.com' in line and '#issuecomment-' in line:
-                    comment_url = line.strip()
-                    break
+            # Parse the output to get the comment URL
+            # gh pr comment typically outputs the comment URL
+            comment_url = result.stdout.strip() if result.stdout else None
 
-            # Extract comment ID from URL if available
+            # If we need the comment ID, fetch it via API
             comment_id = None
-            if comment_url:
+            if comment_url and '#issuecomment-' in comment_url:
                 id_match = re.search(r'#issuecomment-(\d+)', comment_url)
                 if id_match:
                     comment_id = int(id_match.group(1))
@@ -198,7 +196,7 @@ class GitHubClient:
             }
 
         except subprocess.TimeoutExpired:
-            raise GitHubAPIError(f"GitHub CLI comment posting timed out")
+            raise GitHubAPIError("GitHub CLI comment posting timed out")
         except Exception as e:
             if isinstance(e, GitHubAPIError):
                 raise

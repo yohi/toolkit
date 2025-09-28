@@ -119,7 +119,8 @@ class CommentAnalyzer:
             )
 
         except Exception as e:
-            raise CommentAnalysisError(f"Failed to analyze comments: {e}") from e
+            logger.exception("Failed to analyze comments")
+            raise CommentAnalysisError("Failed to analyze comments") from e
 
     def _extract_pr_info(self, pr_data: Dict[str, Any]) -> Dict[str, Any]:
         """Extract basic pull request information."""
