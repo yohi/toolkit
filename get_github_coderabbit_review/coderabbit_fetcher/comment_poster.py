@@ -1,6 +1,6 @@
 """Comment posting functionality for CodeRabbit resolution requests."""
 
-from typing import Dict, List, Optional, Any
+from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -453,20 +453,21 @@ class ResolutionRequestManager:
         self.poster = CommentPoster(github_client, config)
         self.github_client = github_client
 
-    def request_resolution_for_comments(self, pr_url: str, comment_ids: List[str],
+    def request_resolution_for_comments(self, pr_url: str, comment_ids: List[Union[str, int]],
                                       include_summary: bool = True) -> Dict[str, Any]:
         """Request resolution for specific comments in a pull request.
 
         Args:
             pr_url: GitHub pull request URL
-            comment_ids: List of comment IDs to request resolution for
+            comment_ids: List of comment IDs (strings or integers) to request resolution for
             include_summary: Whether to include a summary of comment IDs
 
         Returns:
             Dictionary with request results
         """
         if include_summary and comment_ids:
-            context = f"Requesting resolution verification for comments: {', '.join(comment_ids[:10])}"
+            ids_str = ", ".join(map(str, comment_ids[:10]))
+            context = f"Requesting resolution verification for comments: {ids_str}"
             if len(comment_ids) > 10:
                 context += f" and {len(comment_ids) - 10} more comments"
         else:
