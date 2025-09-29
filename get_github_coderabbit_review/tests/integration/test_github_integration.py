@@ -145,8 +145,7 @@ class TestGitHubIntegration(unittest.TestCase):
         with self.assertRaises(NetworkError):
             self.client.fetch_pr_comments(self.sample_pr_url)
     
-    @patch('subprocess.run')
-    def test_parse_pr_url_valid(self, mock_run):
+    def test_parse_pr_url_valid(self):
         """Test URL parsing with valid GitHub PR URLs."""
         valid_urls = [
             "https://github.com/owner/repo/pull/123",

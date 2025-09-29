@@ -362,9 +362,9 @@ def main():
     runner = CodeRabbitTestRunner(verbosity=args.verbosity)
     
     if args.coverage:
-        coverage_results = runner.run_coverage_analysis()
+        runner.run_coverage_analysis()
     else:
-        test_results = runner.run_tests(args.type, args.pattern)
+        runner.run_tests(args.type, args.pattern)
     
     # Generate report if requested
     if args.report:

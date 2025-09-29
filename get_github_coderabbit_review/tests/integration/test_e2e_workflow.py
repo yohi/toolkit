@@ -3,6 +3,7 @@
 import unittest
 import tempfile
 import os
+import shutil
 import json
 from unittest.mock import patch, MagicMock
 from typing import Dict, Any
@@ -11,7 +12,8 @@ from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionCon
 from coderabbit_fetcher.exceptions import (
     ValidationError,
     GitHubAuthenticationError,
-    InvalidPRUrlError
+    InvalidPRUrlError,
+    TransientError
 )
 from tests.fixtures.sample_data import (
     SAMPLE_PR_DATA,
@@ -245,7 +247,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                raise NetworkError("Temporary network issue")
+                raise TransientError("Temporary network issue")
             return {
                 "pr_data": MOCK_GH_PR_RESPONSE,
                 "comments": MOCK_GH_COMMENTS_RESPONSE
@@ -470,7 +472,7 @@ class TestUvxCompatibility(unittest.TestCase):
                 os.unlink(os.path.join(self.temp_dir, file))
             os.rmdir(self.temp_dir)
     
-    @unittest.skipIf(os.system("which uvx") != 0, "uvx not available")
+    @unittest.skipIf(shutil.which("uvx") is None, "uvx not available")
     def test_uvx_execution_compatibility(self):
         """Test that the package can be executed via uvx."""
         # This is a basic test that would require actual package installation
