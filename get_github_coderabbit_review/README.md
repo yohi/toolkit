@@ -20,27 +20,19 @@ A Python tool for fetching and formatting CodeRabbit comments from GitHub pull r
 
 ## Installation
 
-### Using uvx (Recommended)
+### From Source (Local Development)
 
 ```bash
-uvx coderabbit-comment-fetcher https://github.com/owner/repo/pull/123
+git clone https://github.com/yohi/toolkit.git
+cd toolkit
+python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/owner/repo/pull/123
 ```
 
-### Using pip
-
-```bash
-pip install coderabbit-comment-fetcher
-```
-
-### From Source
-
-```bash
-git clone https://github.com/yohi/coderabbit-comment-fetcher.git
-cd coderabbit-comment-fetcher
-pip install -e .
-```
+**Note**: Always run commands from the repository root (`toolkit` directory) to ensure proper module resolution.
 
 ## Quick Start
+
+**Prerequisites**: Ensure you're in the repository root directory (`toolkit`).
 
 1. **Authenticate with GitHub CLI**:
    ```bash
@@ -49,25 +41,27 @@ pip install -e .
 
 2. **Fetch CodeRabbit comments**:
    ```bash
-   coderabbit-fetch https://github.com/owner/repo/pull/123
+   python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/owner/repo/pull/123
    ```
 
 3. **Generate JSON output**:
    ```bash
-   coderabbit-fetch https://github.com/owner/repo/pull/123 --output-format json
+   python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/owner/repo/pull/123 --output-format json
    ```
 
 4. **Use custom persona**:
    ```bash
-   coderabbit-fetch https://github.com/owner/repo/pull/123 --persona-file my-persona.txt
+   python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/owner/repo/pull/123 --persona-file my-persona.txt
    ```
 
 ## Usage
 
+**Important**: All commands must be run from the repository root directory (`toolkit`).
+
 ### Basic Command
 
 ```bash
-coderabbit-fetch <PR_URL> [OPTIONS]
+python -m get_github_coderabbit_review.coderabbit_fetcher <PR_URL> [OPTIONS]
 ```
 
 ### Options
@@ -82,14 +76,16 @@ coderabbit-fetch <PR_URL> [OPTIONS]
 
 ### Examples
 
+**Note**: Ensure you're in the `toolkit` directory before running these commands.
+
 **Basic usage**:
 ```bash
-coderabbit-fetch https://github.com/microsoft/vscode/pull/12345
+python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/microsoft/vscode/pull/12345
 ```
 
 **JSON output with custom persona**:
 ```bash
-coderabbit-fetch https://github.com/microsoft/vscode/pull/12345 \
+python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/microsoft/vscode/pull/12345 \
   --output-format json \
   --persona-file reviewer-persona.txt \
   --output-file review-summary.json
@@ -97,7 +93,7 @@ coderabbit-fetch https://github.com/microsoft/vscode/pull/12345 \
 
 **Request resolution from CodeRabbit**:
 ```bash
-coderabbit-fetch https://github.com/microsoft/vscode/pull/12345 \
+python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/microsoft/vscode/pull/12345 \
   --request-resolution \
   --resolved-marker "✅ RESOLVED"
 ```
@@ -198,9 +194,9 @@ The tool provides clear error messages for common issues:
 ### Setup Development Environment
 
 ```bash
-git clone https://github.com/yohi/coderabbit-comment-fetcher.git
-cd coderabbit-comment-fetcher
-pip install -e ".[dev]"
+git clone https://github.com/yohi/toolkit.git
+cd toolkit
+pip install -e "./get_github_coderabbit_review[dev]"
 ```
 
 ### Run Tests
@@ -215,9 +211,35 @@ pytest -m "not slow"
 # Run only unit tests
 pytest tests/unit/
 
+# Run CI-safe tests (no external dependencies)
+pytest tests/test_github_client_safe.py
+
+# Run legacy test suite (from get_github_coderabbit_review directory)
+cd get_github_coderabbit_review && python test_github_api_refactor.py
+
 # Run with coverage
 pytest --cov=coderabbit_fetcher --cov-report=html
 ```
+
+#### CI-Safe Testing
+
+The project includes comprehensive CI-safe tests that work without external dependencies:
+
+- **`tests/test_github_client_safe.py`**: Pytest-based test suite with full mocking
+- **`test_github_api_refactor.py`**: Legacy test suite with enhanced mocking
+
+Both test suites use extensive mocking to avoid:
+- GitHub CLI (gh) installation requirements
+- GitHub authentication dependencies
+- Network connectivity requirements
+- External service dependencies
+
+**Key Features:**
+- ✅ Works in Docker containers
+- ✅ Works in GitHub Actions
+- ✅ Works in restricted environments
+- ✅ No authentication required
+- ✅ No network access required
 
 #### Performance Tests
 
@@ -249,6 +271,35 @@ pytest -m performance
 ```
 
 Performance tests focus on functional correctness and log timing information rather than enforcing strict timing constraints to prevent flaky CI failures.
+
+### API Refactoring Test
+
+Run the comprehensive API refactoring test:
+
+```bash
+cd get_github_coderabbit_review
+python test_github_api_refactor.py
+```
+
+This test suite includes:
+
+#### 🧪 **Enhanced API Method Testing**
+- **HTTP Layer Mocking**: All GitHub API calls are properly mocked
+- **Real Method Calls**: Tests actually call `GitHubClient.post_comment()` and `GitHubClient.get_comment()`
+- **Response Structure Validation**: Ensures all expected fields are present with correct types
+- **API Endpoint Verification**: Confirms correct URLs, headers, and HTTP methods are used
+
+#### 🔍 **Comprehensive Error Handling**
+- **HTTP Error Responses**: Tests 401, 403, 404, 500 error scenarios
+- **JSON Parsing Errors**: Malformed and empty response handling
+- **Network Timeouts**: Command and network timeout scenarios
+- **Authentication Failures**: Various auth failure modes during operations
+
+#### ✅ **Assertion-Based Testing**
+- **Field Existence**: Verifies all required fields are present in responses
+- **Type Validation**: Ensures correct data types for each field
+- **Value Verification**: Checks specific field values and structures
+- **Regression Prevention**: Tests fail on missing fields or incorrect structures
 
 ### Code Quality
 

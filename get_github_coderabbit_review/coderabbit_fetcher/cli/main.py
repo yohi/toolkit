@@ -15,6 +15,7 @@ from ..formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter
 from ..resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
 from ..comment_poster import ResolutionRequestManager, ResolutionRequestConfig
 from ..models import CommentMetadata
+from ..orchestrator import CodeRabbitOrchestrator, ExecutionConfig
 
 
 # Configure logging
@@ -30,203 +31,7 @@ class CLIError(CodeRabbitFetcherError):
     pass
 
 
-class CodeRabbitFetcherCLI:
-    """Main CLI application class."""
-
-    def __init__(self):
-        """Initialize CLI application."""
-        self.github_client = None
-        self.persona_manager = None
-        self.resolved_marker_manager = None
-        self.resolution_request_manager = None
-        self.comment_analyzer = None
-
-    def setup_github_client(self) -> None:
-        """Initialize and validate GitHub client."""
-        try:
-            self.github_client = GitHubClient()
-            logger.info("GitHub CLI authentication verified")
-        except GitHubAuthenticationError as e:
-            print(f"❌ GitHub Authentication Error: {e}", file=sys.stderr)
-            print("\n💡 To fix this issue:", file=sys.stderr)
-            print("   1. Install GitHub CLI: https://cli.github.com/", file=sys.stderr)
-            print("   2. Run: gh auth login", file=sys.stderr)
-            print("   3. Follow the authentication prompts", file=sys.stderr)
-            raise CLIError("GitHub CLI authentication required") from e
-
-    def setup_managers(self, resolved_marker: str, post_resolution_request: bool) -> None:
-        """Initialize manager components."""
-        # Setup resolved marker manager
-        marker_config = ResolvedMarkerConfig(default_marker=resolved_marker)
-        self.resolved_marker_manager = ResolvedMarkerManager(marker_config)
-
-        # Setup comment analyzer
-        self.comment_analyzer = CommentAnalyzer(marker_config)
-
-        # Setup persona manager
-        self.persona_manager = PersonaManager()
-
-        # Setup resolution request manager if needed
-        if post_resolution_request:
-            request_config = ResolutionRequestConfig(resolved_marker=resolved_marker)
-            self.resolution_request_manager = ResolutionRequestManager(
-                self.github_client, request_config
-            )
-
-    def validate_pr_url(self, pr_url: str) -> None:
-        """Validate PR URL format."""
-        try:
-            self.github_client.parse_pr_url(pr_url)
-        except InvalidPRUrlError as e:
-            print(f"❌ Invalid PR URL: {e}", file=sys.stderr)
-            print("\n💡 Expected format: https://github.com/owner/repo/pull/123", file=sys.stderr)
-            raise CLIError("Invalid pull request URL") from e
-
-    def load_persona(self, persona_file: Optional[str]) -> str:
-        """Load persona content."""
-        try:
-            if persona_file:
-                return self.persona_manager.load_persona_file(persona_file)
-            else:
-                return self.persona_manager.get_default_persona()
-        except (FileNotFoundError, PermissionError, ValueError) as e:
-            print(f"❌ Persona Error: {e}", file=sys.stderr)
-            raise CLIError("Failed to load persona") from e
-
-    def fetch_and_analyze_comments(self, pr_url: str) -> Any:  # Returns AnalyzedComments
-        """Fetch and analyze PR comments."""
-        try:
-            # Show progress
-            print("🔍 Fetching pull request data...")
-            pr_data = self.github_client.fetch_pr_comments(pr_url)
-
-            print("📊 Analyzing CodeRabbit comments...")
-            analyzed_comments = self.comment_analyzer.analyze_comments(pr_data)
-
-            # Apply resolved marker filtering
-            if self.resolved_marker_manager:
-                print("🔒 Filtering resolved comments...")
-                result = self.resolved_marker_manager.process_threads_with_resolution(
-                    analyzed_comments.unresolved_threads
-                )
-                analyzed_comments.unresolved_threads = result["unresolved_threads"]
-
-                # Update metadata with resolution statistics
-                if hasattr(analyzed_comments, 'metadata'):
-                    analyzed_comments.metadata.resolved_comments = result["statistics"]["resolved_threads"]
-
-            return analyzed_comments
-
-        except GitHubAPIError as e:
-            print(f"❌ GitHub API Error: {e}", file=sys.stderr)
-            raise CLIError("Failed to fetch PR data") from e
-        except CommentAnalysisError as e:
-            print(f"❌ Comment Analysis Error: {e}", file=sys.stderr)
-            raise CLIError("Failed to analyze comments") from e
-        except (ValueError, KeyError, TypeError) as e:
-            print(f"❌ Data Processing Error: {e}", file=sys.stderr)
-            raise CLIError("Failed to process data") from e
-
-    def format_output(self, persona: str, analyzed_comments: Any, output_format: str) -> str:
-        """Format analyzed comments for output."""
-        try:
-            formatters = {
-                'markdown': MarkdownFormatter(),
-                'json': JSONFormatter(),
-                'plain': PlainTextFormatter()
-            }
-
-            formatter = formatters.get(output_format)
-            if not formatter:
-                raise ValueError(f"Unsupported output format: {output_format}")
-
-            return formatter.format(persona, analyzed_comments)
-
-        except (ValueError, TypeError, AttributeError) as e:
-            print(f"❌ Formatting Error: {e}", file=sys.stderr)
-            raise CLIError("Failed to format output") from e
-
-    def post_resolution_request(self, pr_url: str, analyzed_comments: Any) -> None:
-        """Post resolution request if enabled."""
-        if not self.resolution_request_manager:
-            return
-
-        try:
-            print("📝 Posting resolution request to CodeRabbit...")
-
-            # Generate context from analyzed comments
-            context = self._generate_resolution_context(analyzed_comments)
-
-            result = self.resolution_request_manager.validate_and_post(pr_url, context)
-
-            if result["success"]:
-                comment_url = result["posting"]["comment_url"]
-                print(f"✅ Resolution request posted: {comment_url}")
-            else:
-                print(f"❌ Failed to post resolution request: {result['error']}", file=sys.stderr)
-
-        except (ValueError, TypeError, AttributeError, GitHubAPIError) as e:
-            print(f"❌ Resolution Request Error: {e}", file=sys.stderr)
-            # Don't raise CLIError here - posting failure shouldn't stop the main output
-
-    def _generate_resolution_context(self, analyzed_comments: Any) -> str:
-        """Generate context for resolution request."""
-        context_parts = []
-
-        # Add summary of comments
-        if hasattr(analyzed_comments, 'metadata'):
-            metadata = analyzed_comments.metadata
-            context_parts.append(f"Total comments analyzed: {metadata.total_comments}")
-            context_parts.append(f"CodeRabbit comments: {metadata.coderabbit_comments}")
-            context_parts.append(f"Actionable comments: {metadata.actionable_comments}")
-
-        # Add thread information
-        if hasattr(analyzed_comments, 'unresolved_threads'):
-            thread_count = len(analyzed_comments.unresolved_threads)
-            if thread_count > 0:
-                context_parts.append(f"Unresolved threads: {thread_count}")
-
-        return "; ".join(context_parts) if context_parts else "Comments processed for review"
-
-    def write_output(self, content: str, output_file: Optional[str]) -> None:
-        """Write formatted content to file or stdout."""
-        try:
-            if output_file:
-                output_path = Path(output_file)
-                output_path.parent.mkdir(parents=True, exist_ok=True)
-
-                with open(output_path, 'w', encoding='utf-8') as f:
-                    f.write(content)
-
-                print(f"✅ Output written to: {output_path}")
-            else:
-                print(content)
-
-        except (OSError, IOError, PermissionError) as e:
-            print(f"❌ Output Error: {e}", file=sys.stderr)
-            raise CLIError("Failed to write output") from e
-
-    def display_statistics(self, analyzed_comments: Any) -> None:
-        """Display processing statistics."""
-        if not hasattr(analyzed_comments, 'metadata'):
-            return
-
-        metadata = analyzed_comments.metadata
-
-        print("\n📊 Processing Statistics:")
-        print(f"   Total comments: {metadata.total_comments}")
-        print(f"   CodeRabbit comments: {metadata.coderabbit_comments}")
-        print(f"   Actionable comments: {metadata.actionable_comments}")
-
-        if hasattr(metadata, 'resolved_comments'):
-            print(f"   Resolved comments: {metadata.resolved_comments}")
-
-        if hasattr(analyzed_comments, 'unresolved_threads'):
-            thread_count = len(analyzed_comments.unresolved_threads)
-            print(f"   Unresolved threads: {thread_count}")
-
-        if hasattr(metadata, 'processing_time_seconds'):
-            print(f"   Processing time: {metadata.processing_time_seconds:.2f}s")
+# Use orchestrator pattern - old CLI class removed and replaced with new architecture
 
 
 def create_argument_parser() -> argparse.ArgumentParser:
@@ -340,62 +145,87 @@ Examples:
 
 
 def run_fetch_command(args) -> int:
-    """Run the main fetch command."""
-    if args.debug:
-        logging.getLogger().setLevel(logging.DEBUG)
-        logger.debug("Debug logging enabled")
-
-    app = CodeRabbitFetcherCLI()
-
+    """Run the main fetch command using orchestrator."""
     try:
-        # Setup components
-        print("🔧 Setting up GitHub CLI...")
-        app.setup_github_client()
-
-        print("⚙️  Initializing components...")
-        app.setup_managers(args.resolved_marker, args.post_resolution_request)
-
-        # Validate inputs
-        print("✅ Validating PR URL...")
-        app.validate_pr_url(args.pr_url)
-
-        # Load persona
-        print("📝 Loading persona...")
-        persona = app.load_persona(args.persona_file)
-
-        # Fetch and analyze
-        analyzed_comments = app.fetch_and_analyze_comments(args.pr_url)
-
-        # Format output
-        print(f"📋 Formatting output as {args.output_format}...")
-        formatted_content = app.format_output(persona, analyzed_comments, args.output_format)
-
-        # Write output
-        app.write_output(formatted_content, args.output_file)
-
-        # Show statistics
-        if args.show_stats:
-            app.display_statistics(analyzed_comments)
-
-        # Post resolution request
-        if args.post_resolution_request:
-            app.post_resolution_request(args.pr_url, analyzed_comments)
-
-        print("\n✅ Processing completed successfully!")
-        return 0
-
-    except CLIError:
-        return 1
-    except CommentAnalysisError as e:
-        print(f"❌ Comment Analysis Error: {e}", file=sys.stderr)
-        return 1
+        # Create execution configuration
+        config = ExecutionConfig(
+            pr_url=args.pr_url,
+            persona_file=args.persona_file,
+            output_format=args.output_format,
+            output_file=args.output_file,
+            resolved_marker=args.resolved_marker,
+            post_resolution_request=args.post_resolution_request,
+            show_stats=args.show_stats,
+            debug=args.debug
+        )
+        
+        # Validate configuration
+        print("🔍 Validating configuration...")
+        orchestrator = CodeRabbitOrchestrator(config)
+        validation_result = orchestrator.validate_configuration()
+        
+        if not validation_result["valid"]:
+            print("❌ Configuration validation failed:", file=sys.stderr)
+            for issue in validation_result["issues"]:
+                print(f"   • {issue}", file=sys.stderr)
+            return 1
+        
+        if validation_result["warnings"]:
+            print("⚠️  Configuration warnings:")
+            for warning in validation_result["warnings"]:
+                print(f"   • {warning}")
+        
+        # Execute main workflow
+        print("🚀 Starting CodeRabbit Comment Fetcher...")
+        results = orchestrator.execute()
+        
+        if results["success"]:
+            print(f"\n✅ Processing completed successfully in {results['execution_time']:.2f}s!")
+            
+            # Show statistics if requested
+            if args.show_stats:
+                _display_execution_statistics(results["metrics"])
+            
+            return 0
+        else:
+            print(f"\n❌ Processing failed: {results['error']}", file=sys.stderr)
+            
+            # Show recovery recommendations
+            if results.get("recovery_info", {}).get("recommendations"):
+                print("\n💡 Recommended actions:", file=sys.stderr)
+                for rec in results["recovery_info"]["recommendations"]:
+                    print(f"   {rec}", file=sys.stderr)
+            
+            return 1
+        
     except KeyboardInterrupt:
         print("\n⚠️  Operation cancelled by user", file=sys.stderr)
         return 130
     except Exception as e:
-        logger.exception("Unexpected error")
+        logger.exception("Unexpected error in fetch command")
         print(f"\n❌ Unexpected error: {e}", file=sys.stderr)
         return 1
+
+
+def _display_execution_statistics(metrics: Dict[str, Any]) -> None:
+    """Display detailed execution statistics."""
+    print("\n📊 Execution Statistics:")
+    print(f"   Total execution time: {metrics['execution_time']:.2f}s")
+    print(f"   GitHub API calls: {metrics['github_api_calls']}")
+    print(f"   GitHub API time: {metrics['github_api_time']:.2f}s")
+    print(f"   Analysis time: {metrics['analysis_time']:.2f}s")
+    print(f"   Formatting time: {metrics['formatting_time']:.2f}s")
+    print(f"   Total comments processed: {metrics['total_comments_processed']}")
+    print(f"   CodeRabbit comments found: {metrics['coderabbit_comments_found']}")
+    print(f"   Resolved comments filtered: {metrics['resolved_comments_filtered']}")
+    print(f"   Output size: {metrics['output_size_bytes']} bytes")
+    print(f"   Success rate: {metrics['success_rate']*100:.1f}%")
+    
+    if metrics["errors_count"] > 0:
+        print(f"   Errors encountered: {metrics['errors_count']}")
+    
+    if metrics["warnings_count"] > 0:
+        print(f"   Warnings issued: {metrics['warnings_count']}")
 
 
 def run_validate_command() -> int:

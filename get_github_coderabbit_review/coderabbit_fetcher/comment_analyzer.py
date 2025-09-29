@@ -119,6 +119,7 @@ class CommentAnalyzer:
             )
 
         except Exception as e:
+            logger.exception("Failed to analyze comments")
             raise CommentAnalysisError("Failed to analyze comments") from e
 
     def _extract_pr_info(self, pr_data: Dict[str, Any]) -> Dict[str, Any]:
