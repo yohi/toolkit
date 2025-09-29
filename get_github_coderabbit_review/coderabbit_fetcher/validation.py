@@ -540,7 +540,8 @@ def timeout_handler(timeout_seconds: float) -> Callable:
             def timeout_handler_func(signum, frame):
                 raise TimeoutError(f"Function {func.__name__} timed out after {timeout_seconds}s")
 
-            # Set up the timeout
+            # Save existing timer state
+            old_timer = signal.getitimer(signal.ITIMER_REAL)
             old_handler = signal.signal(signal.SIGALRM, timeout_handler_func)
             signal.setitimer(signal.ITIMER_REAL, float(timeout_seconds))
 
@@ -552,8 +553,9 @@ def timeout_handler(timeout_seconds: float) -> Callable:
                 logger.error(f"Function {func.__name__} timed out after {timeout_seconds}s")
                 raise
             finally:
-                signal.setitimer(signal.ITIMER_REAL, 0)  # Ensure timer is cancelled
-                signal.signal(signal.SIGALRM, old_handler)  # Restore old handler
+                # Restore original timer and handler
+                signal.setitimer(signal.ITIMER_REAL, *old_timer)
+                signal.signal(signal.SIGALRM, old_handler)
 
         return wrapper
     return decorator
@@ -584,12 +586,12 @@ class ValidationSuite:
             result.merge(url_result)
 
         # Validate persona file
-        if config.get('persona_file'):
+        if 'persona_file' in config:
             file_result = self.file_validator.validate_persona_file(config['persona_file'])
             result.merge(file_result)
 
         # Validate output file
-        if config.get('output_file'):
+        if 'output_file' in config:
             output_result = self.file_validator.validate_output_path(config['output_file'])
             result.merge(output_result)
 
