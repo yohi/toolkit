@@ -158,46 +158,46 @@ def run_fetch_command(args) -> int:
             show_stats=args.show_stats,
             debug=args.debug
         )
-        
+
         # Validate configuration
         print("🔍 Validating configuration...")
         orchestrator = CodeRabbitOrchestrator(config)
         validation_result = orchestrator.validate_configuration()
-        
+
         if not validation_result["valid"]:
             print("❌ Configuration validation failed:", file=sys.stderr)
             for issue in validation_result["issues"]:
                 print(f"   • {issue}", file=sys.stderr)
             return 1
-        
+
         if validation_result["warnings"]:
             print("⚠️  Configuration warnings:")
             for warning in validation_result["warnings"]:
                 print(f"   • {warning}")
-        
+
         # Execute main workflow
         print("🚀 Starting CodeRabbit Comment Fetcher...")
         results = orchestrator.execute()
-        
+
         if results["success"]:
             print(f"\n✅ Processing completed successfully in {results['execution_time']:.2f}s!")
-            
+
             # Show statistics if requested
             if args.show_stats:
                 _display_execution_statistics(results["metrics"])
-            
+
             return 0
         else:
             print(f"\n❌ Processing failed: {results['error']}", file=sys.stderr)
-            
+
             # Show recovery recommendations
             if results.get("recovery_info", {}).get("recommendations"):
                 print("\n💡 Recommended actions:", file=sys.stderr)
                 for rec in results["recovery_info"]["recommendations"]:
                     print(f"   {rec}", file=sys.stderr)
-            
+
             return 1
-        
+
     except KeyboardInterrupt:
         print("\n⚠️  Operation cancelled by user", file=sys.stderr)
         return 130
@@ -220,10 +220,10 @@ def _display_execution_statistics(metrics: Dict[str, Any]) -> None:
     print(f"   Resolved comments filtered: {metrics['resolved_comments_filtered']}")
     print(f"   Output size: {metrics['output_size_bytes']} bytes")
     print(f"   Success rate: {metrics['success_rate']*100:.1f}%")
-    
+
     if metrics["errors_count"] > 0:
         print(f"   Errors encountered: {metrics['errors_count']}")
-    
+
     if metrics["warnings_count"] > 0:
         print(f"   Warnings issued: {metrics['warnings_count']}")
 
