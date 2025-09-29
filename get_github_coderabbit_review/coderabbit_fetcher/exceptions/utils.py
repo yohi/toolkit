@@ -348,16 +348,18 @@ def chain_exceptions(*exceptions: Exception) -> Exception:
 
     # If main exception is a CodeRabbitFetcherError, preserve its structure
     if isinstance(main_exc, CodeRabbitFetcherError):
-        details = getattr(main_exc, 'details', {})
-        details['chained_exceptions'] = [str(exc) for exc in exceptions[:-1]]
+        merged_details = dict(getattr(main_exc, 'details', {}) or {})
+        merged_details['chained_exceptions'] = [str(exc) for exc in exceptions[:-1]]
 
-        return type(main_exc)(
-            chained_message,
-            details=details,
-            suggestions=getattr(main_exc, 'suggestions', []),
-            error_code=getattr(main_exc, 'error_code', None),
-            recoverable=getattr(main_exc, 'recoverable', True)
-        )
+        # Update the exception message and details in place
+        args = list(getattr(main_exc, 'args', ()))
+        if args:
+            args[0] = chained_message
+        else:
+            args.append(chained_message)
+        main_exc.args = tuple(args)
+        main_exc.details = merged_details
+        return main_exc
 
     # For non-CodeRabbit exceptions, wrap in a generic error
     return CodeRabbitFetcherError(

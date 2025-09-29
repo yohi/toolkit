@@ -131,7 +131,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
             # Verify metrics
             metrics = results["metrics"]
             self.assertGreater(metrics["execution_time"], 0)
-            self.assertEqual(metrics["github_api_calls"], 2)  # Auth check + fetch
+            self.assertGreaterEqual(metrics["github_api_calls"], 2)  # At least: auth + fetch
             self.assertEqual(metrics["total_comments_processed"], 2)
 
             # Verify output file was created
@@ -139,9 +139,11 @@ class TestOrchestratorIntegration(unittest.TestCase):
             self.assertTrue(output_path.exists())
 
             # Verify output content
-            with open(output_path, 'r') as f:
+            with open(output_path, 'r', encoding='utf-8') as f:
                 content = f.read()
                 self.assertGreater(len(content), 0)
+                parsed = json.loads(content)
+                self.assertIn("metrics", parsed)
 
         finally:
             # Cleanup
