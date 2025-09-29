@@ -176,10 +176,17 @@ class URLValidator:
         if len(identifier) > 39:
             result.add_issue(f"GitHub {type_name} cannot exceed 39 characters")
 
-        # Character validation
-        if not re.match(r'^[a-zA-Z0-9._-]+$', identifier):
-            result.add_issue(f"GitHub {type_name} contains invalid characters")
-            result.add_suggestion("Only letters, numbers, dots, hyphens, and underscores are allowed")
+        # Character validation - different patterns for owner vs repository
+        if type_name.lower() == 'owner':
+            # Stricter pattern for owners: alphanumeric with single hyphens, no leading/trailing/consecutive hyphens
+            if not re.match(r'^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$', identifier):
+                result.add_issue(f"GitHub {type_name} contains invalid characters")
+                result.add_suggestion("Owner names can only contain letters, numbers, and single hyphens (no leading/trailing/consecutive hyphens)")
+        else:
+            # Existing pattern for repositories: allow dots, underscores
+            if not re.match(r'^[A-Za-z0-9._-]+$', identifier):
+                result.add_issue(f"GitHub {type_name} contains invalid characters")
+                result.add_suggestion("Repository names can contain letters, numbers, dots, hyphens, and underscores")
 
         # Cannot start/end with special characters
         if identifier.startswith(('.', '-')) or identifier.endswith(('.', '-')):
