@@ -5,32 +5,57 @@ AIエージェント向けに構造化されたコメントデータを生成
 """
 
 import json
-import datetime
-from datetime import datetime as dt
+import os
+from datetime import datetime, timezone
+from pathlib import Path
 
 def process_pr_comments():
     """プルリクエストのコメントを処理してAIエージェント向け形式で出力"""
 
+    # スクリプトファイル基準のベースディレクトリを設定
+    base_dir = Path(__file__).resolve().parent
+    
     # データファイルを読み込み
     try:
-        with open('pr_104_raw_data.json', 'r', encoding='utf-8') as f:
+        pr_data_path = base_dir / 'pr_104_raw_data.json'
+        with open(pr_data_path, 'r', encoding='utf-8') as f:
             pr_data = json.load(f)
-    except Exception as e:
-        print(f"❌ Error reading pr_data: {e}")
+    except FileNotFoundError as e:
+        print(f"❌ PR data file not found at {pr_data_path}: {e}")
+        return
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON in PR data file {pr_data_path}: {e}")
+        return
+    except OSError as e:
+        print(f"❌ I/O error reading PR data file {pr_data_path}: {e}")
         return
 
     try:
-        with open('pr_104_inline_comments.json', 'r', encoding='utf-8') as f:
+        inline_comments_path = base_dir / 'pr_104_inline_comments.json'
+        with open(inline_comments_path, 'r', encoding='utf-8') as f:
             inline_comments = json.load(f)
-    except Exception as e:
-        print(f"❌ Error reading inline_comments: {e}")
+    except FileNotFoundError as e:
+        print(f"❌ Inline comments file not found at {inline_comments_path}: {e}")
+        inline_comments = []
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON in inline comments file {inline_comments_path}: {e}")
+        inline_comments = []
+    except OSError as e:
+        print(f"❌ I/O error reading inline comments file {inline_comments_path}: {e}")
         inline_comments = []
 
     try:
-        with open('pr_104_reviews.json', 'r', encoding='utf-8') as f:
+        reviews_path = base_dir / 'pr_104_reviews.json'
+        with open(reviews_path, 'r', encoding='utf-8') as f:
             reviews = json.load(f)
-    except Exception as e:
-        print(f"❌ Error reading reviews: {e}")
+    except FileNotFoundError as e:
+        print(f"❌ Reviews file not found at {reviews_path}: {e}")
+        reviews = []
+    except json.JSONDecodeError as e:
+        print(f"❌ Invalid JSON in reviews file {reviews_path}: {e}")
+        reviews = []
+    except OSError as e:
+        print(f"❌ I/O error reading reviews file {reviews_path}: {e}")
         reviews = []
 
     # AIエージェント向けの構造化データを作成
@@ -38,7 +63,7 @@ def process_pr_comments():
         'metadata': {
             'pull_request_number': pr_data.get('number'),
             'title': pr_data.get('title'),
-            'extraction_timestamp': dt.now().isoformat(),
+            'extraction_timestamp': datetime.now(timezone.utc).isoformat(),
             'total_inline_comments': len(inline_comments),
             'total_reviews': len(reviews),
             'data_sources': ['pr_data', 'inline_comments', 'reviews'],
@@ -47,7 +72,7 @@ def process_pr_comments():
         'pull_request_info': {
             'number': pr_data.get('number'),
             'title': pr_data.get('title'),
-            'body': pr_data.get('body', '')[:500] + ('...' if len(pr_data.get('body', '')) > 500 else '')
+            'body': (lambda body: body[:500] + ('...' if len(body) > 500 else ''))(pr_data.get('body') or '')
         },
         'inline_comments': [],
         'review_comments': [],
@@ -64,7 +89,13 @@ def process_pr_comments():
     files_mentioned = set()
 
     for comment in inline_comments:
-        user_login = comment.get('user', {}).get('login', '')
+        # Safe extraction of user login with None protection
+        user_data = comment.get('user') or {}
+        user_login = user_data.get('login') or ''
+        
+        # Safe extraction of body with None protection
+        body_text = comment.get('body') or ''
+        
         is_coderabbit = 'coderabbit' in user_login.lower()
 
         if is_coderabbit:
@@ -79,7 +110,7 @@ def process_pr_comments():
             'user': user_login,
             'created_at': comment.get('created_at'),
             'updated_at': comment.get('updated_at'),
-            'body': comment.get('body', ''),
+            'body': body_text,
             'path': file_path,
             'line': comment.get('line'),
             'start_line': comment.get('start_line'),
@@ -88,27 +119,38 @@ def process_pr_comments():
             'commit_id': comment.get('commit_id'),
             'in_reply_to_id': comment.get('in_reply_to_id'),
             'is_coderabbit': is_coderabbit,
-            'body_length': len(comment.get('body', '')),
-            'has_suggestions': '```suggestion' in comment.get('body', '').lower()
+            'body_length': len(body_text),
+            'has_suggestions': '```suggestion' in body_text.lower()
         }
         structured_data['inline_comments'].append(structured_comment)
 
     # レビューコメントを処理
     for review in reviews:
-        user_login = review.get('user', {}).get('login', '')
+        # Safe extraction with None protection
+        user_data = review.get('user') or {}
+        user_login = user_data.get('login') or ''
+        body = review.get('body') or ''
+        
         is_coderabbit = 'coderabbit' in user_login.lower()
 
         structured_review = {
             'id': review.get('id'),
             'user': user_login,
             'state': review.get('state'),
-            'body': review.get('body', ''),
+            'body': body,
             'submitted_at': review.get('submitted_at'),
             'commit_id': review.get('commit_id'),
             'is_coderabbit': is_coderabbit,
-            'body_length': len(review.get('body', ''))
+            'body_length': len(body)
         }
         structured_data['review_comments'].append(structured_review)
+
+    # レビューコメント由来のCodeRabbit件数も加算
+    coderabbit_count += sum(
+        1
+        for r in reviews
+        if 'coderabbit' in (r.get('user', {}).get('login') or '').lower()
+    )
 
     # アクショナブルアイテムを抽出（CodeRabbitコメント中心）
     actionable_count = 0
@@ -126,10 +168,12 @@ def process_pr_comments():
     ]
 
     for comment in inline_comments:
-        user_login = comment.get('user', {}).get('login', '')
+        # Safe extraction with None protection
+        user_data = comment.get('user') or {}
+        user_login = user_data.get('login') or ''
+        body = comment.get('body') or ''
+        
         if 'coderabbit' in user_login.lower():
-            body = comment.get('body', '')
-
             for keyword in actionable_keywords:
                 if keyword.lower() in body.lower():
                     actionable_count += 1
@@ -152,28 +196,45 @@ def process_pr_comments():
     structured_data['coderabbit_analysis']['file_coverage'] = list(files_mentioned)
 
     # ファイルに出力
-    output_file = 'pr_104_ai_friendly_comments.json'
+    output_file = base_dir / 'pr_104_ai_friendly_comments.json'
+    
+    # Create parent directory first
+    try:
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        print(f"❌ Failed to create output directory {output_file.parent}: {e}")
+        return
+    
+    # Write JSON output with specific error handling
     try:
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(structured_data, f, ensure_ascii=False, indent=2)
-
         print(f'✅ AI-friendly output generated: {output_file}')
-        print(f'📊 Summary:')
-        print(f'  - Total inline comments: {len(inline_comments)}')
-        print(f'  - Total reviews: {len(reviews)}')
-        print(f'  - CodeRabbit comments: {coderabbit_count}')
-        print(f'  - Actionable items found: {actionable_count}')
-        print(f'  - Files with comments: {len(files_mentioned)}')
+    except TypeError as e:
+        print(f"❌ JSON encoding error for {output_file}: {e}")
+        return
+    except OSError as e:
+        print(f"❌ I/O error writing JSON file {output_file}: {e}")
+        return
 
-        # 簡易的な分析レポートも生成
-        report_file = 'pr_104_analysis_report.md'
+    # Print summary (no file I/O, should not fail)
+    print('📊 Summary:')
+    print(f'  - Total inline comments: {len(inline_comments)}')
+    print(f'  - Total reviews: {len(reviews)}')
+    print(f'  - CodeRabbit comments: {coderabbit_count}')
+    print(f'  - Actionable items found: {actionable_count}')
+    print(f'  - Files with comments: {len(files_mentioned)}')
+
+    # Write markdown report with specific error handling
+    report_file = base_dir / 'pr_104_analysis_report.md'
+    try:
         with open(report_file, 'w', encoding='utf-8') as f:
             f.write(f"""# PR #104 コメント分析レポート
 
 ## 基本情報
 - **PR番号**: {pr_data.get('number')}
 - **タイトル**: {pr_data.get('title')}
-- **処理日時**: {dt.now().strftime('%Y-%m-%d %H:%M:%S')}
+- **処理日時**: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S %Z')}
 
 ## コメント統計
 - **総インラインコメント数**: {len(inline_comments)}件
@@ -190,7 +251,7 @@ def process_pr_comments():
 
             f.write(f"""
 ## データファイル
-- **構造化データ**: `{output_file}`
+- **構造化データ**: `{output_file.name}`
 - **元データ**: `pr_104_raw_data.json`, `pr_104_inline_comments.json`, `pr_104_reviews.json`
 
 ## AIエージェント向け情報
@@ -200,11 +261,9 @@ def process_pr_comments():
 3. ファイル別のレビュー密度分析
 4. 修正提案の自動生成
 """)
-
         print(f'📄 Analysis report generated: {report_file}')
-
-    except Exception as e:
-        print(f"❌ Error writing output files: {e}")
+    except OSError as e:
+        print(f"❌ I/O error writing report file {report_file}: {e}")
 
 if __name__ == "__main__":
     process_pr_comments()

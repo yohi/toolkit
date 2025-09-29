@@ -109,6 +109,7 @@ markers = [
     "unit: marks tests as unit tests",
     "integration: marks tests as integration tests",
     "slow: marks tests as slow running",
+    "performance: marks tests as performance tests (may be skipped in CI)",
 ]
 
 [tool.coverage.run]
