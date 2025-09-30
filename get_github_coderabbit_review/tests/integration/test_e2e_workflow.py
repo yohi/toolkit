@@ -243,7 +243,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
 
         # Simulate transient error followed by success
         call_count = 0
-        def mock_fetch_with_retry(*args, **kwargs):
+        def mock_fetch_with_retry(*_args, **_kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
