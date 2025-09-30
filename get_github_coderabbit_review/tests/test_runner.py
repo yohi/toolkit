@@ -197,10 +197,13 @@ class CodeRabbitTestRunner:
                 analysis = cov.analysis(filename)
                 statements_count = len(analysis[1])
                 missing_count = len(analysis[3])
+
+                # Prevent ZeroDivisionError
                 if statements_count == 0:
                     coverage = 100.0
                 else:
                     coverage = (statements_count - missing_count) / statements_count * 100
+
                 coverage_data[filename] = {
                     "statements": statements_count,
                     "missing": missing_count,
@@ -368,9 +371,13 @@ def main():
     runner = CodeRabbitTestRunner(verbosity=args.verbosity)
 
     if args.coverage:
-        runner.run_coverage_analysis()
+        coverage_results = runner.run_coverage_analysis()
+        if coverage_results and args.verbosity >= 1:
+            print(f"\n📊 Coverage analysis completed for {len(coverage_results)} files")
     else:
-        runner.run_tests(args.type, args.pattern)
+        test_results = runner.run_tests(args.type, args.pattern)
+        if test_results and args.verbosity >= 1:
+            print(f"\n✅ Test execution completed: {test_results['total_tests']} tests run")
 
     # Generate report if requested
     if args.report:

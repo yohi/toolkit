@@ -308,7 +308,7 @@ class TestGitHubIntegration(unittest.TestCase):
             stderr=""
         )
 
-        with self.assertRaises(Exception):  # Should handle JSON parsing errors
+        with self.assertRaises((json.JSONDecodeError, CodeRabbitFetcherError)):
             self.client.fetch_pr_comments(self.sample_pr_url)
 
 
@@ -425,7 +425,7 @@ class TestGitHubIntegrationEdgeCases(unittest.TestCase):
         import time
 
         # Mock response that takes some time
-        def slow_response(*_args, **_kwargs):
+        def slow_response():
             time.sleep(0.1)  # Simulate network delay
             return MagicMock(
                 returncode=0,
@@ -442,7 +442,7 @@ class TestGitHubIntegrationEdgeCases(unittest.TestCase):
             try:
                 result = self.client.fetch_pr_comments("https://github.com/owner/repo/pull/123")
                 results.append(result)
-            except Exception as e:
+            except (CodeRabbitFetcherError, InvalidPRUrlError, json.JSONDecodeError) as e:
                 errors.append(e)
 
         # Start multiple threads

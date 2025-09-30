@@ -28,15 +28,13 @@ class PerformanceTestBase(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures."""
         if os.path.exists(self.temp_dir):
-            for file in os.listdir(self.temp_dir):
-                try:
-                    os.unlink(os.path.join(self.temp_dir, file))
-                except (OSError, FileNotFoundError, PermissionError):
-                    pass
+            import shutil
             try:
-                os.rmdir(self.temp_dir)
-            except (OSError, FileNotFoundError, PermissionError):
-                pass
+                shutil.rmtree(self.temp_dir, ignore_errors=False)
+            except (OSError, PermissionError) as e:
+                # Log the error but don't fail the test
+                import logging
+                logging.warning(f"Failed to clean up temp directory {self.temp_dir}: {e}")
 
     def measure_execution_time(self, func, *args, **kwargs):
         """Measure execution time of a function.
@@ -138,7 +136,8 @@ class TestCommentAnalysisPerformance(PerformanceTestBase):
         self.assertLess(execution_time, 30.0)  # < 30 seconds
 
         # Verify result quality is maintained - should process all generated comments
-        self.assertEqual(len(result["coderabbit_comments"]), len(comments))
+        # Use exact count validation instead of weak threshold
+        self.assertEqual(len(result["coderabbit_comments"]), 5000)
 
     def test_comment_analysis_memory_usage(self):
         """Test memory usage during comment analysis."""
