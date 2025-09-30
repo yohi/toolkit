@@ -362,7 +362,6 @@ coderabbit_fetcher/
 ### Environment Variables
 
 ```bash
-<<<<<<< HEAD
 # GitHub CLI path (if not in PATH)
 export GITHUB_CLI_PATH="/usr/local/bin/gh"
 
@@ -374,11 +373,6 @@ export CODERABBIT_OUTPUT_FORMAT="json"
 
 # Enable debug mode
 export CODERABBIT_DEBUG=1
-
-# Development setup
-git clone https://github.com/yohi/toolkit.git
-cd toolkit
-pip install -e "./get_github_coderabbit_review[dev]"
 ```
 
 ### Configuration File

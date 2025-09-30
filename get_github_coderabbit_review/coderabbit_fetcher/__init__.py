@@ -50,8 +50,8 @@ __copyright__ = "Copyright 2025 CodeRabbit Fetcher Team"
 
 from .exceptions import CodeRabbitFetcherError
 from .models import (
-    AnalyzedComments, 
-    SummaryComment, 
+    AnalyzedComments,
+    SummaryComment,
     ReviewComment,
     ActionableComment,
     AIAgentPrompt,
@@ -77,20 +77,20 @@ __all__ = [
     "ReviewComment",
     "ActionableComment",
     "AIAgentPrompt",
-    "ThreadContext", 
+    "ThreadContext",
     "CommentMetadata",
 ]
 
 
 def get_version_info() -> Dict[str, str]:
     """Get detailed version information.
-    
+
     Returns:
         Dictionary containing version details
     """
     import sys
     import platform
-    
+
     return {
         "version": __version__,
         "python_version": f"{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}",
@@ -102,7 +102,7 @@ def get_version_info() -> Dict[str, str]:
 
 def get_package_info() -> Dict[str, Any]:
     """Get comprehensive package information.
-    
+
     Returns:
         Dictionary containing package metadata
     """
