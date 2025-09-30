@@ -39,7 +39,7 @@ class CommentParsingError(CodeRabbitFetcherError):
             comment_id: Optional ID of the problematic comment
         """
         details = None
-        if comment_id:
+        if comment_id is not None:
             details = f"Failed to parse comment ID: {comment_id}"
 
         super().__init__(message, details)

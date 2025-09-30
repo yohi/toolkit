@@ -448,8 +448,21 @@ class ResolvedMarkerManager:
             "valid": len(issues) == 0,
             "issues": issues,
             "recommendations": recommendations,
-            "uniqueness_score": self._calculate_uniqueness_score(marker)
+            "uniqueness_score": self.calculate_uniqueness_score(marker)
         }
+
+    def calculate_uniqueness_score(self, marker: str) -> float:
+        """Calculate uniqueness score for a marker (0.0 to 1.0).
+
+        This is a public wrapper for the private _calculate_uniqueness_score method.
+
+        Args:
+            marker: Marker string to score
+
+        Returns:
+            Uniqueness score between 0.0 and 1.0
+        """
+        return self._calculate_uniqueness_score(marker)
 
     def _calculate_uniqueness_score(self, marker: str) -> float:
         """Calculate uniqueness score for a marker (0.0 to 1.0).

@@ -176,10 +176,17 @@ class URLValidator:
         if len(identifier) > 39:
             result.add_issue(f"GitHub {type_name} cannot exceed 39 characters")
 
-        # Character validation
-        if not re.match(r'^[a-zA-Z0-9._-]+$', identifier):
-            result.add_issue(f"GitHub {type_name} contains invalid characters")
-            result.add_suggestion("Only letters, numbers, dots, hyphens, and underscores are allowed")
+        # Character validation - different patterns for owner vs repository
+        if type_name.lower() == 'owner':
+            # Stricter pattern for owners: alphanumeric with single hyphens, no leading/trailing/consecutive hyphens
+            if not re.match(r'^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$', identifier):
+                result.add_issue(f"GitHub {type_name} contains invalid characters")
+                result.add_suggestion("Owner names can only contain letters, numbers, and single hyphens (no leading/trailing/consecutive hyphens)")
+        else:
+            # Existing pattern for repositories: allow dots, underscores
+            if not re.match(r'^[A-Za-z0-9._-]+$', identifier):
+                result.add_issue(f"GitHub {type_name} contains invalid characters")
+                result.add_suggestion("Repository names can contain letters, numbers, dots, hyphens, and underscores")
 
         # Cannot start/end with special characters
         if identifier.startswith(('.', '-')) or identifier.endswith(('.', '-')):
@@ -233,7 +240,7 @@ class FileValidator:
         # Convert to Path object
         try:
             path = Path(file_path).resolve()
-        except Exception as e:
+        except OSError as e:
             result.add_issue(f"Invalid file path: {e}")
             return result
 
@@ -268,7 +275,7 @@ class FileValidator:
                 result.add_issue(f"Persona file too large: {file_size} bytes (max: {self.max_file_size})")
 
             result.details['file_size'] = file_size
-        except Exception as e:
+        except OSError as e:
             result.add_warning(f"Could not check file size: {e}")
 
         # Content validation
@@ -291,7 +298,7 @@ class FileValidator:
 
         except UnicodeDecodeError:
             result.add_issue("File is not valid UTF-8 text")
-        except Exception as e:
+        except OSError as e:
             result.add_warning(f"Could not read file content: {e}")
 
         return result
@@ -313,7 +320,7 @@ class FileValidator:
 
         try:
             path = Path(output_path).resolve()
-        except Exception as e:
+        except OSError as e:
             result.add_issue(f"Invalid output path: {e}")
             return result
 
@@ -325,7 +332,7 @@ class FileValidator:
             try:
                 parent_dir.mkdir(parents=True, exist_ok=True)
                 result.add_suggestion(f"Created output directory: {parent_dir}")
-            except Exception as e:
+            except (OSError, PermissionError) as e:
                 result.add_issue(f"Cannot create output directory: {e}")
                 return result
 
@@ -473,6 +480,7 @@ def retry_on_failure(
     max_attempts: int = 3,
     delay: float = 1.0,
     backoff_factor: float = 2.0,
+    jitter: float = 0.0,
     exceptions: tuple = (Exception,)
 ) -> Callable:
     """Decorator for adding retry logic to functions.
@@ -481,6 +489,7 @@ def retry_on_failure(
         max_attempts: Maximum number of retry attempts
         delay: Initial delay between retries in seconds
         backoff_factor: Factor to multiply delay by for each retry
+        jitter: Maximum random variation to add/subtract from delay (default 0)
         exceptions: Tuple of exceptions to catch and retry on
 
     Returns:
@@ -489,29 +498,42 @@ def retry_on_failure(
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
+            # Ensure max_attempts is at least 1
+            validated_max_attempts = max(1, max_attempts)
             last_exception = None
 
-            for attempt in range(max_attempts):
+            for attempt in range(1, validated_max_attempts + 1):
                 try:
                     return func(*args, **kwargs)
                 except exceptions as e:
                     last_exception = e
 
-                    if attempt == max_attempts - 1:
-                        # Last attempt failed, re-raise
-                        logger.error(f"Function {func.__name__} failed after {max_attempts} attempts: {e}")
-                        raise
+                    if attempt == validated_max_attempts:
+                        # Last attempt failed, log with stack trace and re-raise
+                        logger.exception(f"Function {func.__name__} failed after {validated_max_attempts} attempts")
+                        raise last_exception
 
                     # Calculate delay with exponential backoff
-                    current_delay = delay * (backoff_factor ** attempt)
+                    current_delay = delay * (backoff_factor ** (attempt - 1))
 
-                    logger.warning(f"Function {func.__name__} failed (attempt {attempt + 1}/{max_attempts}): {e}. "
+                    # Apply jitter to avoid thundering herd
+                    if jitter > 0:
+                        import random
+                        current_delay += random.uniform(-jitter, jitter)
+                        # Ensure delay is not negative
+                        current_delay = max(0, current_delay)
+
+                    logger.warning(f"Function {func.__name__} failed (attempt {attempt}/{validated_max_attempts}): {e}. "
                                  f"Retrying in {current_delay:.1f}s...")
 
                     time.sleep(current_delay)
 
-            # This should never be reached, but just in case
-            raise last_exception
+            # This should never be reached due to validated_max_attempts >= 1
+            # but kept as a safety net
+            if last_exception:
+                raise last_exception
+            else:
+                raise RuntimeError(f"Function {func.__name__} completed without success or exception")
 
         return wrapper
     return decorator
@@ -540,20 +562,22 @@ def timeout_handler(timeout_seconds: float) -> Callable:
             def timeout_handler_func(signum, frame):
                 raise TimeoutError(f"Function {func.__name__} timed out after {timeout_seconds}s")
 
-            # Set up the timeout
+            # Save existing timer state
+            old_timer = signal.getitimer(signal.ITIMER_REAL)
             old_handler = signal.signal(signal.SIGALRM, timeout_handler_func)
-            signal.alarm(int(timeout_seconds))
+            signal.setitimer(signal.ITIMER_REAL, float(timeout_seconds))
 
             try:
                 result = func(*args, **kwargs)
-                signal.alarm(0)  # Cancel the alarm
+                signal.setitimer(signal.ITIMER_REAL, 0)  # Cancel the timer
                 return result
             except TimeoutError:
                 logger.error(f"Function {func.__name__} timed out after {timeout_seconds}s")
                 raise
             finally:
-                signal.alarm(0)  # Ensure alarm is cancelled
-                signal.signal(signal.SIGALRM, old_handler)  # Restore old handler
+                # Restore original timer and handler
+                signal.setitimer(signal.ITIMER_REAL, *old_timer)
+                signal.signal(signal.SIGALRM, old_handler)
 
         return wrapper
     return decorator
@@ -584,12 +608,12 @@ class ValidationSuite:
             result.merge(url_result)
 
         # Validate persona file
-        if config.get('persona_file'):
+        if 'persona_file' in config:
             file_result = self.file_validator.validate_persona_file(config['persona_file'])
             result.merge(file_result)
 
         # Validate output file
-        if config.get('output_file'):
+        if 'output_file' in config:
             output_result = self.file_validator.validate_output_path(config['output_file'])
             result.merge(output_result)
 

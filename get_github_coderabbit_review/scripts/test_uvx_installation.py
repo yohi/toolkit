@@ -6,6 +6,8 @@ import sys
 import os
 import tempfile
 import json
+import traceback
+import warnings
 from pathlib import Path
 from typing import Dict, Any, Optional, List
 
@@ -344,6 +346,7 @@ print("\\nDependency check completed!")
                     all_passed = False
             except Exception as e:
                 print(f"❌ {test_name} test failed with exception: {e}")
+                print(f"Traceback:\n{traceback.format_exc()}")
                 all_passed = False
 
             print("-" * 40)
@@ -355,8 +358,8 @@ print("\\nDependency check completed!")
         import shutil
         try:
             shutil.rmtree(self.temp_dir)
-        except Exception:
-            pass  # Ignore cleanup errors
+        except Exception as e:
+            warnings.warn(f"Failed to cleanup temporary directory {self.temp_dir}: {e}")
 
 
 def main():

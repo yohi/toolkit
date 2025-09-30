@@ -7,11 +7,9 @@ from pathlib import Path
 from typing import Dict, List, Optional, Any, TextIO
 import json
 
-# import click  # Will be added in later version
-
 from ..exceptions import CodeRabbitFetcherError, GitHubAuthenticationError, InvalidPRUrlError
 from ..github_client import GitHubClient, GitHubAPIError
-from ..comment_analyzer import CommentAnalyzer
+from ..comment_analyzer import CommentAnalyzer, CommentAnalysisError
 from ..persona_manager import PersonaManager
 from ..formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter
 from ..resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
@@ -33,7 +31,7 @@ class CLIError(CodeRabbitFetcherError):
     pass
 
 
-# Removed old CodeRabbitFetcherCLI class - replaced by orchestrator pattern
+# Use orchestrator pattern - old CLI class removed and replaced with new architecture
 
 
 def create_argument_parser() -> argparse.ArgumentParser:
@@ -66,10 +64,12 @@ Examples:
         """
     )
 
-    # Required argument
+    # Optional positional argument (required only for fetch command)
     parser.add_argument(
         'pr_url',
-        help='GitHub pull request URL'
+        nargs='?',
+        default=None,
+        help='GitHub pull request URL (omit for --validate/--version/--examples/--validate-marker)'
     )
 
     # Optional arguments
@@ -267,7 +267,7 @@ def run_validate_command() -> int:
                 remaining = core_limit.get("remaining", "unknown")
                 limit = core_limit.get("limit", "unknown")
                 print(f"\n📊 API Rate Limit: {remaining}/{limit} remaining")
-            except Exception as e:
+            except (GitHubAPIError, ValueError, KeyError) as e:
                 print(f"\n⚠️  Could not check rate limit: {e}")
 
         if validation_result["issues"]:
@@ -288,8 +288,9 @@ def run_validate_marker_command(marker: str) -> int:
     try:
         from ..resolved_marker import ResolvedMarkerConfig, ResolvedMarkerManager
 
-        config = ResolvedMarkerConfig(resolved_marker=marker)
-        validation = config.validate_marker()
+        # Use ResolvedMarkerManager's validate_marker method instead of config
+        manager = ResolvedMarkerManager()
+        validation = manager.validate_marker(marker)
 
         if validation["valid"]:
             print("✅ Marker is valid")
@@ -298,9 +299,8 @@ def run_validate_marker_command(marker: str) -> int:
             for issue in validation["issues"]:
                 print(f"   • {issue}", file=sys.stderr)
 
-        # Calculate uniqueness score
-        manager = ResolvedMarkerManager()
-        score = manager._calculate_uniqueness_score(marker)
+        # Use public API to calculate uniqueness score
+        score = manager.calculate_uniqueness_score(marker)
 
         print(f"\n📊 Uniqueness Score: {score:.2f}/1.0")
         if score < 0.3:
@@ -319,12 +319,21 @@ def run_validate_marker_command(marker: str) -> int:
 
 def run_version_command() -> int:
     """Run the version command."""
+    version = "development"
+
     try:
-        # Try to get version from package metadata
-        from importlib.metadata import version as get_version
-        version = get_version('coderabbit-comment-fetcher')
-    except:
+        # First, try to import the required modules
+        from importlib.metadata import version as get_version, PackageNotFoundError
+    except ImportError:
+        # If import fails, use development version
         version = "development"
+    else:
+        # If import succeeds, try to get the actual version
+        try:
+            version = get_version('coderabbit-comment-fetcher')
+        except PackageNotFoundError:
+            # If package is not found, use development version
+            version = "development"
 
     print(f"CodeRabbit Comment Fetcher v{version}")
     print("Python script for extracting and formatting CodeRabbit comments")
@@ -415,7 +424,7 @@ def main():
             return run_validate_marker_command(args.validate_marker)
 
         # Main fetch command (requires pr_url)
-        if not hasattr(args, 'pr_url') or not args.pr_url:
+        if not args.pr_url:
             print("❌ PR URL is required for fetch command", file=sys.stderr)
             parser.print_help()
             return 1

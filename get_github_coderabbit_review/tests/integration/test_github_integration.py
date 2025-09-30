@@ -8,10 +8,10 @@ from typing import Dict, Any, List
 
 from coderabbit_fetcher.github_client import GitHubClient
 from coderabbit_fetcher.exceptions import (
+    APIRateLimitError,
+    CodeRabbitFetcherError,
     GitHubAuthenticationError,
-    InvalidPRUrlError,
-    NetworkError,
-    RateLimitError
+    InvalidPRUrlError
 )
 from tests.fixtures.github_responses import (
     MOCK_SUCCESS_RESPONSES,
@@ -128,7 +128,7 @@ class TestGitHubIntegration(unittest.TestCase):
             stderr=MOCK_GH_ERROR_RESPONSES["rate_limit_error"]["stderr"]
         )
 
-        with self.assertRaises(RateLimitError) as context:
+        with self.assertRaises(APIRateLimitError) as context:
             self.client.fetch_pr_comments(self.sample_pr_url)
 
         self.assertIn("rate limit", str(context.exception).lower())
@@ -142,11 +142,10 @@ class TestGitHubIntegration(unittest.TestCase):
             stderr=MOCK_GH_ERROR_RESPONSES["network_error"]["stderr"]
         )
 
-        with self.assertRaises(NetworkError):
+        with self.assertRaises(CodeRabbitFetcherError):
             self.client.fetch_pr_comments(self.sample_pr_url)
 
-    @patch('subprocess.run')
-    def test_parse_pr_url_valid(self, mock_run):
+    def test_parse_pr_url_valid(self):
         """Test URL parsing with valid GitHub PR URLs."""
         valid_urls = [
             "https://github.com/owner/repo/pull/123",
@@ -234,10 +233,10 @@ class TestGitHubIntegration(unittest.TestCase):
             stderr="gh: HTTP 403: You do not have permission"
         )
 
-        with self.assertRaises(Exception):  # Should raise some form of error
+        with self.assertRaises((GitHubAuthenticationError, CodeRabbitFetcherError)):
             self.client.post_comment(
                 pr_url=self.sample_pr_url,
-                body="Test comment"
+                comment="Test comment"
             )
 
     @patch('subprocess.run')
@@ -246,7 +245,7 @@ class TestGitHubIntegration(unittest.TestCase):
         # Simulate a timeout
         mock_run.side_effect = subprocess.TimeoutExpired('gh', 30)
 
-        with self.assertRaises(NetworkError):
+        with self.assertRaises(CodeRabbitFetcherError):
             self.client._execute_gh_command(['gh', 'auth', 'status'], timeout=30)
 
     @patch('subprocess.run')
@@ -309,7 +308,7 @@ class TestGitHubIntegration(unittest.TestCase):
             stderr=""
         )
 
-        with self.assertRaises(Exception):  # Should handle JSON parsing errors
+        with self.assertRaises((json.JSONDecodeError, CodeRabbitFetcherError)):
             self.client.fetch_pr_comments(self.sample_pr_url)
 
 
@@ -426,7 +425,7 @@ class TestGitHubIntegrationEdgeCases(unittest.TestCase):
         import time
 
         # Mock response that takes some time
-        def slow_response(*args, **kwargs):
+        def slow_response():
             time.sleep(0.1)  # Simulate network delay
             return MagicMock(
                 returncode=0,
@@ -443,7 +442,7 @@ class TestGitHubIntegrationEdgeCases(unittest.TestCase):
             try:
                 result = self.client.fetch_pr_comments("https://github.com/owner/repo/pull/123")
                 results.append(result)
-            except Exception as e:
+            except (CodeRabbitFetcherError, InvalidPRUrlError, json.JSONDecodeError) as e:
                 errors.append(e)
 
         # Start multiple threads
