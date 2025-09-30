@@ -115,7 +115,11 @@ class URLValidator:
             result.add_suggestion(f"Corrected URL: {url}")
 
         # Parse URL components
-        parsed = urllib.parse.urlparse(url)
+        try:
+            parsed = urllib.parse.urlparse(url)
+        except Exception as e:
+            result.add_issue(f"Invalid URL format: {e}")
+            return result
 
         # Domain validation
         if not self._is_github_domain(parsed.netloc):

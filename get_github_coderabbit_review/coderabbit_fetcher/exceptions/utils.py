@@ -351,6 +351,7 @@ def chain_exceptions(*exceptions: Exception) -> Exception:
         merged_details = dict(getattr(main_exc, 'details', {}) or {})
         merged_details['chained_exceptions'] = [str(exc) for exc in exceptions[:-1]]
 
+        # Update the exception message and details in place
         args = list(getattr(main_exc, 'args', ()))
         if args:
             args[0] = chained_message
