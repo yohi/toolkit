@@ -381,11 +381,11 @@ MOCK_EDGE_CASE_RESPONSES = {
 # Helper function to get mock response based on command and scenario
 def get_mock_response(command: str, scenario: str = "normal_execution") -> Dict[str, Any]:
     """Get mock response for a given command and scenario.
-    
+
     Args:
         command: The GitHub CLI command (e.g., 'gh_pr_view')
         scenario: The scenario to simulate (e.g., 'normal_execution', 'authentication_failure')
-        
+
     Returns:
         Dictionary containing exit_code, stdout, stderr
     """
@@ -393,11 +393,11 @@ def get_mock_response(command: str, scenario: str = "normal_execution") -> Dict[
         responses = COMMAND_RESPONSES[scenario]
         if command in responses:
             return responses[command]
-    
+
     # Default to normal execution
     if command in MOCK_SUCCESS_RESPONSES:
         return MOCK_SUCCESS_RESPONSES[command]
-    
+
     # Fallback for unknown commands
     return {
         "exit_code": 1,
@@ -409,16 +409,16 @@ def get_mock_response(command: str, scenario: str = "normal_execution") -> Dict[
 # Function to generate dynamic mock data
 def generate_mock_comments(count: int, comment_type: str = "mixed") -> List[Dict[str, Any]]:
     """Generate a list of mock comments for testing.
-    
+
     Args:
         count: Number of comments to generate
         comment_type: Type of comments ('coderabbit', 'human', 'mixed')
-        
+
     Returns:
         List of mock comment dictionaries
     """
     comments = []
-    
+
     for i in range(count):
         if comment_type == "coderabbit" or (comment_type == "mixed" and i % 2 == 0):
             user = "coderabbitai[bot]"
@@ -426,7 +426,7 @@ def generate_mock_comments(count: int, comment_type: str = "mixed") -> List[Dict
         else:
             user = f"user{i % 10}"
             body_prefix = ""
-        
+
         comment = {
             "id": 5000000000 + i,
             "author": {"login": user},
@@ -437,7 +437,7 @@ def generate_mock_comments(count: int, comment_type: str = "mixed") -> List[Dict
             "line": (i % 100) + 1,
             "inReplyToId": None if i % 5 != 0 else (5000000000 + i - 1) if i > 0 else None
         }
-        
+
         comments.append(comment)
-    
+
     return comments

@@ -336,7 +336,7 @@ sequenceDiagram
     participant Main
     participant Utils
     participant DB
-    
+
     User->>Main: リクエスト送信
     Main->>Utils: データ検証
     Utils-->>Main: 検証結果
