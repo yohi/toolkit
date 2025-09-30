@@ -30,7 +30,10 @@ Usage:
 """
 
 import importlib.metadata
-from typing import Dict, Any
+from typing import Dict, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .cli.main import main
 
 try:
     __version__ = importlib.metadata.version("coderabbit-comment-fetcher")
@@ -45,6 +48,17 @@ __email__ = "coderabbit-fetcher@example.com"
 __license__ = "MIT"
 __copyright__ = "Copyright 2025 CodeRabbit Fetcher Team"
 
+from .exceptions import CodeRabbitFetcherError
+from .models import (
+    AnalyzedComments, 
+    SummaryComment, 
+    ReviewComment,
+    ActionableComment,
+    AIAgentPrompt,
+    ThreadContext,
+    CommentMetadata,
+)
+
 # Package metadata
 __all__ = [
     "__version__",
@@ -56,6 +70,15 @@ __all__ = [
     "__copyright__",
     "get_version_info",
     "get_package_info",
+    "main",
+    "CodeRabbitFetcherError",
+    "AnalyzedComments",
+    "SummaryComment",
+    "ReviewComment",
+    "ActionableComment",
+    "AIAgentPrompt",
+    "ThreadContext", 
+    "CommentMetadata",
 ]
 
 
@@ -112,7 +135,13 @@ DEFAULT_CONFIG = {
 from .orchestrator import CodeRabbitOrchestrator, ExecutionConfig
 from .github_client import GitHubClient
 from .comment_analyzer import CommentAnalyzer
-from .exceptions import CodeRabbitFetcherError
+
+# Lazily expose CLI entry to avoid import-time side effects.
+def __getattr__(name: str):
+    if name == "main":
+        from .cli.main import main as _main
+        return _main
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
 # Version check
 import sys

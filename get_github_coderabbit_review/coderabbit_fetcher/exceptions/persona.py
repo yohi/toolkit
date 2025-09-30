@@ -1,5 +1,6 @@
 """Persona-related exceptions."""
 
+from typing import Optional
 from .base import CodeRabbitFetcherError
 
 
@@ -11,7 +12,7 @@ class PersonaFileError(CodeRabbitFetcherError):
 class PersonaLoadError(PersonaFileError):
     """Exception raised when persona loading fails."""
 
-    def __init__(self, message: str, file_path: str = None):
+    def __init__(self, message: str, file_path: Optional[str] = None):
         """Initialize persona load error.
 
         Args:
@@ -31,7 +32,7 @@ class PersonaLoadError(PersonaFileError):
 class PersonaValidationError(PersonaLoadError):
     """Exception raised when persona content validation fails."""
 
-    def __init__(self, message: str, file_path: str = None, validation_rule: str = None):
+    def __init__(self, message: str, file_path: Optional[str] = None, validation_rule: Optional[str] = None):
         """Initialize persona validation error.
 
         Args:

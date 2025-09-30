@@ -82,20 +82,29 @@ class JSONFormatter(BaseFormatter):
         Returns:
             JSON-serializable dictionary
         """
+        # Safe attribute access with None coercion
+        chronological_order = getattr(thread, 'chronological_order', []) or []
+        resolution_status = getattr(thread, 'resolution_status', None)
+        comment_count = getattr(thread, 'comment_count', None)
+
+        # Ensure comment_count is a valid integer
+        if not isinstance(comment_count, int) or comment_count < 0:
+            comment_count = len(chronological_order)
+
         return {
             "thread_id": getattr(thread, 'thread_id', None),
             "root_comment_id": getattr(thread, 'root_comment_id', None),
-            "resolution_status": str(thread.resolution_status),
+            "resolution_status": str(resolution_status) if resolution_status is not None else "unknown",
             "file_context": getattr(thread, 'file_context', None),
             "line_context": getattr(thread, 'line_context', None),
             "participants": getattr(thread, 'participants', []),
-            "comment_count": getattr(thread, 'comment_count', len(thread.chronological_order) if thread.chronological_order else 0),
+            "comment_count": comment_count,
             "coderabbit_comment_count": getattr(thread, 'coderabbit_comment_count', 0),
             "is_resolved": getattr(thread, 'is_resolved', False),
             "context_summary": getattr(thread, 'context_summary', None),
             "ai_summary": getattr(thread, 'ai_summary', None),
-            "contextual_summary": thread.contextual_summary,
-            "chronological_comments": self._format_chronological_comments(thread.chronological_order)
+            "contextual_summary": getattr(thread, 'contextual_summary', None),
+            "chronological_comments": self._format_chronological_comments(chronological_order)
         }
 
     def _format_metadata(self, analyzed_comments: AnalyzedComments) -> Dict[str, Any]:
@@ -143,7 +152,10 @@ class JSONFormatter(BaseFormatter):
                 "new_features": summary.new_features,
                 "documentation_changes": summary.documentation_changes,
                 "test_changes": summary.test_changes,
-                "changes_table": [{"cohort_or_files": c.cohort_or_files, "summary": c.summary} for c in summary.changes_table],
+                "changes_table": [
+                    {"cohort_or_files": c.cohort_or_files, "summary": c.summary}
+                    for c in (summary.changes_table or [])
+                ],
                 "sequence_diagram": summary.sequence_diagram
             }
 
@@ -156,7 +168,8 @@ class JSONFormatter(BaseFormatter):
                 "has_sequence_diagram": summary.has_sequence_diagram
             }
 
-            if self.include_raw_content:
+            # Include raw content if enabled and available
+            if self.include_raw_content and hasattr(summary, "raw_content"):
                 summary_dict["raw_content"] = summary.raw_content
 
             formatted.append(summary_dict)
@@ -182,10 +195,12 @@ class JSONFormatter(BaseFormatter):
                 "nitpick_comments": [self._format_nitpick_comment(c) for c in review.nitpick_comments],
                 "outside_diff_comments": [self._format_outside_diff_comment(c) for c in review.outside_diff_comments],
                 "ai_agent_prompts": [self.format_ai_agent_prompt(p) for p in review.ai_agent_prompts],
-                "has_ai_prompts": getattr(review, 'has_ai_prompts', len(review.ai_agent_prompts) > 0)
+                "has_ai_prompts": review.has_ai_prompts if hasattr(review, "has_ai_prompts")
+                                  else bool(getattr(review, "ai_agent_prompts", []))
             }
 
-            if self.include_raw_content:
+            # Include raw content if enabled and available
+            if self.include_raw_content and hasattr(review, "raw_content"):
                 review_dict["raw_content"] = review.raw_content
 
             # Add metadata
@@ -293,9 +308,18 @@ class JSONFormatter(BaseFormatter):
             if hasattr(comment, 'created_at'):
                 comment_dict["timestamp"] = getattr(comment, 'created_at', None)
 
-            # Add author if available
-            if hasattr(comment, 'user'):
-                comment_dict["author"] = getattr(comment, 'user', {}).get('login', 'Unknown')
+            # Add author if available with safe user handling
+            if hasattr(comment, "user"):
+                user = getattr(comment, "user", None)
+                if user is None:
+                    author = "Unknown"
+                elif isinstance(user, dict):
+                    author = user.get("login", "Unknown")
+                elif hasattr(user, "login"):
+                    author = getattr(user, "login", "Unknown")
+                else:
+                    author = "Unknown"
+                comment_dict["author"] = author
 
             formatted.append(comment_dict)
 
@@ -415,14 +439,29 @@ class JSONFormatter(BaseFormatter):
         Returns:
             Comment source string
         """
-        if hasattr(comment, 'user'):
-            user_login = getattr(comment, 'user', {}).get('login', '').lower()
-            if 'coderabbit' in user_login:
-                return "coderabbit"
-            else:
-                return "human"
+        # First normalize comment to handle both dict and object
+        if isinstance(comment, dict):
+            user = comment.get('user')
         else:
+            user = getattr(comment, 'user', None)
+
+        # Then normalize user similarly
+        if user is None:
             return "unknown"
+
+        if isinstance(user, dict):
+            user_login = user.get('login', '')
+        else:
+            user_login = getattr(user, 'login', '')
+
+        if not user_login:
+            return "unknown"
+
+        user_login = user_login.lower()
+        if 'coderabbit' in user_login:
+            return "coderabbit"
+        else:
+            return "human"
 
     def _json_serializer(self, obj) -> str:
         """Custom JSON serializer for datetime and other objects.
