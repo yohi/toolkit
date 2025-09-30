@@ -247,7 +247,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                raise ConnectionError("Temporary network issue")
+                raise TransientError("Temporary network issue")
             return {
                 "pr_data": MOCK_GH_PR_RESPONSE,
                 "comments": MOCK_GH_COMMENTS_RESPONSE
