@@ -1,24 +1,23 @@
 """Integration tests for GitHub CLI interaction."""
 
-import unittest
 import json
 import subprocess
-from unittest.mock import patch, MagicMock, call
-from typing import Dict, Any, List
+import unittest
+from unittest.mock import MagicMock, patch
 
-from coderabbit_fetcher.github_client import GitHubClient
 from coderabbit_fetcher.exceptions import (
     APIRateLimitError,
     CodeRabbitFetcherError,
     GitHubAuthenticationError,
     InvalidPRUrlError,
 )
+from coderabbit_fetcher.github_client import GitHubClient
+
 from tests.fixtures.github_responses import (
-    MOCK_SUCCESS_RESPONSES,
-    MOCK_GH_ERROR_RESPONSES,
-    get_mock_response,
     MOCK_GH_COMMENTS_RESPONSE,
+    MOCK_GH_ERROR_RESPONSES,
     MOCK_GH_PR_RESPONSE,
+    MOCK_SUCCESS_RESPONSES,
 )
 
 

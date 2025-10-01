@@ -11,12 +11,12 @@ This test suite uses comprehensive mocking to avoid dependencies on:
 Designed for reliable CI/CD pipeline execution.
 """
 
-import pytest
 import subprocess
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from coderabbit_fetcher.github_client import GitHubClient, GitHubAPIError
+import pytest
 from coderabbit_fetcher.exceptions import GitHubAuthenticationError, InvalidPRUrlError
+from coderabbit_fetcher.github_client import GitHubClient
 
 
 class TestGitHubClientSafeInitialization:
@@ -24,16 +24,16 @@ class TestGitHubClientSafeInitialization:
 
     def test_successful_initialization(self):
         """Test successful GitHubClient initialization with mocked authentication."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="")
 
             client = GitHubClient()
             assert client is not None
-            assert hasattr(client, '_authenticated')
+            assert hasattr(client, "_authenticated")
 
     def test_missing_gh_command(self):
         """Test handling of missing gh command."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError("gh command not found")
 
             with pytest.raises(GitHubAuthenticationError) as exc_info:
@@ -43,7 +43,7 @@ class TestGitHubClientSafeInitialization:
 
     def test_authentication_failure(self):
         """Test handling of authentication failure."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=1, stderr="Not authenticated", stdout="")
 
             with pytest.raises(GitHubAuthenticationError) as exc_info:
@@ -53,7 +53,7 @@ class TestGitHubClientSafeInitialization:
 
     def test_command_timeout(self):
         """Test handling of command timeout."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = subprocess.TimeoutExpired("gh", 10)
 
             with pytest.raises(GitHubAuthenticationError) as exc_info:
@@ -63,7 +63,7 @@ class TestGitHubClientSafeInitialization:
 
     def test_unexpected_error(self):
         """Test handling of unexpected errors during initialization."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = RuntimeError("Unexpected error")
 
             with pytest.raises(GitHubAuthenticationError) as exc_info:
@@ -78,7 +78,7 @@ class TestGitHubClientURLParsing:
     @pytest.fixture
     def client(self):
         """Create a GitHubClient with mocked authentication."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="")
             return GitHubClient()
 
@@ -116,7 +116,7 @@ class TestGitHubClientAuthenticationMethods:
 
     def test_is_authenticated_cached_result(self):
         """Test that is_authenticated returns cached result."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="")
 
             client = GitHubClient()
@@ -131,7 +131,7 @@ class TestGitHubClientAuthenticationMethods:
 
     def test_check_authentication_success(self):
         """Test successful authentication check."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="")
 
             client = GitHubClient()
@@ -142,7 +142,7 @@ class TestGitHubClientAuthenticationMethods:
 
     def test_check_authentication_failure(self):
         """Test failed authentication check."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.return_value = MagicMock(returncode=1, stderr="Not logged in", stdout="")
 
             with pytest.raises(GitHubAuthenticationError):
@@ -155,7 +155,7 @@ class TestCIEnvironmentCompatibility:
     def test_github_actions_environment(self):
         """Test behavior in GitHub Actions environment."""
         # Simulate GitHub Actions where gh might not be configured
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError("gh: command not found")
 
             with pytest.raises(GitHubAuthenticationError) as exc_info:
@@ -167,7 +167,7 @@ class TestCIEnvironmentCompatibility:
     def test_docker_environment(self):
         """Test behavior in Docker container environment."""
         # Simulate Docker environment with limited tools
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = OSError("Operation not permitted")
 
             with pytest.raises(GitHubAuthenticationError):
@@ -176,21 +176,24 @@ class TestCIEnvironmentCompatibility:
     def test_restricted_environment(self):
         """Test behavior in restricted environments."""
         # Simulate environment where subprocess is restricted
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = PermissionError("Permission denied")
 
             with pytest.raises(GitHubAuthenticationError):
                 GitHubClient()
 
-    @pytest.mark.parametrize("error_type,error_message", [
-        (FileNotFoundError, "gh: command not found"),
-        (PermissionError, "Permission denied"),
-        (OSError, "Operation not permitted"),
-        (subprocess.TimeoutExpired, None),  # Special case for timeout
-    ])
+    @pytest.mark.parametrize(
+        "error_type,error_message",
+        [
+            (FileNotFoundError, "gh: command not found"),
+            (PermissionError, "Permission denied"),
+            (OSError, "Operation not permitted"),
+            (subprocess.TimeoutExpired, None),  # Special case for timeout
+        ],
+    )
     def test_various_system_errors(self, error_type, error_message):
         """Test handling of various system-level errors."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             if error_type == subprocess.TimeoutExpired:
                 mock_run.side_effect = subprocess.TimeoutExpired("gh", 10)
             else:
@@ -205,11 +208,11 @@ class TestGitHubClientValidation:
 
     def test_validate_github_cli_not_installed(self):
         """Test validation when gh is not installed."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
             mock_run.side_effect = FileNotFoundError("gh not found")
 
             # Create client with mocked successful auth for this test
-            with patch.object(GitHubClient, 'check_authentication'):
+            with patch.object(GitHubClient, "check_authentication"):
                 client = GitHubClient()
                 result = client.validate_github_cli()
 
@@ -218,7 +221,8 @@ class TestGitHubClientValidation:
 
     def test_validate_github_cli_installed_not_authenticated(self):
         """Test validation when gh is installed but not authenticated."""
-        with patch('subprocess.run') as mock_run:
+        with patch("subprocess.run") as mock_run:
+
             def side_effect(cmd, **kwargs):
                 if cmd[1] == "--version":
                     return MagicMock(returncode=0, stdout="gh version 2.0.0")
@@ -229,7 +233,7 @@ class TestGitHubClientValidation:
             mock_run.side_effect = side_effect
 
             # Create client with mocked successful auth for this test
-            with patch.object(GitHubClient, 'check_authentication'):
+            with patch.object(GitHubClient, "check_authentication"):
                 client = GitHubClient()
                 result = client.validate_github_cli()
 

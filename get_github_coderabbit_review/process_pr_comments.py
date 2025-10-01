@@ -5,7 +5,6 @@ AIエージェント向けに構造化されたコメントデータを生成
 """
 
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -19,7 +18,7 @@ def process_pr_comments():
     # データファイルを読み込み
     try:
         pr_data_path = base_dir / "pr_104_raw_data.json"
-        with open(pr_data_path, "r", encoding="utf-8") as f:
+        with open(pr_data_path, encoding="utf-8") as f:
             pr_data = json.load(f)
     except FileNotFoundError as e:
         print(f"❌ PR data file not found at {pr_data_path}: {e}")
@@ -33,7 +32,7 @@ def process_pr_comments():
 
     try:
         inline_comments_path = base_dir / "pr_104_inline_comments.json"
-        with open(inline_comments_path, "r", encoding="utf-8") as f:
+        with open(inline_comments_path, encoding="utf-8") as f:
             inline_comments = json.load(f)
     except FileNotFoundError as e:
         print(f"❌ Inline comments file not found at {inline_comments_path}: {e}")
@@ -47,7 +46,7 @@ def process_pr_comments():
 
     try:
         reviews_path = base_dir / "pr_104_reviews.json"
-        with open(reviews_path, "r", encoding="utf-8") as f:
+        with open(reviews_path, encoding="utf-8") as f:
             reviews = json.load(f)
     except FileNotFoundError as e:
         print(f"❌ Reviews file not found at {reviews_path}: {e}")

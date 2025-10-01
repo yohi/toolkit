@@ -1,11 +1,11 @@
 """Review comment processor for extracting actionable comments and specialized sections."""
 
 import re
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List
 
-from ..models import ActionableComment, AIAgentPrompt
-from ..models.review_comment import ReviewComment, NitpickComment, OutsideDiffComment
 from ..exceptions import CommentParsingError
+from ..models import ActionableComment, AIAgentPrompt
+from ..models.review_comment import NitpickComment, OutsideDiffComment, ReviewComment
 
 
 class ReviewProcessor:

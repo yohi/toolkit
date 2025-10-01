@@ -3,6 +3,7 @@ Network-related exceptions.
 """
 
 from datetime import datetime, timezone
+
 from .base import CodeRabbitFetcherError
 
 

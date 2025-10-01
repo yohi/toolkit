@@ -1,31 +1,27 @@
 """End-to-end workflow tests for CodeRabbit Comment Fetcher."""
 
-import unittest
-import tempfile
+import json
 import os
 import shutil
-import json
-from unittest.mock import patch, MagicMock
-from typing import Dict, Any
+import tempfile
+import unittest
+from unittest.mock import patch
 
-from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionConfig
 from coderabbit_fetcher.exceptions import (
-    ValidationError,
     GitHubAuthenticationError,
-    InvalidPRUrlError,
     TransientError,
+    ValidationError,
 )
+from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionConfig
+
+from tests.fixtures.github_responses import (
+    MOCK_GH_COMMENTS_RESPONSE,
+    MOCK_GH_PR_RESPONSE,
+)
+from tests.fixtures.persona_files import PERSONA_FILE_CONTENT, PersonaFileManager
 from tests.fixtures.sample_data import (
-    SAMPLE_PR_DATA,
-    SAMPLE_CODERABBIT_COMMENTS,
     SAMPLE_LARGE_DATASET,
 )
-from tests.fixtures.github_responses import (
-    MOCK_GH_PR_RESPONSE,
-    MOCK_GH_COMMENTS_RESPONSE,
-    MOCK_SUCCESS_RESPONSES,
-)
-from tests.fixtures.persona_files import PersonaFileManager, PERSONA_FILE_CONTENT
 
 
 class TestEndToEndWorkflow(unittest.TestCase):
@@ -92,7 +88,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
         self.assertTrue(os.path.exists(output_file))
 
         # Verify output content
-        with open(output_file, "r", encoding="utf-8") as f:
+        with open(output_file, encoding="utf-8") as f:
             content = f.read()
             self.assertIn("CodeRabbit", content)
             self.assertIn("Comments Analysis", content)
@@ -128,7 +124,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
                 self.assertTrue(os.path.exists(output_file))
 
                 # Verify format-specific content
-                with open(output_file, "r", encoding="utf-8") as f:
+                with open(output_file, encoding="utf-8") as f:
                     content = f.read()
 
                     if output_format == "json":
@@ -301,7 +297,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
         self.assertTrue(os.path.exists(output_file))
 
         # Verify Japanese content is preserved
-        with open(output_file, "r", encoding="utf-8") as f:
+        with open(output_file, encoding="utf-8") as f:
             content = f.read()
             self.assertIn("日本語", content.lower())
 
@@ -368,8 +364,9 @@ class TestPerformanceWorkflow(unittest.TestCase):
     @patch("coderabbit_fetcher.github_client.GitHubClient.validate")
     def test_memory_usage_with_large_dataset(self, mock_validate, mock_auth, mock_fetch):
         """Test memory usage with large comment datasets."""
-        import psutil
         import os
+
+        import psutil
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss
@@ -425,7 +422,7 @@ class TestPerformanceWorkflow(unittest.TestCase):
                 orchestrator = CodeRabbitOrchestrator(config)
                 result = orchestrator.execute()
                 results.append((index, result))
-            except (ValidationError, GitHubAuthenticationError, IOError, RuntimeError) as e:
+            except (OSError, ValidationError, GitHubAuthenticationError, RuntimeError) as e:
                 errors.append((index, e))
 
         # Start multiple concurrent workflows

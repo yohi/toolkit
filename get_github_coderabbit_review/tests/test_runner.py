@@ -1,11 +1,11 @@
 """Test runner for CodeRabbit Comment Fetcher tests."""
 
-import unittest
-import sys
-import os
-import time
 import argparse
-from typing import Dict, List, Any, Optional
+import os
+import sys
+import time
+import unittest
+from typing import Any, Dict, Optional
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))

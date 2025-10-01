@@ -1,15 +1,15 @@
 """Comment posting functionality for CodeRabbit resolution requests."""
 
-from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass
-from urllib.parse import urlparse
 
 # "GitHubClient" import will be added in Task 12 when CLI is implemented
 # For now, we use typing.TYPE_CHECKING to avoid import errors in tests
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     from .github_client import GitHubClient
+
 from .exceptions import CodeRabbitFetcherError
 
 

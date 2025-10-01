@@ -3,10 +3,11 @@ Thread context data model.
 """
 
 from datetime import datetime
-from typing import Dict, List, Any, Optional
 from enum import Enum
+from typing import Any, Dict, List, Optional
 
 from pydantic import Field
+
 from .base import BaseCodeRabbitModel
 
 

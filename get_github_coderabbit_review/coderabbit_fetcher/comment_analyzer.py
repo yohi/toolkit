@@ -2,23 +2,23 @@
 
 import logging
 import time
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 # Module-level logger
 logger = logging.getLogger(__name__)
 
+from .exceptions import CodeRabbitFetcherError
 from .models import (
     AnalyzedComments,
-    SummaryComment,
-    ReviewComment,
     CommentMetadata,
-    ThreadContext,
     ResolutionStatus,
+    ReviewComment,
+    SummaryComment,
+    ThreadContext,
 )
-from .processors import SummaryProcessor, ReviewProcessor, ThreadProcessor
+from .processors import ReviewProcessor, SummaryProcessor, ThreadProcessor
 from .resolved_marker import ResolvedMarkerConfig, ResolvedMarkerDetector
-from .exceptions import CodeRabbitFetcherError
 
 
 class CommentAnalysisError(CodeRabbitFetcherError):

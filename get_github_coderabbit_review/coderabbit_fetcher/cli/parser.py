@@ -5,15 +5,15 @@ This module handles parsing command line arguments and orchestrating the
 main execution flow of the CodeRabbit Comment Fetcher.
 """
 
-import json
 from pathlib import Path
 from typing import Optional
 
 from rich.console import Console
-from ..github.client import GitHubClient
+
 from ..analyzer.comment_analyzer import CommentAnalyzer
-from ..persona.manager import PersonaManager
 from ..formatters.factory import FormatterFactory
+from ..github.client import GitHubClient
+from ..persona.manager import PersonaManager
 
 console = Console()
 

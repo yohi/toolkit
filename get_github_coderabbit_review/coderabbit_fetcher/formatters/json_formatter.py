@@ -1,20 +1,20 @@
 """JSON formatter for CodeRabbit comment output."""
 
 import json
-from typing import Dict, Any, List, Optional
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
-from .base_formatter import BaseFormatter
 from ..models import (
-    AnalyzedComments,
-    SummaryComment,
-    ReviewComment,
-    ThreadContext,
-    AIAgentPrompt,
     ActionableComment,
+    AIAgentPrompt,
+    AnalyzedComments,
     NitpickComment,
     OutsideDiffComment,
+    ReviewComment,
+    SummaryComment,
+    ThreadContext,
 )
+from .base_formatter import BaseFormatter
 
 
 class JSONFormatter(BaseFormatter):

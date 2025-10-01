@@ -1,19 +1,18 @@
 """Comment analyzer for filtering and processing CodeRabbit comments."""
 
 import re
-from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
+from typing import Any, Dict, List
 
-from ..models import (
-    AnalyzedComments,
-    SummaryComment,
-    ReviewComment,
-    ActionableComment,
-    ThreadContext,
-    CommentMetadata,
-)
 from ..exceptions import CommentParsingError
-from ..processors import SummaryProcessor, ReviewProcessor
+from ..models import (
+    ActionableComment,
+    AnalyzedComments,
+    CommentMetadata,
+    ReviewComment,
+    SummaryComment,
+)
+from ..processors import ReviewProcessor, SummaryProcessor
 
 
 class CommentAnalyzer:

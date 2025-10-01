@@ -1,12 +1,12 @@
 """Thread processing and context analysis for CodeRabbit comments."""
 
 import re
-from typing import List, Dict, Any, Optional, Tuple
-from datetime import datetime, timezone
 from collections import defaultdict
+from datetime import datetime, timezone
+from typing import Any, Dict, List
 
-from ..models import ThreadContext
 from ..exceptions import CommentParsingError
+from ..models import ThreadContext
 
 
 class ThreadProcessor:

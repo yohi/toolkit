@@ -1,18 +1,16 @@
 """Base formatter abstract class for CodeRabbit comment output."""
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List
 
 from ..models import (
-    AnalyzedComments,
-    SummaryComment,
-    ReviewComment,
-    ThreadContext,
-    AIAgentPrompt,
     ActionableComment,
+    AIAgentPrompt,
+    AnalyzedComments,
     NitpickComment,
     OutsideDiffComment,
+    ThreadContext,
 )
 
 

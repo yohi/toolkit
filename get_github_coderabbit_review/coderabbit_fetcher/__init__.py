@@ -30,7 +30,7 @@ Usage:
 """
 
 import importlib.metadata
-from typing import Dict, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
 
 if TYPE_CHECKING:
     from .cli.main import main
@@ -52,13 +52,13 @@ __copyright__ = "Copyright 2025 CodeRabbit Fetcher Team"
 
 from .exceptions import CodeRabbitFetcherError
 from .models import (
-    AnalyzedComments,
-    SummaryComment,
-    ReviewComment,
     ActionableComment,
     AIAgentPrompt,
-    ThreadContext,
+    AnalyzedComments,
     CommentMetadata,
+    ReviewComment,
+    SummaryComment,
+    ThreadContext,
 )
 
 # Package metadata
@@ -90,8 +90,8 @@ def get_version_info() -> Dict[str, str]:
     Returns:
         Dictionary containing version details
     """
-    import sys
     import platform
+    import sys
 
     return {
         "version": __version__,
@@ -133,10 +133,11 @@ DEFAULT_CONFIG = {
     "supported_output_formats": ["markdown", "json", "plain"],
 }
 
+from .comment_analyzer import CommentAnalyzer
+from .github_client import GitHubClient
+
 # Export key components for programmatic usage
 from .orchestrator import CodeRabbitOrchestrator, ExecutionConfig
-from .github_client import GitHubClient
-from .comment_analyzer import CommentAnalyzer
 
 
 # Lazily expose CLI entry to avoid import-time side effects.

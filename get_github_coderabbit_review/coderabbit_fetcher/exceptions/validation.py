@@ -1,6 +1,7 @@
 """Validation-related exceptions."""
 
-from typing import Optional, List, Dict, Any
+from typing import Any, List, Optional
+
 from .base import CodeRabbitFetcherError
 
 

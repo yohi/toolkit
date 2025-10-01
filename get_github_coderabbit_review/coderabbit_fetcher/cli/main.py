@@ -1,22 +1,13 @@
 """Main CLI interface for CodeRabbit Comment Fetcher."""
 
-import sys
 import argparse
 import logging
-from pathlib import Path
-from typing import Dict, List, Optional, Any, TextIO
-import json
+import sys
+from typing import Any, Dict
 
-from ..exceptions import CodeRabbitFetcherError, GitHubAuthenticationError, InvalidPRUrlError
-from ..github_client import GitHubClient, GitHubAPIError
-from ..comment_analyzer import CommentAnalyzer, CommentAnalysisError
-from ..persona_manager import PersonaManager
-from ..formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter
-from ..resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
-from ..comment_poster import ResolutionRequestManager, ResolutionRequestConfig
-from ..models import CommentMetadata
+from ..exceptions import CodeRabbitFetcherError
+from ..github_client import GitHubAPIError, GitHubClient
 from ..orchestrator import CodeRabbitOrchestrator, ExecutionConfig
-
 
 # Configure logging
 logging.basicConfig(
@@ -261,7 +252,7 @@ def run_validate_marker_command(marker: str) -> int:
     print(f"🔍 Validating marker: '{marker}'")
 
     try:
-        from ..resolved_marker import ResolvedMarkerConfig, ResolvedMarkerManager
+        from ..resolved_marker import ResolvedMarkerManager
 
         # Use ResolvedMarkerManager's validate_marker method instead of config
         manager = ResolvedMarkerManager()
@@ -298,7 +289,8 @@ def run_version_command() -> int:
 
     try:
         # First, try to import the required modules
-        from importlib.metadata import version as get_version, PackageNotFoundError
+        from importlib.metadata import PackageNotFoundError
+        from importlib.metadata import version as get_version
     except ImportError:
         # If import fails, use development version
         version = "development"

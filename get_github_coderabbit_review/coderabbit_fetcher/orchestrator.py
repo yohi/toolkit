@@ -1,27 +1,26 @@
 """Main orchestration logic for CodeRabbit Comment Fetcher."""
 
-import time
 import logging
 import random
-from typing import Dict, List, Optional, Any, Callable
-from pathlib import Path
+import time
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
+from .comment_analyzer import CommentAnalyzer
+from .comment_poster import ResolutionRequestConfig, ResolutionRequestManager
 from .exceptions import (
     CodeRabbitFetcherError,
+    CommentAnalysisError,
     GitHubAuthenticationError,
     InvalidPRUrlError,
     PersonaFileError,
-    CommentAnalysisError,
 )
-from .github_client import GitHubClient, GitHubAPIError
-from .comment_analyzer import CommentAnalyzer
+from .formatters import JSONFormatter, MarkdownFormatter, PlainTextFormatter
+from .github_client import GitHubAPIError, GitHubClient
+from .models import AnalyzedComments
 from .persona_manager import PersonaManager
-from .formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter
-from .resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
-from .comment_poster import ResolutionRequestManager, ResolutionRequestConfig
-from .models import AnalyzedComments, CommentMetadata
-
+from .resolved_marker import ResolvedMarkerConfig, ResolvedMarkerManager
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -298,7 +297,7 @@ class CodeRabbitOrchestrator:
 
             logger.info("GitHub CLI authentication verified")
 
-        except GitHubAuthenticationError as e:
+        except GitHubAuthenticationError:
             logger.exception("GitHub authentication failed")
             raise
         except Exception as e:
@@ -321,7 +320,7 @@ class CodeRabbitOrchestrator:
             logger.info(f"PR URL validated: {owner}/{repo}#{pr_number}")
             return pr_info
 
-        except InvalidPRUrlError as e:
+        except InvalidPRUrlError:
             logger.exception("Invalid PR URL")
             raise
         except Exception as e:
@@ -342,7 +341,7 @@ class CodeRabbitOrchestrator:
             logger.info(f"Persona loaded ({len(persona)} characters)")
             return persona
 
-        except PersonaFileError as e:
+        except PersonaFileError:
             logger.exception("Persona loading failed")
             raise
         except Exception as e:
@@ -390,7 +389,7 @@ class CodeRabbitOrchestrator:
                     )
                     time.sleep(sleep)
 
-        except GitHubAPIError as e:
+        except GitHubAPIError:
             logger.exception("GitHub API error")
             raise
         except Exception as e:
@@ -431,7 +430,7 @@ class CodeRabbitOrchestrator:
 
             return analyzed_comments
 
-        except CommentAnalysisError as e:
+        except CommentAnalysisError:
             logger.exception("Comment analysis failed")
             raise
         except Exception as e:

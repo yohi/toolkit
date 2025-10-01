@@ -1,10 +1,10 @@
 """Summary comment processor for extracting CodeRabbit summaries."""
 
 import re
-from typing import List, Optional, Dict, Any
+from typing import Any, Dict, List, Optional
 
-from ..models import SummaryComment, ChangeEntry
 from ..exceptions import CommentParsingError
+from ..models import ChangeEntry, SummaryComment
 
 
 class SummaryProcessor:

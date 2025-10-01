@@ -2,22 +2,20 @@
 Unit tests for data models.
 """
 
-import pytest
 from datetime import datetime
-from pydantic import ValidationError
 
 from coderabbit_fetcher.models import (
-    AnalyzedComments,
-    CommentMetadata,
-    SummaryComment,
-    ReviewComment,
     ActionableComment,
     AIAgentPrompt,
-    ThreadContext,
+    AnalyzedComments,
     ChangeEntry,
+    CommentMetadata,
     CommentType,
     Priority,
     ResolutionStatus,
+    ReviewComment,
+    SummaryComment,
+    ThreadContext,
 )
 
 

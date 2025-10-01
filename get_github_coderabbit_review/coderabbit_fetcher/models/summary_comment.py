@@ -5,6 +5,7 @@ Summary comment data model.
 from typing import List, Optional
 
 from pydantic import Field
+
 from .base import BaseCodeRabbitModel
 
 

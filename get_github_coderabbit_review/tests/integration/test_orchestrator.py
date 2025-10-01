@@ -1,13 +1,13 @@
 """Integration tests for the main orchestrator."""
 
-import unittest
-from unittest.mock import Mock, patch, MagicMock
-import tempfile
 import json
+import tempfile
+import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
-from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionConfig
 from coderabbit_fetcher.exceptions import GitHubAuthenticationError, InvalidPRUrlError
+from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionConfig
 
 
 class TestOrchestratorIntegration(unittest.TestCase):
@@ -137,7 +137,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
             self.assertTrue(output_path.exists())
 
             # Verify output content
-            with open(output_path, "r", encoding="utf-8") as f:
+            with open(output_path, encoding="utf-8") as f:
                 content = f.read()
                 self.assertGreater(len(content), 0)
                 parsed = json.loads(content)

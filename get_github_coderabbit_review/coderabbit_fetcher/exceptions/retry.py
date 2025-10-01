@@ -1,6 +1,7 @@
 """Retry and resilience-related exceptions."""
 
-from typing import Optional, List, Any, Type
+from typing import List, Optional
+
 from .base import CodeRabbitFetcherError
 
 

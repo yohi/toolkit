@@ -1,12 +1,12 @@
 """GitHub CLI wrapper for authenticated API access."""
 
 import json
-import subprocess
 import re
-from typing import Dict, List, Optional, Any, Tuple
+import subprocess
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
-from .exceptions import GitHubAuthenticationError, InvalidPRUrlError, CodeRabbitFetcherError
+from .exceptions import CodeRabbitFetcherError, GitHubAuthenticationError, InvalidPRUrlError
 
 
 class GitHubAPIError(CodeRabbitFetcherError):
@@ -191,7 +191,7 @@ class GitHubClient:
             return json.loads(result.stdout)
 
         except subprocess.TimeoutExpired:
-            raise GitHubAPIError(f"GitHub API request timed out for review comments")
+            raise GitHubAPIError("GitHub API request timed out for review comments")
         except json.JSONDecodeError as e:
             raise GitHubAPIError(f"Failed to parse review comments response: {e}")
         except Exception as e:
@@ -347,7 +347,7 @@ class GitHubClient:
             return pr_info
 
         except subprocess.TimeoutExpired:
-            raise GitHubAPIError(f"GitHub CLI request timed out")
+            raise GitHubAPIError("GitHub CLI request timed out")
         except json.JSONDecodeError as e:
             raise GitHubAPIError(f"Failed to parse PR info response: {e}")
         except Exception as e:

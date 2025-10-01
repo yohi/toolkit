@@ -3,9 +3,9 @@ Metadata for comment analysis results.
 """
 
 from datetime import datetime, timezone
-from typing import Dict, List
 
 from pydantic import Field
+
 from .base import BaseCodeRabbitModel
 
 

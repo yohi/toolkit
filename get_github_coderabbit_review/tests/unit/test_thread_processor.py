@@ -1,11 +1,9 @@
 """Unit tests for ThreadProcessor class."""
 
-import pytest
-from datetime import datetime, timezone
 
-from coderabbit_fetcher.processors.thread_processor import ThreadProcessor
+
 from coderabbit_fetcher.models import ThreadContext
-from coderabbit_fetcher.exceptions import CommentParsingError
+from coderabbit_fetcher.processors.thread_processor import ThreadProcessor
 
 
 class TestThreadProcessor:
@@ -452,7 +450,7 @@ class TestThreadProcessor:
                     "id": 6001,
                     "user": {"login": "coderabbitai[bot]"},
                     "created_at": "2025-01-01T10:00:00Z",
-                    "body": f"Original issue here",
+                    "body": "Original issue here",
                     "in_reply_to_id": None,
                 },
                 {

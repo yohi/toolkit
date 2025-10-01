@@ -1,10 +1,10 @@
 """Resolved marker management for CodeRabbit comments."""
 
 import re
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
-from .models import ThreadContext, ResolutionStatus
+from .models import ResolutionStatus, ThreadContext
 
 
 @dataclass

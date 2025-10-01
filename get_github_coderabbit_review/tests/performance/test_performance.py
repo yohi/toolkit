@@ -1,19 +1,19 @@
 """Performance tests for CodeRabbit Comment Fetcher."""
 
-import unittest
-import time
-import tempfile
-import os
 import json
-import psutil
-from unittest.mock import patch, MagicMock
-from typing import List, Dict, Any
+import os
+import tempfile
+import time
+import unittest
+from typing import Any, Dict, List
+from unittest.mock import patch
 
-from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionConfig
+import psutil
 from coderabbit_fetcher.comment_analyzer import CommentAnalyzer
 from coderabbit_fetcher.formatters.markdown import MarkdownFormatter
+from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionConfig
+
 from tests.fixtures.github_responses import generate_mock_comments
-from tests.fixtures.sample_data import SAMPLE_LARGE_DATASET
 
 
 class PerformanceTestBase(unittest.TestCase):
@@ -173,7 +173,7 @@ class TestCommentAnalysisPerformance(PerformanceTestBase):
 
     def test_resolved_marker_detection_performance(self):
         """Test performance of resolved marker detection."""
-        from coderabbit_fetcher.resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
+        from coderabbit_fetcher.resolved_marker import ResolvedMarkerConfig, ResolvedMarkerManager
 
         # Generate comments with and without resolved markers
         comments = []

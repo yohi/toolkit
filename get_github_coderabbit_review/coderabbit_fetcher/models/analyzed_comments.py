@@ -5,6 +5,7 @@ Main analyzed comments data model.
 from typing import List
 
 from pydantic import Field
+
 from .base import BaseCodeRabbitModel
 from .comment_metadata import CommentMetadata
 from .review_comment import ReviewComment

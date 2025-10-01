@@ -9,17 +9,15 @@ import json
 import re
 import subprocess
 import time
-from pathlib import Path
 from typing import Any, Dict, Tuple
-from urllib.parse import urlparse
 
 from rich.console import Console
 
 from ..exceptions import (
-    GitHubAuthenticationError,
-    InvalidPRUrlError,
     APIRateLimitError,
     CodeRabbitFetcherError,
+    GitHubAuthenticationError,
+    InvalidPRUrlError,
 )
 
 console = Console()

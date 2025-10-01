@@ -1,13 +1,11 @@
 """Utility functions for exception handling and error reporting."""
 
-import sys
-import traceback
 import logging
-from typing import List, Dict, Any, Optional, Union, Type
+import traceback
 from datetime import datetime
+from typing import Any, Dict, List, Optional
 
 from .base import CodeRabbitFetcherError
-
 
 logger = logging.getLogger(__name__)
 
@@ -343,7 +341,7 @@ def chain_exceptions(*exceptions: Exception) -> Exception:
     for i, exc in enumerate(exceptions):
         messages.append(f"{i+1}. {type(exc).__name__}: {exc}")
 
-    chained_message = f"Multiple errors occurred:\n" + "\n".join(messages)
+    chained_message = "Multiple errors occurred:\n" + "\n".join(messages)
 
     # If main exception is a CodeRabbitFetcherError, preserve its structure
     if isinstance(main_exc, CodeRabbitFetcherError):

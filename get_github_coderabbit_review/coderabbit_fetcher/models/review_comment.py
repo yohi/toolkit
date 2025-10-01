@@ -3,6 +3,7 @@
 from typing import List
 
 from pydantic import BaseModel, Field, model_validator
+
 from .actionable_comment import ActionableComment
 from .ai_agent_prompt import AIAgentPrompt
 

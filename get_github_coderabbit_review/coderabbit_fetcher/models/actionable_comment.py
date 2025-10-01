@@ -2,12 +2,13 @@
 Actionable comment data model.
 """
 
-from typing import Optional, Any, Dict
 from enum import Enum
+from typing import Any, Dict, Optional
 
 from pydantic import model_validator
-from .base import BaseCodeRabbitModel
+
 from .ai_agent_prompt import AIAgentPrompt
+from .base import BaseCodeRabbitModel
 from .thread_context import ThreadContext
 
 

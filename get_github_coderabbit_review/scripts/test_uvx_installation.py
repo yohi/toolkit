@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 """Test script for uvx installation and execution compatibility."""
 
+import json
 import subprocess
 import sys
-import os
 import tempfile
-import json
 import traceback
 import warnings
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Any, Dict, List
 
 
 class UvxTestRunner:

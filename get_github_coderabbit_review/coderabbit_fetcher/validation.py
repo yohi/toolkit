@@ -1,23 +1,15 @@
 """Comprehensive input validation and error handling utilities."""
 
-import re
+import logging
 import os
+import re
 import sys
 import time
-import logging
 import urllib.parse
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Union, Callable
 from dataclasses import dataclass
 from functools import wraps
-
-from .exceptions import (
-    CodeRabbitFetcherError,
-    InvalidPRUrlError,
-    PersonaFileError,
-    GitHubAuthenticationError,
-)
-
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Union
 
 logger = logging.getLogger(__name__)
 
@@ -281,7 +273,7 @@ class FileValidator:
 
         # Content validation
         try:
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 content = f.read(1024)  # Read first 1KB for validation
 
                 # Check for binary content
