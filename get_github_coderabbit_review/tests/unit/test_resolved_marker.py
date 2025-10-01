@@ -437,8 +437,6 @@ class TestResolvedMarkerManager:
 
     def test_update_config(self):
         """Test configuration update."""
-        original_marker = self.manager.config.resolved_marker
-
         self.manager.update_config(
             resolved_marker="NEW_MARKER",
             case_sensitive=False
