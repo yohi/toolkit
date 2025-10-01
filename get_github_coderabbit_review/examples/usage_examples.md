@@ -207,23 +207,23 @@ def analyze_pr(pr_url, persona_file=None, output_dir="./batch_reviews"):
     """Analyze a single PR and return results."""
     output_dir = Path(output_dir)
     output_dir.mkdir(exist_ok=True)
-    
+
     # Extract PR info for filename
     parts = pr_url.split('/')
     owner, repo, pr_number = parts[-4], parts[-3], parts[-1]
-    
+
     output_file = output_dir / f"{owner}_{repo}_pr_{pr_number}.json"
-    
+
     cmd = [
         "coderabbit-fetch", pr_url,
         "--output-format", "json",
         "--output-file", str(output_file),
         "--show-stats"
     ]
-    
+
     if persona_file:
         cmd.extend(["--persona-file", persona_file])
-    
+
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=300)
         return {
@@ -243,21 +243,21 @@ def analyze_pr(pr_url, persona_file=None, output_dir="./batch_reviews"):
 def main():
     pr_urls = [
         "https://github.com/owner/repo/pull/101",
-        "https://github.com/owner/repo/pull/102", 
+        "https://github.com/owner/repo/pull/102",
         "https://github.com/owner/repo/pull/103"
     ]
-    
+
     results = []
     for pr_url in pr_urls:
         print(f"Analyzing {pr_url}...")
         result = analyze_pr(pr_url, "examples/personas/default_reviewer.txt")
         results.append(result)
-        
+
         if result["success"]:
             print(f"✅ Completed: {result['output_file']}")
         else:
             print(f"❌ Failed: {result.get('error', 'Unknown error')}")
-    
+
     # Summary report
     successful = [r for r in results if r["success"]]
     print(f"\n📊 Batch Summary: {len(successful)}/{len(results)} successful")
@@ -331,34 +331,34 @@ on:
 jobs:
   analyze:
     runs-on: ubuntu-latest
-    
+
     steps:
     - uses: actions/checkout@v4
-    
+
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.13'
-    
+
     - name: Install GitHub CLI
       run: |
         curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
         echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
         sudo apt update && sudo apt install gh
-    
+
     - name: Install CodeRabbit Fetcher
       run: pip install coderabbit-comment-fetcher[full]
-    
+
     - name: Authenticate with GitHub
       run: echo "${{ secrets.GITHUB_TOKEN }}" | gh auth login --with-token
-    
+
     - name: Analyze CodeRabbit Comments
       run: |
         coderabbit-fetch ${{ github.event.pull_request.html_url }} \
           --output-format json \
           --output-file coderabbit-analysis.json \
           --show-stats
-    
+
     - name: Upload Analysis Results
       uses: actions/upload-artifact@v3
       with:
@@ -377,37 +377,37 @@ stages:
 coderabbit_analysis:
   stage: analyze
   image: python:3.13-slim
-  
+
   before_script:
     # Install GitHub CLI
     - apt-get update && apt-get install -y curl
     - curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
     - echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | tee /etc/apt/sources.list.d/github-cli.list > /dev/null
     - apt-get update && apt-get install -y gh
-    
+
     # Install CodeRabbit Fetcher
     - pip install coderabbit-comment-fetcher[full]
-    
+
     # Authenticate (requires GITHUB_TOKEN variable)
     - echo "$GITHUB_TOKEN" | gh auth login --with-token
-  
+
   script:
     - |
       if [ "$CI_PIPELINE_SOURCE" = "merge_request_event" ]; then
         # Convert GitLab MR to GitHub PR URL (if mirrored)
         GITHUB_PR_URL="https://github.com/$CI_PROJECT_NAMESPACE/$CI_PROJECT_NAME/pull/$CI_MERGE_REQUEST_IID"
-        
+
         coderabbit-fetch "$GITHUB_PR_URL" \
           --output-format json \
           --output-file coderabbit-analysis.json \
           --show-stats
       fi
-  
+
   artifacts:
     paths:
       - coderabbit-analysis.json
     expire_in: 1 week
-  
+
   only:
     - merge_requests
 ```
