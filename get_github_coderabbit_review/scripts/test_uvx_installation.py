@@ -117,9 +117,6 @@ class UvxTestRunner:
         """Test package installation with uvx."""
         print("📦 Testing package installation...")
 
-        # Test local package installation
-        project_root = Path(__file__).parent.parent
-
         # Create temporary pyproject.toml for testing
         test_pyproject = self.temp_dir / "pyproject.toml"
         with open(test_pyproject, "w") as f:
