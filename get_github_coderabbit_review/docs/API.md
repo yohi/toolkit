@@ -612,9 +612,8 @@ from coderabbit_fetcher.exceptions import NetworkError, APIRateLimitError
 client = GitHubClient()
 
 try:
-    comments = client.fetch_pr_comments(
-        "https://github.com/owner/repo/pull/123"
-    )
+    # fetch_pr_comments expects three arguments: owner, repo, pr_number
+    comments = client.fetch_pr_comments("owner", "repo", 123)
 except APIRateLimitError as e:
     # Handle rate limiting (subclass of NetworkError)
     print(f"⏱️ Rate limit exceeded: {e}")
