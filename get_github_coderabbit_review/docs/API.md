@@ -240,6 +240,7 @@ class GitHubClient:
             GitHubAuthenticationError: If not authenticated
             APIRateLimitError: If rate limit exceeded
             InvalidPRUrlError: If PR not found
+            NetworkError: If a network-related issue occurs while fetching PR comments
         """
 
     def post_comment(self, owner: str, repo: str, pr_number: int, body: str) -> Dict[str, Any]:
