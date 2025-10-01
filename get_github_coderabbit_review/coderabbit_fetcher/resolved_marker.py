@@ -16,7 +16,7 @@ class ResolvedMarkerConfig:
     """
 
     # Default marker with emoji to prevent false positives
-    default_marker: str = "🔒 CODERABBIT_RESOLVED 🔒"
+    resolved_marker: str = "🔒 CODERABBIT_RESOLVED 🔒"
 
     # Additional patterns to detect various resolution formats
     additional_patterns: List[str] = None
@@ -48,7 +48,7 @@ class ResolvedMarkerConfig:
         Returns:
             List of all patterns to check for resolution
         """
-        patterns = [self.default_marker]
+        patterns = [self.resolved_marker]
         if self.additional_patterns:
             patterns.extend(self.additional_patterns)
         return patterns
@@ -347,7 +347,7 @@ class ResolvedMarkerManager:
             "unresolved_comments": unresolved_comments,
             "statistics": stats,
             "marker_config": {
-                "default_marker": self.config.default_marker,
+                "resolved_marker": self.config.resolved_marker,
                 "additional_patterns": self.config.additional_patterns,
                 "case_sensitive": self.config.case_sensitive,
                 "exact_match": self.config.exact_match

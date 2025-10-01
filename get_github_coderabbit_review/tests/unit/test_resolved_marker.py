@@ -20,7 +20,7 @@ class TestResolvedMarkerConfig:
         """Test default configuration values."""
         config = ResolvedMarkerConfig()
 
-        assert config.default_marker == "🔒 CODERABBIT_RESOLVED 🔒"
+        assert config.resolved_marker == "🔒 CODERABBIT_RESOLVED 🔒"
         assert config.case_sensitive is True
         assert config.exact_match is True
         assert isinstance(config.additional_patterns, list)
@@ -29,13 +29,13 @@ class TestResolvedMarkerConfig:
     def test_custom_config(self):
         """Test custom configuration."""
         config = ResolvedMarkerConfig(
-            default_marker="CUSTOM_RESOLVED",
+            resolved_marker="CUSTOM_RESOLVED",
             case_sensitive=False,
             exact_match=False,
             additional_patterns=["PATTERN1", "PATTERN2"]
         )
 
-        assert config.default_marker == "CUSTOM_RESOLVED"
+        assert config.resolved_marker == "CUSTOM_RESOLVED"
         assert config.case_sensitive is False
         assert config.exact_match is False
         assert "PATTERN1" in config.additional_patterns
@@ -48,14 +48,14 @@ class TestResolvedMarkerConfig:
         )
 
         patterns = config.all_patterns
-        assert config.default_marker in patterns
+        assert config.resolved_marker in patterns
         assert "EXTRA1" in patterns
         assert "EXTRA2" in patterns
 
     def test_compiled_patterns_case_sensitive(self):
         """Test compiled patterns with case sensitivity."""
         config = ResolvedMarkerConfig(
-            default_marker="RESOLVED",
+            resolved_marker="RESOLVED",
             case_sensitive=True,
             additional_patterns=[]
         )
@@ -71,7 +71,7 @@ class TestResolvedMarkerConfig:
     def test_compiled_patterns_case_insensitive(self):
         """Test compiled patterns without case sensitivity."""
         config = ResolvedMarkerConfig(
-            default_marker="RESOLVED",
+            resolved_marker="RESOLVED",
             case_sensitive=False,
             additional_patterns=[]
         )
@@ -86,7 +86,7 @@ class TestResolvedMarkerConfig:
     def test_exact_match_patterns(self):
         """Test exact match pattern generation."""
         config = ResolvedMarkerConfig(
-            default_marker="RESOLVED",
+            resolved_marker="RESOLVED",
             exact_match=True,
             additional_patterns=[]
         )
@@ -109,7 +109,7 @@ class TestResolvedMarkerDetector:
     def setup_method(self):
         """Set up test fixtures."""
         self.config = ResolvedMarkerConfig(
-            default_marker="🔒 RESOLVED 🔒",
+            resolved_marker="🔒 RESOLVED 🔒",
             additional_patterns=["RESOLVED_BY_CR", "✅ DONE"],
             case_sensitive=True,
             exact_match=True
@@ -119,7 +119,7 @@ class TestResolvedMarkerDetector:
     def test_default_detector(self):
         """Test detector with default configuration."""
         detector = ResolvedMarkerDetector()
-        assert detector.config.default_marker == "🔒 CODERABBIT_RESOLVED 🔒"
+        assert detector.config.resolved_marker == "🔒 CODERABBIT_RESOLVED 🔒"
 
     def test_is_comment_resolved_with_marker(self):
         """Test comment resolution detection with resolved marker."""
@@ -368,7 +368,7 @@ class TestResolvedMarkerManager:
     def setup_method(self):
         """Set up test fixtures."""
         self.config = ResolvedMarkerConfig(
-            default_marker="🔒 TEST_RESOLVED 🔒",
+            resolved_marker="🔒 TEST_RESOLVED 🔒",
             additional_patterns=["TEST_DONE"]
         )
         self.manager = ResolvedMarkerManager(self.config)
@@ -376,7 +376,7 @@ class TestResolvedMarkerManager:
     def test_default_manager(self):
         """Test manager with default configuration."""
         manager = ResolvedMarkerManager()
-        assert manager.config.default_marker == "🔒 CODERABBIT_RESOLVED 🔒"
+        assert manager.config.resolved_marker == "🔒 CODERABBIT_RESOLVED 🔒"
 
     def test_process_comments_with_resolution(self):
         """Test comment processing with resolution filtering."""
@@ -398,7 +398,7 @@ class TestResolvedMarkerManager:
 
         # Check marker config is included
         assert "marker_config" in result
-        assert result["marker_config"]["default_marker"] == "🔒 TEST_RESOLVED 🔒"
+        assert result["marker_config"]["resolved_marker"] == "🔒 TEST_RESOLVED 🔒"
 
     def test_process_threads_with_resolution(self):
         """Test thread processing with resolution status update."""
@@ -437,18 +437,18 @@ class TestResolvedMarkerManager:
 
     def test_update_config(self):
         """Test configuration update."""
-        original_marker = self.manager.config.default_marker
+        original_marker = self.manager.config.resolved_marker
 
         self.manager.update_config(
-            default_marker="NEW_MARKER",
+            resolved_marker="NEW_MARKER",
             case_sensitive=False
         )
 
-        assert self.manager.config.default_marker == "NEW_MARKER"
+        assert self.manager.config.resolved_marker == "NEW_MARKER"
         assert self.manager.config.case_sensitive is False
 
         # Verify detector was recreated
-        assert self.manager.detector.config.default_marker == "NEW_MARKER"
+        assert self.manager.detector.config.resolved_marker == "NEW_MARKER"
 
     def test_add_custom_marker(self):
         """Test adding custom marker."""
@@ -511,7 +511,7 @@ class TestResolvedMarkerIntegration:
         """Test complete workflow from raw comments to filtered output."""
         # Setup
         config = ResolvedMarkerConfig(
-            default_marker="🔒 INTEGRATION_RESOLVED 🔒"
+            resolved_marker="🔒 INTEGRATION_RESOLVED 🔒"
         )
         manager = ResolvedMarkerManager(config)
 
@@ -618,7 +618,7 @@ class TestResolvedMarkerIntegration:
     def test_multiple_marker_patterns(self):
         """Test detection with multiple marker patterns."""
         config = ResolvedMarkerConfig(
-            default_marker="🔒 PRIMARY 🔒",
+            resolved_marker="🔒 PRIMARY 🔒",
             additional_patterns=["SECONDARY_RESOLVED", "✅ TERTIARY ✅"]
         )
         detector = ResolvedMarkerDetector(config)
