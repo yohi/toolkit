@@ -68,7 +68,17 @@ dev = [
     "isort>=5.13.0",
     "mypy>=1.8.0",
     "ruff>=0.1.0",
+    "flake8>=7.0.0",
     "pre-commit>=3.6.0",
+    "psutil>=5.9.0",
+]
+
+# Test dependencies (subset of dev)
+test = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    "pytest-mock>=3.12.0",
+    "psutil>=5.9.0",
 ]
 
 # Performance testing dependencies
@@ -153,6 +163,7 @@ markers = [
     "unit: marks tests as unit tests",
     "integration: marks tests as integration tests",
     "slow: marks tests as slow running",
+    "performance: marks tests as performance tests (may be skipped in CI)",
 ]
 
 [tool.coverage.run]

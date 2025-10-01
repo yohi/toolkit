@@ -2,6 +2,7 @@
 
 import time
 import logging
+import random
 from typing import Dict, List, Optional, Any, Callable
 from pathlib import Path
 from dataclasses import dataclass, field
@@ -109,13 +110,19 @@ class ProgressTracker:
         logger.info(f"Progress: {self.current_step}/{self.total_steps} ({percentage:.1f}%) - {description}")
 
         if self.progress_callback:
-            self.progress_callback(description or "Processing...", self.current_step, self.total_steps)
+            try:
+                self.progress_callback(description or "Processing...", self.current_step, self.total_steps)
+            except Exception as e:
+                logger.warning("Progress callback failed: %s", e, exc_info=True)
 
     def complete(self) -> None:
         """Mark progress as complete."""
         self.current_step = self.total_steps
         if self.progress_callback:
-            self.progress_callback("Completed", self.total_steps, self.total_steps)
+            try:
+                self.progress_callback("Completed", self.total_steps, self.total_steps)
+            except Exception as e:
+                logger.warning("Progress callback failed: %s", e, exc_info=True)
 
 
 class CodeRabbitOrchestrator:
@@ -224,7 +231,7 @@ class CodeRabbitOrchestrator:
             self.metrics.errors_encountered.append(str(e))
             self.metrics.end_time = time.time()
 
-            logger.error(f"Execution failed: {e}")
+            logger.exception("Execution failed")
 
             # Attempt graceful error recovery
             recovery_info = self._attempt_error_recovery(e)
@@ -280,7 +287,7 @@ class CodeRabbitOrchestrator:
             logger.info("GitHub CLI authentication verified")
 
         except GitHubAuthenticationError as e:
-            logger.error(f"GitHub authentication failed: {e}")
+            logger.exception("GitHub authentication failed")
             raise
         except Exception as e:
             raise CodeRabbitFetcherError(f"Failed to validate GitHub authentication: {e}") from e
@@ -303,7 +310,7 @@ class CodeRabbitOrchestrator:
             return pr_info
 
         except InvalidPRUrlError as e:
-            logger.error(f"Invalid PR URL: {e}")
+            logger.exception("Invalid PR URL")
             raise
         except Exception as e:
             raise CodeRabbitFetcherError(f"Failed to validate PR URL: {e}") from e
@@ -324,32 +331,49 @@ class CodeRabbitOrchestrator:
             return persona
 
         except PersonaFileError as e:
-            logger.error(f"Persona loading failed: {e}")
+            logger.exception("Persona loading failed")
             raise
         except Exception as e:
             raise CodeRabbitFetcherError(f"Failed to load persona: {e}") from e
 
     def _fetch_pr_data(self) -> Dict[str, Any]:
-        """Fetch PR data from GitHub."""
+        """Fetch PR data from GitHub with retry logic."""
         logger.debug("Fetching PR data from GitHub...")
 
         try:
             start_time = time.time()
-            pr_data = self.github_client.fetch_pr_comments(self.config.pr_url)
-            fetch_time = time.time() - start_time
+            attempts = max(1, self.config.retry_attempts + 1)
+            last_err = None
 
-            self.metrics.github_api_time += fetch_time
-            self.metrics.github_api_calls += 1
+            for i in range(attempts):
+                try:
+                    pr_data = self.github_client.fetch_pr_comments(
+                        self.config.pr_url,
+                        timeout=self.config.timeout_seconds
+                    )
+                    fetch_time = time.time() - start_time
 
-            # Count comments
-            total_comments = len(pr_data.get('comments', [])) + len(pr_data.get('reviews', []))
-            self.metrics.total_comments_processed = total_comments
+                    self.metrics.github_api_time += fetch_time
+                    self.metrics.github_api_calls += 1
 
-            logger.info(f"PR data fetched in {fetch_time:.2f}s ({total_comments} comments)")
-            return pr_data
+                    # Count comments
+                    total_comments = len(pr_data.get('comments', [])) + len(pr_data.get('reviews', []))
+                    self.metrics.total_comments_processed = total_comments
+
+                    logger.info(f"PR data fetched in {fetch_time:.2f}s ({total_comments} comments)")
+                    return pr_data
+
+                except GitHubAPIError as e:
+                    last_err = e
+                    if i == attempts - 1:
+                        raise
+                    sleep = self._compute_backoff(i, self.config.retry_delay)
+                    logger.warning("Fetch PR data failed (attempt %d/%d): %s; retrying in %.2fs",
+                                   i + 1, attempts, e, sleep)
+                    time.sleep(sleep)
 
         except GitHubAPIError as e:
-            logger.error(f"GitHub API error: {e}")
+            logger.exception("GitHub API error")
             raise
         except Exception as e:
             raise CodeRabbitFetcherError(f"Failed to fetch PR data: {e}") from e
@@ -386,7 +410,7 @@ class CodeRabbitOrchestrator:
             return analyzed_comments
 
         except CommentAnalysisError as e:
-            logger.error(f"Comment analysis failed: {e}")
+            logger.exception("Comment analysis failed")
             raise
         except Exception as e:
             raise CodeRabbitFetcherError(f"Failed to analyze comments: {e}") from e
@@ -431,8 +455,11 @@ class CodeRabbitOrchestrator:
                 output_path = Path(self.config.output_file)
                 output_path.parent.mkdir(parents=True, exist_ok=True)
 
-                with open(output_path, 'w', encoding='utf-8') as f:
+                # Atomic write using temporary file
+                tmp_path = output_path.with_suffix(output_path.suffix + ".tmp")
+                with open(tmp_path, 'w', encoding='utf-8') as f:
                     f.write(formatted_content)
+                tmp_path.replace(output_path)
 
                 output_info["file_size"] = output_path.stat().st_size
                 logger.info(f"Output written to: {output_path} ({output_info['file_size']} bytes)")
@@ -463,9 +490,28 @@ class CodeRabbitOrchestrator:
             # Generate context
             context = self._generate_resolution_context(analyzed_comments)
 
-            # Post request
+            # Post request with retry logic
             start_time = time.time()
-            result = self.resolution_request_manager.validate_and_post(self.config.pr_url, context)
+            attempts = max(1, self.config.retry_attempts + 1)
+            last_err = None
+
+            for i in range(attempts):
+                try:
+                    result = self.resolution_request_manager.validate_and_post(
+                        self.config.pr_url,
+                        context,
+                        timeout=self.config.timeout_seconds
+                    )
+                    break
+                except Exception as e:
+                    last_err = e
+                    if i == attempts - 1:
+                        raise
+                    sleep = self._compute_backoff(i, self.config.retry_delay)
+                    logger.warning("Posting resolution request failed (attempt %d/%d): %s; retrying in %.2fs",
+                                   i + 1, attempts, e, sleep)
+                    time.sleep(sleep)
+
             post_time = time.time() - start_time
 
             self.metrics.github_api_time += post_time
@@ -480,7 +526,7 @@ class CodeRabbitOrchestrator:
             return result
 
         except Exception as e:
-            logger.error(f"Failed to post resolution request: {e}")
+            logger.exception("Failed to post resolution request")
             self.metrics.errors_encountered.append(f"Resolution request error: {e}")
             # Don't raise - posting failure shouldn't stop main execution
             return {"success": False, "error": str(e)}
@@ -657,3 +703,24 @@ class CodeRabbitOrchestrator:
             validation_result["issues"].append("Retry delay cannot be negative")
 
         return validation_result
+
+    def _compute_backoff(self, attempt: int, base_delay: float) -> float:
+        """Compute exponential backoff delay with jitter.
+
+        Args:
+            attempt: Current attempt number (0-based)
+            base_delay: Base delay in seconds
+
+        Returns:
+            Delay in seconds with exponential backoff and jitter
+        """
+        # Exponential backoff: base_delay * (2 ^ attempt)
+        delay = base_delay * (2 ** attempt)
+
+        # Add jitter (±25% of the delay)
+        jitter = delay * 0.25 * (2 * random.random() - 1)
+
+        # Cap maximum delay at 60 seconds
+        final_delay = min(delay + jitter, 60.0)
+
+        return max(final_delay, 0.1)  # Minimum 0.1 seconds

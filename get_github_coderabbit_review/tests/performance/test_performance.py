@@ -28,15 +28,13 @@ class PerformanceTestBase(unittest.TestCase):
     def tearDown(self):
         """Clean up test fixtures."""
         if os.path.exists(self.temp_dir):
-            for file in os.listdir(self.temp_dir):
-                try:
-                    os.unlink(os.path.join(self.temp_dir, file))
-                except:
-                    pass
+            import shutil
             try:
-                os.rmdir(self.temp_dir)
-            except:
-                pass
+                shutil.rmtree(self.temp_dir, ignore_errors=False)
+            except (OSError, PermissionError) as e:
+                # Log the error but don't fail the test
+                import logging
+                logging.warning(f"Failed to clean up temp directory {self.temp_dir}: {e}")
 
     def measure_execution_time(self, func, *args, **kwargs):
         """Measure execution time of a function.
@@ -137,8 +135,9 @@ class TestCommentAnalysisPerformance(PerformanceTestBase):
         # Very large dataset should still be manageable
         self.assertLess(execution_time, 30.0)  # < 30 seconds
 
-        # Verify result quality is maintained
-        self.assertGreater(len(result["coderabbit_comments"]), 1000)
+        # Verify result quality is maintained - should process all generated comments
+        # Use exact count validation instead of weak threshold
+        self.assertEqual(len(result["coderabbit_comments"]), 5000)
 
     def test_comment_analysis_memory_usage(self):
         """Test memory usage during comment analysis."""
@@ -475,11 +474,12 @@ class TestScalabilityLimits(PerformanceTestBase):
 
             # Should complete within reasonable time even for maximum dataset
             self.assertLess(execution_time, 60.0)  # < 1 minute
-            self.assertGreater(len(result["coderabbit_comments"]), 1000)
+            # Should process all generated comments
+            self.assertEqual(len(result["coderabbit_comments"]), len(comments))
 
         except MemoryError:
             self.skipTest("System does not have enough memory for maximum test")
-        except Exception as e:
+        except (ValueError, KeyError, TypeError) as e:
             self.fail(f"Unexpected error with maximum dataset: {e}")
 
     def test_memory_limit_handling(self):
@@ -545,7 +545,7 @@ class TestPerformanceRegression(PerformanceTestBase):
         self.assertLess(avg_time, 3.0)  # Reasonable baseline
 
         # Log baseline metrics for future comparison
-        print(f"Baseline performance metrics:")
+        print("Baseline performance metrics:")
         print(f"  Average time: {avg_time:.3f}s")
         print(f"  Min time: {min_time:.3f}s")
         print(f"  Max time: {max_time:.3f}s")
