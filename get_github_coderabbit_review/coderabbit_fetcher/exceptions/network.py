@@ -6,7 +6,12 @@ from datetime import datetime, timezone
 from .base import CodeRabbitFetcherError
 
 
-class APIRateLimitError(CodeRabbitFetcherError):
+class NetworkError(CodeRabbitFetcherError):
+    """Base class for network-related errors."""
+    pass
+
+
+class APIRateLimitError(NetworkError):
     """GitHub API rate limit exceeded.
 
     Raised when the GitHub API rate limit has been exceeded and the

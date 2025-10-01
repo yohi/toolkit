@@ -28,7 +28,7 @@
     "focus_areas": [
       "Code quality",
       "Security",
-      "Maintainability", 
+      "Maintainability",
       "Performance"
     ],
     "review_philosophy": "Constructive feedback with specific, actionable improvements"
@@ -57,11 +57,15 @@
         "description": "Implement proper input validation and sanitization",
         "code_example": "const sanitizedInput = this.sanitizeCommand(request.command);\nconst validatedCommand = this.validateCommand(sanitizedInput);\nif (validatedCommand.isValid) {\n    this.executeCommand(validatedCommand.command);\n} else {\n    throw new Error('Invalid command detected');\n}"
       },
-      "tags": ["security", "critical", "command-injection"]
+      "tags": [
+        "security",
+        "critical",
+        "command-injection"
+      ]
     },
     {
       "id": 987654322,
-      "type": "performance_issue", 
+      "type": "performance_issue",
       "priority": "high",
       "file": "src/vs/workbench/contrib/terminal/common/terminalConfiguration.ts",
       "line_range": {
@@ -78,12 +82,16 @@
         "cpu_impact": "Gradual degradation of responsiveness",
         "user_experience": "Terminal becomes sluggish over time"
       },
-      "tags": ["performance", "memory-leak", "disposal"]
+      "tags": [
+        "performance",
+        "memory-leak",
+        "disposal"
+      ]
     },
     {
       "id": 987654323,
       "type": "critical_bug",
-      "priority": "high", 
+      "priority": "high",
       "file": "src/vs/workbench/contrib/terminal/browser/terminalInstance.ts",
       "line_range": {
         "start": 234,
@@ -104,13 +112,18 @@
         "Both methods modify shared state without locks",
         "Timing-dependent failure in resource allocation"
       ],
-      "tags": ["critical", "race-condition", "async", "initialization"]
+      "tags": [
+        "critical",
+        "race-condition",
+        "async",
+        "initialization"
+      ]
     },
     {
       "id": 987654324,
       "type": "architecture",
       "priority": "medium",
-      "file": "src/vs/workbench/contrib/terminal/browser/terminalWidgetManager.ts", 
+      "file": "src/vs/workbench/contrib/terminal/browser/terminalWidgetManager.ts",
       "line_range": {
         "start": 45,
         "end": 78
@@ -118,21 +131,26 @@
       "title": "Architecture Improvement - Service Coupling",
       "body": "_🏗️ Architecture suggestion_\n\n**High coupling between `TerminalWidgetManager` and multiple concrete services makes the code difficult to test and maintain.**\n\nCurrent problems:\n- Hard to unit test due to concrete dependencies\n- Violates Single Responsibility Principle\n- Difficult to mock for testing\n- Tight coupling reduces flexibility\n\n**Recommended refactoring:**\n```typescript\n// Before: Tight coupling\nexport class TerminalWidgetManager {\n    constructor() {\n        this.configService = new ConfigurationService();\n        this.themeService = new WorkbenchThemeService(); \n        this.contextService = new ContextMenuService();\n    }\n}\n\n// After: Dependency injection\nexport class TerminalWidgetManager {\n    constructor(\n        @IConfigurationService private configService: IConfigurationService,\n        @IWorkbenchThemeService private themeService: IWorkbenchThemeService,\n        @IContextMenuService private contextService: IContextMenuService\n    ) {}\n}\n```\n\n**Benefits:**\n- Improved testability with mock services\n- Better separation of concerns\n- Enhanced maintainability\n- Follows VS Code architecture patterns",
       "resolved": false,
-      "created_at": "2025-01-27T15:30:20Z", 
+      "created_at": "2025-01-27T15:30:20Z",
       "user": "coderabbitai[bot]",
       "architecture_issues": [
         "Hard to unit test due to concrete dependencies",
-        "Violates Single Responsibility Principle", 
+        "Violates Single Responsibility Principle",
         "Difficult to mock for testing",
         "Tight coupling reduces flexibility"
       ],
       "refactoring_benefits": [
         "Improved testability with mock services",
-        "Better separation of concerns", 
+        "Better separation of concerns",
         "Enhanced maintainability",
         "Follows VS Code architecture patterns"
       ],
-      "tags": ["architecture", "dependency-injection", "testing", "maintainability"]
+      "tags": [
+        "architecture",
+        "dependency-injection",
+        "testing",
+        "maintainability"
+      ]
     },
     {
       "id": 987654325,
@@ -143,14 +161,14 @@
         "start": 156,
         "end": 189
       },
-      "title": "Performance Optimization - Unnecessary Re-renders", 
+      "title": "Performance Optimization - Unnecessary Re-renders",
       "body": "_⚡ Performance optimization_\n\n**Terminal view re-renders entire content on every minor update, causing performance degradation with large terminal buffers.**\n\n**Performance metrics:**\n- Current: ~120ms render time for 1000-line buffer\n- Expected: ~15ms with proper optimization\n- CPU usage unnecessarily high during active sessions\n\n**Optimization strategy:**\n```typescript\n// Implement virtual scrolling and incremental updates\nclass TerminalRenderer {\n    private lastRenderState: RenderState;\n    \n    public render(newState: RenderState): void {\n        const diff = this.calculateDiff(this.lastRenderState, newState);\n        this.applyIncrementalUpdate(diff);\n        this.lastRenderState = newState;\n    }\n    \n    private applyIncrementalUpdate(diff: RenderDiff): void {\n        // Only update changed portions\n        for (const change of diff.changes) {\n            this.updateRegion(change.start, change.end, change.content);\n        }\n    }\n}\n```",
       "resolved": false,
       "created_at": "2025-01-27T16:45:33Z",
       "user": "coderabbitai[bot]",
       "performance_metrics": {
         "current_render_time": "120ms for 1000-line buffer",
-        "target_render_time": "15ms with optimization", 
+        "target_render_time": "15ms with optimization",
         "cpu_usage": "Unnecessarily high during active sessions"
       },
       "optimization_techniques": [
@@ -159,7 +177,12 @@
         "Differential rendering",
         "State caching"
       ],
-      "tags": ["performance", "rendering", "optimization", "virtual-scrolling"]
+      "tags": [
+        "performance",
+        "rendering",
+        "optimization",
+        "virtual-scrolling"
+      ]
     },
     {
       "id": 987654326,
@@ -183,11 +206,15 @@
       ],
       "improvement_areas": [
         "Specific error messages",
-        "Actionable user guidance", 
+        "Actionable user guidance",
         "Proper error categorization",
         "User-friendly language"
       ],
-      "tags": ["error-handling", "user-experience", "logging"]
+      "tags": [
+        "error-handling",
+        "user-experience",
+        "logging"
+      ]
     },
     {
       "id": 987654327,
@@ -208,12 +235,16 @@
         "Inconsistent variable naming",
         "Non-standard VS Code conventions"
       ],
-      "tags": ["style", "naming", "consistency"]
+      "tags": [
+        "style",
+        "naming",
+        "consistency"
+      ]
     },
     {
       "id": 987654328,
       "type": "documentation",
-      "priority": "low", 
+      "priority": "low",
       "file": "src/vs/workbench/contrib/terminal/common/terminal.ts",
       "line_range": {
         "start": 67,
@@ -223,14 +254,18 @@
       "body": "_📚 Documentation improvement_\n\n**Complex interface `ITerminalConfiguration` lacks comprehensive JSDoc comments.**\n\n**Current state:**\n```typescript\ninterface ITerminalConfiguration {\n    shell: string;\n    args?: string[];\n    env?: { [key: string]: string };\n}\n```\n\n**Suggested documentation:**\n```typescript\n/**\n * Configuration interface for terminal instances\n * @example\n * ```typescript\n * const config: ITerminalConfiguration = {\n *   shell: '/bin/bash',\n *   args: ['--login'],\n *   env: { PATH: '/usr/local/bin' }\n * };\n * ```\n */\ninterface ITerminalConfiguration {\n    /** Shell executable path */\n    shell: string;\n    /** Arguments passed to shell */\n    args?: string[];\n    /** Environment variables */\n    env?: { [key: string]: string };\n}\n```",
       "resolved": false,
       "created_at": "2025-01-27T19:20:30Z",
-      "user": "coderabbitai[bot]", 
+      "user": "coderabbitai[bot]",
       "documentation_gaps": [
         "Missing JSDoc comments",
-        "No usage examples", 
+        "No usage examples",
         "Unclear parameter descriptions",
         "Missing @param annotations"
       ],
-      "tags": ["documentation", "jsdoc", "interface"]
+      "tags": [
+        "documentation",
+        "jsdoc",
+        "interface"
+      ]
     },
     {
       "id": 987654329,
@@ -241,18 +276,22 @@
         "start": 134,
         "end": 142
       },
-      "title": "Type Safety Improvement", 
+      "title": "Type Safety Improvement",
       "body": "_🔒 Type safety enhancement_\n\n**Using `any` type reduces type safety benefits.**\n\n**Current code:**\n```typescript\nconst linkData: any = this.parseLinkData(text);\n```\n\n**Suggested improvement:**\n```typescript\ninterface LinkData {\n    url: string;\n    line?: number;\n    column?: number;\n    type: 'file' | 'web' | 'email';\n}\n\nconst linkData: LinkData = this.parseLinkData(text);\n```\n\n**Benefits:**\n- Better IntelliSense support\n- Compile-time error detection\n- Improved code maintainability\n- Self-documenting interfaces",
       "resolved": false,
       "created_at": "2025-01-27T20:35:42Z",
       "user": "coderabbitai[bot]",
       "type_safety_benefits": [
         "Better IntelliSense support",
-        "Compile-time error detection", 
+        "Compile-time error detection",
         "Improved code maintainability",
         "Self-documenting interfaces"
       ],
-      "tags": ["type-safety", "typescript", "interfaces"]
+      "tags": [
+        "type-safety",
+        "typescript",
+        "interfaces"
+      ]
     }
   ],
   "ai_agent_prompts": [
@@ -261,28 +300,36 @@
       "context": "Terminal command execution security review",
       "file": "terminalService.ts",
       "prompt": "Analyze the terminal command execution flow for security vulnerabilities. Focus on input validation, command injection prevention, and privilege escalation risks. Consider the interaction between user input, shell execution, and VS Code's security sandbox.",
-      "related_comments": [987654321]
+      "related_comments": [
+        987654321
+      ]
     },
     {
       "id": "prompt_002",
       "context": "Terminal rendering performance",
-      "file": "terminalView.ts", 
+      "file": "terminalView.ts",
       "prompt": "Review the terminal rendering pipeline for performance bottlenecks. Consider virtual scrolling implementation, incremental updates, and memory management for large buffers. Analyze the impact of real-time updates on UI responsiveness.",
-      "related_comments": [987654325]
+      "related_comments": [
+        987654325
+      ]
     },
     {
       "id": "prompt_003",
       "context": "Service dependency management",
       "file": "terminalWidgetManager.ts",
       "prompt": "Evaluate the current service dependency structure for maintainability and testability. Propose refactoring strategies that align with VS Code's dependency injection patterns while maintaining backward compatibility.",
-      "related_comments": [987654324]
+      "related_comments": [
+        987654324
+      ]
     },
     {
       "id": "prompt_004",
-      "context": "Terminal process error management", 
+      "context": "Terminal process error management",
       "file": "terminalProcess.ts",
       "prompt": "Design a comprehensive error handling strategy for terminal processes. Consider different error types, user experience implications, and recovery mechanisms. Focus on providing actionable feedback while maintaining system stability.",
-      "related_comments": [987654326]
+      "related_comments": [
+        987654326
+      ]
     }
   ],
   "statistics": {
@@ -330,7 +377,7 @@
         "low_priority": 1
       },
       "terminalInstance.ts": {
-        "total_comments": 2, 
+        "total_comments": 2,
         "high_priority": 1,
         "medium_priority": 1,
         "low_priority": 0
@@ -402,14 +449,14 @@
         "risk_if_ignored": "High security risk"
       },
       {
-        "priority": "urgent", 
+        "priority": "urgent",
         "action": "Resolve memory leak in terminalConfiguration.ts",
         "estimated_effort": "2-3 hours",
         "risk_if_ignored": "Performance degradation"
       },
       {
         "priority": "urgent",
-        "action": "Fix race condition in terminalInstance.ts", 
+        "action": "Fix race condition in terminalInstance.ts",
         "estimated_effort": "3-4 hours",
         "risk_if_ignored": "Terminal instability"
       }
@@ -424,7 +471,7 @@
       {
         "priority": "high",
         "action": "Add virtual scrolling to terminalView.ts",
-        "estimated_effort": "8-12 hours", 
+        "estimated_effort": "8-12 hours",
         "benefits": "Significant performance improvement"
       },
       {
@@ -442,7 +489,7 @@
         "benefits": "Consistency and readability"
       },
       {
-        "priority": "low", 
+        "priority": "low",
         "action": "Add comprehensive documentation",
         "estimated_effort": "6-8 hours",
         "benefits": "Improved developer experience"
@@ -467,7 +514,7 @@
   },
   "execution_metadata": {
     "analysis_start_time": "2025-01-28T14:30:15Z",
-    "analysis_end_time": "2025-01-28T14:30:45Z", 
+    "analysis_end_time": "2025-01-28T14:30:45Z",
     "total_execution_time": "30.2 seconds",
     "github_api_calls": 7,
     "comments_processed": 34,
