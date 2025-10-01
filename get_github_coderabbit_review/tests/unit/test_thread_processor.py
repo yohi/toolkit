@@ -1,9 +1,11 @@
 """Unit tests for ThreadProcessor class."""
 
 import pytest
-from coderabbit_fetcher.exceptions import CommentParsingError
-from coderabbit_fetcher.models import ThreadContext
+from datetime import datetime, timezone
+
 from coderabbit_fetcher.processors.thread_processor import ThreadProcessor
+from coderabbit_fetcher.models import ThreadContext
+from coderabbit_fetcher.exceptions import CommentParsingError
 
 
 class TestThreadProcessor:
@@ -297,10 +299,15 @@ class TestThreadProcessor:
 
     def test_process_thread_empty(self):
         """Test processing of empty thread."""
-        with pytest.raises(CommentParsingError) as exc_info:
-            self.processor.process_thread([])
+        result = self.processor.process_thread([])
 
-        assert "Empty thread provided" in str(exc_info.value)
+        # Empty thread should return a valid ThreadContext with default values
+        assert result.thread_id == "empty"
+        assert result.main_comment["id"] == "empty"
+        assert result.main_comment["body"] == "Empty thread"
+        assert len(result.replies) == 0
+        assert result.resolution_status == "unresolved"
+        assert result.contextual_summary == "Empty thread"
 
     def test_group_comments_into_threads(self):
         """Test grouping comments into threads."""
@@ -365,18 +372,30 @@ class TestThreadProcessor:
 
     def test_complexity_factors(self):
         """Test specific complexity factors."""
-        # Create a high complexity scenario
+        # Create a high complexity scenario with mock comments
+        from coderabbit_fetcher.models.thread_context import ResolutionStatus
+
+        mock_comments = []
+        for i in range(10):
+            user_login = f"user{i % 4}" if i % 4 < 3 else "coderabbitai[bot]"
+            mock_comments.append(
+                {
+                    "id": 4000 + i,
+                    "user": {"login": user_login},
+                    "created_at": f"2025-01-01T{10 + i}:00:00Z",
+                    "body": f"Comment {i}",
+                    "path": "src/important.py",
+                    "line": 45,
+                }
+            )
+
         high_complexity_context = ThreadContext(
             thread_id="test",
-            root_comment_id="test",
-            file_context="src/important.py",
-            participants=["user1", "user2", "user3", "coderabbitai[bot]"],
-            comment_count=10,
-            coderabbit_comment_count=3,
-            is_resolved=False,
-            context_summary="Complex discussion",
-            ai_summary="",
-            chronological_comments=[],
+            main_comment=mock_comments[0],
+            replies=mock_comments[1:],
+            resolution_status=ResolutionStatus.UNRESOLVED,
+            contextual_summary="Complex discussion",
+            chronological_order=mock_comments,
         )
 
         complexity = self.processor.analyze_thread_complexity(high_complexity_context)
@@ -433,7 +452,7 @@ class TestThreadProcessor:
                     "id": 6001,
                     "user": {"login": "coderabbitai[bot]"},
                     "created_at": "2025-01-01T10:00:00Z",
-                    "body": "Original issue here",
+                    "body": f"Original issue here",
                     "in_reply_to_id": None,
                 },
                 {
@@ -528,3 +547,11 @@ class TestThreadProcessor:
         # Should have processed the valid thread
         assert len(contexts) >= 1
         assert all(isinstance(ctx, ThreadContext) for ctx in contexts)
+
+    def test_build_thread_context_empty_comments(self):
+        """Test that empty comments list returns empty result instead of raising exception."""
+        # Empty comments should return empty list, not raise exception
+        contexts = self.processor.build_thread_context([])
+
+        assert isinstance(contexts, list)
+        assert len(contexts) == 0

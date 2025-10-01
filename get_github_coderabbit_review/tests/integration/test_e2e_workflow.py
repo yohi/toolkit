@@ -1,22 +1,31 @@
 """End-to-end workflow tests for CodeRabbit Comment Fetcher."""
 
-import json
-import os
-import sys
-import tempfile
 import unittest
-from pathlib import Path
-from unittest.mock import patch
+import tempfile
+import os
+import shutil
+import json
+from unittest.mock import patch, MagicMock
+from typing import Dict, Any
 
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
-from coderabbit_fetcher.exceptions import GitHubAuthenticationError
 from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionConfig
-
-from tests.fixtures.github_responses import MOCK_GH_COMMENTS_RESPONSE, MOCK_GH_PR_RESPONSE
-from tests.fixtures.persona_files import PERSONA_FILE_CONTENT, PersonaFileManager
-from tests.fixtures.sample_data import SAMPLE_LARGE_DATASET
+from coderabbit_fetcher.exceptions import (
+    ValidationError,
+    GitHubAuthenticationError,
+    InvalidPRUrlError,
+    TransientError,
+)
+from tests.fixtures.sample_data import (
+    SAMPLE_PR_DATA,
+    SAMPLE_CODERABBIT_COMMENTS,
+    SAMPLE_LARGE_DATASET,
+)
+from tests.fixtures.github_responses import (
+    MOCK_GH_PR_RESPONSE,
+    MOCK_GH_COMMENTS_RESPONSE,
+    MOCK_SUCCESS_RESPONSES,
+)
+from tests.fixtures.persona_files import PersonaFileManager, PERSONA_FILE_CONTENT
 
 
 class TestEndToEndWorkflow(unittest.TestCase):
@@ -83,7 +92,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
         self.assertTrue(os.path.exists(output_file))
 
         # Verify output content
-        with open(output_file, encoding="utf-8") as f:
+        with open(output_file, "r", encoding="utf-8") as f:
             content = f.read()
             self.assertIn("CodeRabbit", content)
             self.assertIn("Comments Analysis", content)
@@ -119,7 +128,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
                 self.assertTrue(os.path.exists(output_file))
 
                 # Verify format-specific content
-                with open(output_file, encoding="utf-8") as f:
+                with open(output_file, "r", encoding="utf-8") as f:
                     content = f.read()
 
                     if output_format == "json":
@@ -233,11 +242,11 @@ class TestEndToEndWorkflow(unittest.TestCase):
         # Simulate transient error followed by success
         call_count = 0
 
-        def mock_fetch_with_retry(*args, **kwargs):
+        def mock_fetch_with_retry(*_args, **_kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
-                raise NetworkError("Temporary network issue")
+                raise TransientError("Temporary network issue")
             return {"pr_data": MOCK_GH_PR_RESPONSE, "comments": MOCK_GH_COMMENTS_RESPONSE}
 
         mock_fetch.side_effect = mock_fetch_with_retry
@@ -292,7 +301,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
         self.assertTrue(os.path.exists(output_file))
 
         # Verify Japanese content is preserved
-        with open(output_file, encoding="utf-8") as f:
+        with open(output_file, "r", encoding="utf-8") as f:
             content = f.read()
             self.assertIn("日本語", content.lower())
 
@@ -359,9 +368,8 @@ class TestPerformanceWorkflow(unittest.TestCase):
     @patch("coderabbit_fetcher.github_client.GitHubClient.validate")
     def test_memory_usage_with_large_dataset(self, mock_validate, mock_auth, mock_fetch):
         """Test memory usage with large comment datasets."""
-        import os
-
         import psutil
+        import os
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss
@@ -417,7 +425,7 @@ class TestPerformanceWorkflow(unittest.TestCase):
                 orchestrator = CodeRabbitOrchestrator(config)
                 result = orchestrator.execute()
                 results.append((index, result))
-            except Exception as e:
+            except (ValidationError, GitHubAuthenticationError, IOError, RuntimeError) as e:
                 errors.append((index, e))
 
         # Start multiple concurrent workflows
@@ -462,7 +470,7 @@ class TestUvxCompatibility(unittest.TestCase):
                 os.unlink(os.path.join(self.temp_dir, file))
             os.rmdir(self.temp_dir)
 
-    @unittest.skipIf(os.system("which uvx") != 0, "uvx not available")
+    @unittest.skipIf(shutil.which("uvx") is None, "uvx not available")
     def test_uvx_execution_compatibility(self):
         """Test that the package can be executed via uvx."""
         # This is a basic test that would require actual package installation

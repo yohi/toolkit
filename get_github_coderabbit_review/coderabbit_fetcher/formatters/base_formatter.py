@@ -1,16 +1,18 @@
 """Base formatter abstract class for CodeRabbit comment output."""
 
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import List, Dict, Any
+from datetime import datetime
 
 from ..models import (
-    ActionableComment,
-    AIAgentPrompt,
     AnalyzedComments,
+    SummaryComment,
+    ReviewComment,
+    ThreadContext,
+    AIAgentPrompt,
+    ActionableComment,
     NitpickComment,
     OutsideDiffComment,
-    ThreadContext,
 )
 
 
@@ -19,16 +21,15 @@ class BaseFormatter(ABC):
 
     def __init__(self):
         """Initialize base formatter."""
-        self.timestamp = datetime.now(tz=timezone.utc)
+        self.timestamp = datetime.now()
 
     @abstractmethod
-    def format(self, persona: str, analyzed_comments: AnalyzedComments, quiet: bool = False) -> str:
+    def format(self, persona: str, analyzed_comments: AnalyzedComments) -> str:
         """Format analyzed comments with persona.
 
         Args:
             persona: AI persona prompt string
             analyzed_comments: Analyzed CodeRabbit comments
-            quiet: Use quiet mode for minimal AI-optimized output
 
         Returns:
             Formatted output string
@@ -77,9 +78,16 @@ class BaseFormatter(ABC):
         sections.append("## Thread Context")
         sections.append(f"**Thread ID**: {getattr(thread, 'thread_id', 'N/A')}")
         sections.append(f"**Resolution Status**: {thread.resolution_status}")
-        sections.append(
-            f"**Comment Count**: {getattr(thread, 'comment_count', len(thread.chronological_order))}"
-        )
+
+        # Safe comment count calculation with proper fallback
+        chronological_order = getattr(thread, "chronological_order", [])
+        comment_count = getattr(thread, "comment_count", None)
+
+        # Use explicit comment_count if valid, otherwise fallback to chronological_order length
+        if comment_count is None or not isinstance(comment_count, int) or comment_count < 0:
+            comment_count = len(chronological_order) if chronological_order else 0
+
+        sections.append(f"**Comment Count**: {comment_count}")
 
         # File Context
         if hasattr(thread, "file_context") and thread.file_context:
@@ -120,8 +128,8 @@ class BaseFormatter(ABC):
         sections = []
         for i, comment in enumerate(comments, 1):
             sections.append(f"{i}. **{comment.title}**")
-            if comment.issue_description:
-                sections.append(f"   {comment.issue_description}")
+            if comment.description:
+                sections.append(f"   {comment.description}")
             if comment.file_path:
                 sections.append(f"   File: {comment.file_path}")
             if comment.line_number:
@@ -168,8 +176,8 @@ class BaseFormatter(ABC):
         sections = []
         for i, comment in enumerate(comments, 1):
             sections.append(f"{i}. **{comment.issue}**")
-            if comment.issue_description:
-                sections.append(f"   {comment.issue_description}")
+            if comment.description:
+                sections.append(f"   {comment.description}")
             if comment.file_path:
                 sections.append(f"   File: {comment.file_path}")
             if comment.line_range:

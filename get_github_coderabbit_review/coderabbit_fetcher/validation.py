@@ -1,15 +1,23 @@
 """Comprehensive input validation and error handling utilities."""
 
-import logging
-import os
 import re
+import os
 import sys
 import time
+import logging
 import urllib.parse
-from dataclasses import dataclass, field
-from functools import wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Union
+from typing import Dict, List, Optional, Any, Union, Callable
+from dataclasses import dataclass
+from functools import wraps
+
+from .exceptions import (
+    CodeRabbitFetcherError,
+    InvalidPRUrlError,
+    PersonaFileError,
+    GitHubAuthenticationError,
+)
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,13 +27,20 @@ class ValidationResult:
     """Result of validation operation."""
 
     valid: bool
-    issues: List[str] = field(default_factory=list)
-    warnings: List[str] = field(default_factory=list)
-    suggestions: List[str] = field(default_factory=list)
-    details: Dict[str, Any] = field(default_factory=dict)
+    issues: List[str] = None
+    warnings: List[str] = None
+    suggestions: List[str] = None
+    details: Dict[str, Any] = None
 
-    def __post_init__(self) -> None:
-        pass  # dataclass field(default_factory) handles initialization
+    def __post_init__(self):
+        if self.issues is None:
+            self.issues = []
+        if self.warnings is None:
+            self.warnings = []
+        if self.suggestions is None:
+            self.suggestions = []
+        if self.details is None:
+            self.details = {}
 
     def add_issue(self, message: str) -> None:
         """Add a validation issue."""
@@ -60,7 +75,7 @@ class URLValidator:
 
     GITHUB_DOMAIN_PATTERN = re.compile(r"^(https?://)?(www\.)?github\.com$")
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.timeout = 10  # seconds for connectivity checks
 
     def validate_pr_url(self, url: str) -> ValidationResult:
@@ -154,12 +169,21 @@ class URLValidator:
         if len(identifier) > 39:
             result.add_issue(f"GitHub {type_name} cannot exceed 39 characters")
 
-        # Character validation
-        if not re.match(r"^[a-zA-Z0-9._-]+$", identifier):
-            result.add_issue(f"GitHub {type_name} contains invalid characters")
-            result.add_suggestion(
-                "Only letters, numbers, dots, hyphens, and underscores are allowed"
-            )
+        # Character validation - different patterns for owner vs repository
+        if type_name.lower() == "owner":
+            # Stricter pattern for owners: alphanumeric with single hyphens, no leading/trailing/consecutive hyphens
+            if not re.match(r"^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$", identifier):
+                result.add_issue(f"GitHub {type_name} contains invalid characters")
+                result.add_suggestion(
+                    "Owner names can only contain letters, numbers, and single hyphens (no leading/trailing/consecutive hyphens)"
+                )
+        else:
+            # Existing pattern for repositories: allow dots, underscores
+            if not re.match(r"^[A-Za-z0-9._-]+$", identifier):
+                result.add_issue(f"GitHub {type_name} contains invalid characters")
+                result.add_suggestion(
+                    "Repository names can contain letters, numbers, dots, hyphens, and underscores"
+                )
 
         # Cannot start/end with special characters
         if identifier.startswith((".", "-")) or identifier.endswith((".", "-")):
@@ -191,7 +215,7 @@ class URLValidator:
 class FileValidator:
     """Comprehensive file and path validation."""
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.max_file_size = 10 * 1024 * 1024  # 10MB
         self.allowed_persona_extensions = {".txt", ".md", ".text"}
 
@@ -213,7 +237,7 @@ class FileValidator:
         # Convert to Path object
         try:
             path = Path(file_path).resolve()
-        except Exception as e:
+        except OSError as e:
             result.add_issue(f"Invalid file path: {e}")
             return result
 
@@ -252,12 +276,12 @@ class FileValidator:
                 )
 
             result.details["file_size"] = file_size
-        except Exception as e:
+        except OSError as e:
             result.add_warning(f"Could not check file size: {e}")
 
         # Content validation
         try:
-            with open(path, encoding="utf-8") as f:
+            with open(path, "r", encoding="utf-8") as f:
                 content = f.read(1024)  # Read first 1KB for validation
 
                 # Check for binary content
@@ -275,7 +299,7 @@ class FileValidator:
 
         except UnicodeDecodeError:
             result.add_issue("File is not valid UTF-8 text")
-        except Exception as e:
+        except OSError as e:
             result.add_warning(f"Could not read file content: {e}")
 
         return result
@@ -297,7 +321,7 @@ class FileValidator:
 
         try:
             path = Path(output_path).resolve()
-        except Exception as e:
+        except OSError as e:
             result.add_issue(f"Invalid output path: {e}")
             return result
 
@@ -309,7 +333,7 @@ class FileValidator:
             try:
                 parent_dir.mkdir(parents=True, exist_ok=True)
                 result.add_suggestion(f"Created output directory: {parent_dir}")
-            except Exception as e:
+            except (OSError, PermissionError) as e:
                 result.add_issue(f"Cannot create output directory: {e}")
                 return result
 
@@ -343,7 +367,7 @@ class FileValidator:
 class OptionsValidator:
     """Validate command-line options and configuration."""
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.valid_formats = {"markdown", "json", "plain"}
         self.valid_log_levels = {"DEBUG", "INFO", "WARNING", "ERROR"}
 
@@ -460,6 +484,7 @@ def retry_on_failure(
     max_attempts: int = 3,
     delay: float = 1.0,
     backoff_factor: float = 2.0,
+    jitter: float = 0.0,
     exceptions: tuple = (Exception,),
 ) -> Callable:
     """Decorator for adding retry logic to functions.
@@ -468,6 +493,7 @@ def retry_on_failure(
         max_attempts: Maximum number of retry attempts
         delay: Initial delay between retries in seconds
         backoff_factor: Factor to multiply delay by for each retry
+        jitter: Maximum random variation to add/subtract from delay (default 0)
         exceptions: Tuple of exceptions to catch and retry on
 
     Returns:
@@ -477,33 +503,49 @@ def retry_on_failure(
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
+            # Ensure max_attempts is at least 1
+            validated_max_attempts = max(1, max_attempts)
             last_exception = None
 
-            for attempt in range(max_attempts):
+            for attempt in range(1, validated_max_attempts + 1):
                 try:
                     return func(*args, **kwargs)
                 except exceptions as e:
                     last_exception = e
 
-                    if attempt == max_attempts - 1:
-                        # Last attempt failed, re-raise
-                        logger.error(
-                            f"Function {func.__name__} failed after {max_attempts} attempts: {e}"
+                    if attempt == validated_max_attempts:
+                        # Last attempt failed, log with stack trace and re-raise
+                        logger.exception(
+                            f"Function {func.__name__} failed after {validated_max_attempts} attempts"
                         )
-                        raise
+                        raise last_exception
 
                     # Calculate delay with exponential backoff
-                    current_delay = delay * (backoff_factor**attempt)
+                    current_delay = delay * (backoff_factor ** (attempt - 1))
+
+                    # Apply jitter to avoid thundering herd
+                    if jitter > 0:
+                        import random
+
+                        current_delay += random.uniform(-jitter, jitter)
+                        # Ensure delay is not negative
+                        current_delay = max(0, current_delay)
 
                     logger.warning(
-                        f"Function {func.__name__} failed (attempt {attempt + 1}/{max_attempts}): {e}. "
+                        f"Function {func.__name__} failed (attempt {attempt}/{validated_max_attempts}): {e}. "
                         f"Retrying in {current_delay:.1f}s..."
                     )
 
                     time.sleep(current_delay)
 
-            # This should never be reached, but just in case
-            raise last_exception
+            # This should never be reached due to validated_max_attempts >= 1
+            # but kept as a safety net
+            if last_exception:
+                raise last_exception
+            else:
+                raise RuntimeError(
+                    f"Function {func.__name__} completed without success or exception"
+                )
 
         return wrapper
 
@@ -534,20 +576,22 @@ def timeout_handler(timeout_seconds: float) -> Callable:
             def timeout_handler_func(signum, frame):
                 raise TimeoutError(f"Function {func.__name__} timed out after {timeout_seconds}s")
 
-            # Set up the timeout
+            # Save existing timer state
+            old_timer = signal.getitimer(signal.ITIMER_REAL)
             old_handler = signal.signal(signal.SIGALRM, timeout_handler_func)
-            signal.alarm(int(timeout_seconds))
+            signal.setitimer(signal.ITIMER_REAL, float(timeout_seconds))
 
             try:
                 result = func(*args, **kwargs)
-                signal.alarm(0)  # Cancel the alarm
+                signal.setitimer(signal.ITIMER_REAL, 0)  # Cancel the timer
                 return result
             except TimeoutError:
                 logger.error(f"Function {func.__name__} timed out after {timeout_seconds}s")
                 raise
             finally:
-                signal.alarm(0)  # Ensure alarm is cancelled
-                signal.signal(signal.SIGALRM, old_handler)  # Restore old handler
+                # Restore original timer and handler
+                signal.setitimer(signal.ITIMER_REAL, *old_timer)
+                signal.signal(signal.SIGALRM, old_handler)
 
         return wrapper
 
@@ -557,7 +601,7 @@ def timeout_handler(timeout_seconds: float) -> Callable:
 class ValidationSuite:
     """Comprehensive validation suite for all inputs."""
 
-    def __init__(self) -> None:
+    def __init__(self):
         self.url_validator = URLValidator()
         self.file_validator = FileValidator()
         self.options_validator = OptionsValidator()
@@ -579,12 +623,12 @@ class ValidationSuite:
             result.merge(url_result)
 
         # Validate persona file
-        if config.get("persona_file"):
+        if "persona_file" in config:
             file_result = self.file_validator.validate_persona_file(config["persona_file"])
             result.merge(file_result)
 
         # Validate output file
-        if config.get("output_file"):
+        if "output_file" in config:
             output_result = self.file_validator.validate_output_path(config["output_file"])
             result.merge(output_result)
 

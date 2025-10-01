@@ -1,18 +1,19 @@
 """Comment analyzer for filtering and processing CodeRabbit comments."""
 
 import re
+from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
-from typing import Any, Dict, List
 
-from ..exceptions import CommentParsingError
 from ..models import (
-    ActionableComment,
     AnalyzedComments,
-    CommentMetadata,
-    ReviewComment,
     SummaryComment,
+    ReviewComment,
+    ActionableComment,
+    ThreadContext,
+    CommentMetadata,
 )
-from ..processors import SummaryProcessor
+from ..exceptions import CommentParsingError
+from ..processors import SummaryProcessor, ReviewProcessor
 
 
 class CommentAnalyzer:
@@ -27,6 +28,7 @@ class CommentAnalyzer:
         self.resolved_marker = resolved_marker
         self.coderabbit_author = "coderabbitai[bot]"
         self.summary_processor = SummaryProcessor()
+        self.review_processor = ReviewProcessor()
 
     def analyze_comments(self, comments_data: Dict[str, Any]) -> AnalyzedComments:
         """Analyze GitHub PR comments and extract CodeRabbit-specific information.
@@ -69,12 +71,11 @@ class CommentAnalyzer:
             total_coderabbit = (
                 len(coderabbit_inline) + len(coderabbit_reviews) + len(coderabbit_pr_comments)
             )
-            resolved = (
-                len(inline_threads)
-                + len(review_threads)
-                - len(unresolved_inline)
-                - len(unresolved_reviews)
+            total_threads = len(inline_threads) + len(review_threads)
+            unresolved_threads = sum(1 for t in inline_threads if not self.is_resolved(t)) + sum(
+                1 for t in review_threads if not self.is_resolved(t)
             )
+            resolved = total_threads - unresolved_threads
 
             metadata = CommentMetadata(
                 pr_number=0,  # Will be set from CLI
@@ -89,14 +90,20 @@ class CommentAnalyzer:
                 processing_time_seconds=0.0,  # Will be calculated in CLI
             )
 
-            # Convert unresolved comments to ReviewComment objects
+            # Convert unresolved comments to ReviewComment objects using ReviewProcessor
             review_comments = []
             for comment in unresolved_inline + unresolved_reviews:
-                review_comment = ReviewComment(
-                    actionable_count=1,  # Each unresolved comment is considered actionable
-                    raw_content=comment.get("body", ""),
-                )
-                review_comments.append(review_comment)
+                try:
+                    # Use ReviewProcessor to extract structured information
+                    review_comment = self.review_processor.process_review_comment(comment)
+                    review_comments.append(review_comment)
+                except CommentParsingError:
+                    # Fallback to basic ReviewComment
+                    review_comment = ReviewComment(
+                        actionable_count=1,  # Each unresolved comment is considered actionable
+                        raw_content=comment.get("body", ""),
+                    )
+                    review_comments.append(review_comment)
 
             return AnalyzedComments(
                 summary_comments=summary_comments,
@@ -227,7 +234,7 @@ class CommentAnalyzer:
             body = comment.get("body", "")
 
             # Use SummaryProcessor to check if this is a summary comment
-            if self.summary_processor._is_summary_comment(body):
+            if self.summary_processor.is_summary_comment(body):
                 try:
                     # Process the summary comment using SummaryProcessor
                     summary_comment = self.summary_processor.process_summary_comment(comment)

@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 """Test script for uvx installation and execution compatibility."""
 
-import json
 import subprocess
 import sys
+import os
 import tempfile
+import json
+import traceback
+import warnings
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Dict, Any, Optional, List
 
 
 class UvxTestRunner:
@@ -110,9 +113,6 @@ class UvxTestRunner:
     def test_package_installation(self) -> bool:
         """Test package installation with uvx."""
         print("📦 Testing package installation...")
-
-        # Test local package installation
-        project_root = Path(__file__).parent.parent
 
         # Create temporary pyproject.toml for testing
         test_pyproject = self.temp_dir / "pyproject.toml"
@@ -338,6 +338,7 @@ print("\\nDependency check completed!")
                     all_passed = False
             except Exception as e:
                 print(f"❌ {test_name} test failed with exception: {e}")
+                print(f"Traceback:\n{traceback.format_exc()}")
                 all_passed = False
 
             print("-" * 40)
@@ -350,8 +351,8 @@ print("\\nDependency check completed!")
 
         try:
             shutil.rmtree(self.temp_dir)
-        except Exception:
-            pass  # Ignore cleanup errors
+        except Exception as e:
+            warnings.warn(f"Failed to cleanup temporary directory {self.temp_dir}: {e}")
 
 
 def main():

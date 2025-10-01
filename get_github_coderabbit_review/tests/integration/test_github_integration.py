@@ -1,28 +1,24 @@
 """Integration tests for GitHub CLI interaction."""
 
+import unittest
 import json
 import subprocess
-import sys
-import unittest
-from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch, MagicMock, call
+from typing import Dict, Any, List
 
-# Add project root to path
-sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-
+from coderabbit_fetcher.github_client import GitHubClient
 from coderabbit_fetcher.exceptions import (
+    APIRateLimitError,
+    CodeRabbitFetcherError,
     GitHubAuthenticationError,
     InvalidPRUrlError,
-    NetworkError,
-    RateLimitError,
 )
-from coderabbit_fetcher.github.client import GitHubClient
-
 from tests.fixtures.github_responses import (
-    MOCK_GH_COMMENTS_RESPONSE,
-    MOCK_GH_ERROR_RESPONSES,
-    MOCK_GH_PR_RESPONSE,
     MOCK_SUCCESS_RESPONSES,
+    MOCK_GH_ERROR_RESPONSES,
+    get_mock_response,
+    MOCK_GH_COMMENTS_RESPONSE,
+    MOCK_GH_PR_RESPONSE,
 )
 
 
@@ -37,9 +33,6 @@ class TestGitHubIntegration(unittest.TestCase):
     @patch("subprocess.run")
     def test_check_authentication_success(self, mock_run):
         """Test successful authentication check."""
-        # Clear cached authentication state
-        self.client._authenticated = None
-
         mock_run.return_value = MagicMock(
             returncode=0, stdout=MOCK_SUCCESS_RESPONSES["gh_auth_status"]["stdout"], stderr=""
         )
@@ -58,9 +51,6 @@ class TestGitHubIntegration(unittest.TestCase):
     @patch("subprocess.run")
     def test_check_authentication_failure(self, mock_run):
         """Test authentication failure."""
-        # Clear cached authentication state
-        self.client._authenticated = None
-
         mock_run.return_value = MagicMock(
             returncode=1,
             stdout="",
@@ -87,12 +77,9 @@ class TestGitHubIntegration(unittest.TestCase):
         result = self.client.fetch_pr_comments(self.sample_pr_url)
 
         self.assertIsInstance(result, dict)
-        # GitHubClient.fetch_pr_comments returns the PR data directly, not wrapped in pr_data
-        self.assertIn("number", result)  # PR data should contain number field
+        self.assertIn("pr_data", result)
         self.assertIn("comments", result)
-        # Check both comments and reviewComments depending on the test setup
-        total_comments = len(result.get("comments", [])) + len(result.get("reviewComments", []))
-        self.assertGreaterEqual(total_comments, 0)
+        self.assertEqual(len(result["comments"]), len(MOCK_GH_COMMENTS_RESPONSE))
 
         # Verify both commands were called
         self.assertEqual(mock_run.call_count, 2)
@@ -127,7 +114,7 @@ class TestGitHubIntegration(unittest.TestCase):
             returncode=1, stdout="", stderr=MOCK_GH_ERROR_RESPONSES["rate_limit_error"]["stderr"]
         )
 
-        with self.assertRaises(RateLimitError) as context:
+        with self.assertRaises(APIRateLimitError) as context:
             self.client.fetch_pr_comments(self.sample_pr_url)
 
         self.assertIn("rate limit", str(context.exception).lower())
@@ -139,11 +126,10 @@ class TestGitHubIntegration(unittest.TestCase):
             returncode=1, stdout="", stderr=MOCK_GH_ERROR_RESPONSES["network_error"]["stderr"]
         )
 
-        with self.assertRaises(NetworkError):
+        with self.assertRaises(CodeRabbitFetcherError):
             self.client.fetch_pr_comments(self.sample_pr_url)
 
-    @patch("subprocess.run")
-    def test_parse_pr_url_valid(self, mock_run):
+    def test_parse_pr_url_valid(self):
         """Test URL parsing with valid GitHub PR URLs."""
         valid_urls = [
             "https://github.com/owner/repo/pull/123",
@@ -153,7 +139,7 @@ class TestGitHubIntegration(unittest.TestCase):
 
         for url in valid_urls:
             with self.subTest(url=url):
-                owner, repo, pr_number = self.client.parse_pr_url(url)
+                owner, repo, pr_number = self.client._parse_pr_url(url)
                 self.assertIsInstance(owner, str)
                 self.assertIsInstance(repo, str)
                 self.assertIsInstance(pr_number, int)
@@ -173,7 +159,7 @@ class TestGitHubIntegration(unittest.TestCase):
         for url in invalid_urls:
             with self.subTest(url=url):
                 with self.assertRaises(InvalidPRUrlError):
-                    self.client.parse_pr_url(url)
+                    self.client._parse_pr_url(url)
 
     @patch("subprocess.run")
     def test_check_rate_limits(self, mock_run):
@@ -199,17 +185,24 @@ class TestGitHubIntegration(unittest.TestCase):
             returncode=0, stdout='{"id": 12345, "body": "Test comment"}', stderr=""
         )
 
-        result = self.client.post_comment(pr_url=self.sample_pr_url, comment="Test comment")
+        result = self.client.post_comment(
+            pr_url=self.sample_pr_url,
+            body="Test comment",
+            in_reply_to_id=123,
+            path="src/test.py",
+            line=10,
+        )
 
-        self.assertTrue(result)  # post_comment returns bool, not dict
+        self.assertIsInstance(result, dict)
+        self.assertIn("id", result)
+        self.assertEqual(result["body"], "Test comment")
 
         mock_run.assert_called_once()
 
         # Verify command structure
         call_args = mock_run.call_args[0][0]
         self.assertIn("gh", call_args)
-        self.assertIn("pr", call_args)  # Implementation uses 'gh pr comment', not 'gh api'
-        self.assertIn("comment", call_args)
+        self.assertIn("api", call_args)
 
     @patch("subprocess.run")
     def test_post_comment_failure(self, mock_run):
@@ -218,20 +211,17 @@ class TestGitHubIntegration(unittest.TestCase):
             returncode=1, stdout="", stderr="gh: HTTP 403: You do not have permission"
         )
 
-        result = self.client.post_comment(pr_url=self.sample_pr_url, comment="Test comment")
-        self.assertFalse(result)  # post_comment returns False on failure, not exception
+        with self.assertRaises((GitHubAuthenticationError, CodeRabbitFetcherError)):
+            self.client.post_comment(pr_url=self.sample_pr_url, comment="Test comment")
 
     @patch("subprocess.run")
-    def test_github_cli_timeout(self, mock_run):
-        """Test GitHub CLI timeout handling."""
-        # Clear cached authentication state
-        self.client._authenticated = None
-
+    def test_execute_gh_command_timeout(self, mock_run):
+        """Test command execution with timeout."""
         # Simulate a timeout
         mock_run.side_effect = subprocess.TimeoutExpired("gh", 30)
 
-        with self.assertRaises(GitHubAuthenticationError):  # Should raise timeout-related error
-            self.client.check_authentication()
+        with self.assertRaises(CodeRabbitFetcherError):
+            self.client._execute_gh_command(["gh", "auth", "status"], timeout=30)
 
     @patch("subprocess.run")
     def test_validate_github_cli_available(self, mock_run):
@@ -283,7 +273,7 @@ class TestGitHubIntegration(unittest.TestCase):
             returncode=0, stdout='{"malformed": json', stderr=""  # Invalid JSON
         )
 
-        with self.assertRaises(Exception):  # Should handle JSON parsing errors
+        with self.assertRaises((json.JSONDecodeError, CodeRabbitFetcherError)):
             self.client.fetch_pr_comments(self.sample_pr_url)
 
 
@@ -309,7 +299,6 @@ class TestGitHubIntegrationEdgeCases(unittest.TestCase):
 
         self.assertIn("comments", result)
         self.assertEqual(len(result["comments"]), 0)
-        self.assertEqual(len(result.get("reviewComments", [])), 0)
 
     @patch("subprocess.run")
     def test_large_comments_response(self, mock_run):
@@ -327,8 +316,7 @@ class TestGitHubIntegrationEdgeCases(unittest.TestCase):
         result = self.client.fetch_pr_comments("https://github.com/owner/repo/pull/123")
 
         self.assertIn("comments", result)
-        # For large comments test, check reviewComments since that's where the mock response goes
-        self.assertEqual(len(result.get("reviewComments", [])), len(MOCK_LARGE_COMMENTS_RESPONSE))
+        self.assertEqual(len(result["comments"]), len(MOCK_LARGE_COMMENTS_RESPONSE))
 
     @patch("subprocess.run")
     def test_unicode_content_handling(self, mock_run):
@@ -351,9 +339,8 @@ class TestGitHubIntegrationEdgeCases(unittest.TestCase):
         result = self.client.fetch_pr_comments("https://github.com/owner/repo/pull/123")
 
         self.assertIn("comments", result)
-        self.assertIn("reviewComments", result)
-        self.assertEqual(len(result["reviewComments"]), 1)
-        self.assertIn("🚀", result["reviewComments"][0]["body"])
+        self.assertEqual(len(result["comments"]), 1)
+        self.assertIn("🚀", result["comments"][0]["body"])
 
     @patch("subprocess.run")
     def test_command_injection_prevention(self, mock_run):
@@ -379,7 +366,7 @@ class TestGitHubIntegrationEdgeCases(unittest.TestCase):
         import time
 
         # Mock response that takes some time
-        def slow_response(*args, **kwargs):
+        def slow_response():
             time.sleep(0.1)  # Simulate network delay
             return MagicMock(returncode=0, stdout=json.dumps(MOCK_GH_PR_RESPONSE), stderr="")
 
@@ -392,7 +379,7 @@ class TestGitHubIntegrationEdgeCases(unittest.TestCase):
             try:
                 result = self.client.fetch_pr_comments("https://github.com/owner/repo/pull/123")
                 results.append(result)
-            except Exception as e:
+            except (CodeRabbitFetcherError, InvalidPRUrlError, json.JSONDecodeError) as e:
                 errors.append(e)
 
         # Start multiple threads

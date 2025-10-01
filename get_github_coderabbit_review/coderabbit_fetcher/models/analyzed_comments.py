@@ -4,6 +4,7 @@ Main analyzed comments data model.
 
 from typing import List
 
+from pydantic import Field
 from .base import BaseCodeRabbitModel
 from .comment_metadata import CommentMetadata
 from .review_comment import ReviewComment
@@ -18,9 +19,9 @@ class AnalyzedComments(BaseCodeRabbitModel):
     information from a pull request's CodeRabbit comments.
     """
 
-    summary_comments: List[SummaryComment] = []
-    review_comments: List[ReviewComment] = []
-    unresolved_threads: List[ThreadContext] = []
+    summary_comments: List[SummaryComment] = Field(default_factory=list)
+    review_comments: List[ReviewComment] = Field(default_factory=list)
+    unresolved_threads: List[ThreadContext] = Field(default_factory=list)
     metadata: CommentMetadata
 
     @property

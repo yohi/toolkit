@@ -1,26 +1,25 @@
 """Retry and resilience-related exceptions."""
 
-from typing import Any, List, Optional
-
+from typing import Optional, List, Any, Type
 from .base import CodeRabbitFetcherError
 
 
 class RetryableError(CodeRabbitFetcherError):
     """Base class for errors that can be retried."""
 
-    def __init__(self, message: str, retry_after: Optional[float] = None, **kwargs: Any) -> None:
-        details = kwargs.get("details", {})
+    def __init__(self, message: str, retry_after: Optional[float] = None, **kwargs):
+        details = kwargs.pop("details", {})
         if retry_after is not None:
             details["retry_after_seconds"] = retry_after
 
-        super().__init__(message, details=str(details) if details else None)
+        super().__init__(message, details=details, **kwargs)
         self.retry_after = retry_after
 
 
 class TransientError(RetryableError):
     """Exception for transient errors that should be retried."""
 
-    def __init__(self, message: str, **kwargs: Any) -> None:
+    def __init__(self, message: str, **kwargs):
         super().__init__(
             message,
             suggestions=[
@@ -40,17 +39,15 @@ class RateLimitError(RetryableError):
         message: str,
         retry_after: Optional[float] = None,
         limit_type: Optional[str] = None,
-        **kwargs: Any,
-    ) -> None:
-        details = kwargs.get("details", {})
+        **kwargs,
+    ):
+        details = kwargs.pop("details", {})
         if limit_type:
             details["limit_type"] = limit_type
 
-        super().__init__(
-            message,
-            retry_after=retry_after,
-            details=details,
-            suggestions=[
+        suggestions = kwargs.pop(
+            "suggestions",
+            [
                 (
                     f"Wait {retry_after} seconds before retrying"
                     if retry_after
@@ -59,7 +56,10 @@ class RateLimitError(RetryableError):
                 "Check API rate limits with 'gh api /rate_limit'",
                 "Consider reducing request frequency",
             ],
-            **kwargs,
+        )
+
+        super().__init__(
+            message, retry_after=retry_after, details=details, suggestions=suggestions, **kwargs
         )
 
 
@@ -72,9 +72,9 @@ class RetryExhaustedError(CodeRabbitFetcherError):
         attempts: int,
         last_error: Exception,
         error_history: Optional[List[Exception]] = None,
-        **kwargs: Any,
+        **kwargs,
     ):
-        details = kwargs.get("details", {})
+        details = kwargs.pop("details", {})
         details.update(
             {
                 "attempts": attempts,
@@ -88,7 +88,19 @@ class RetryExhaustedError(CodeRabbitFetcherError):
                 {"type": type(err).__name__, "message": str(err)} for err in error_history
             ]
 
-        super().__init__(message, details=str(details) if details else None)
+        suggestions = kwargs.pop(
+            "suggestions",
+            [
+                "Check the underlying issue causing failures",
+                "Increase retry attempts if appropriate",
+                "Verify network connectivity and permissions",
+                "Review error history for patterns",
+            ],
+        )
+
+        super().__init__(
+            message, details=details, suggestions=suggestions, recoverable=False, **kwargs
+        )
 
         self.attempts = attempts
         self.last_error = last_error
@@ -103,31 +115,31 @@ class TimeoutError(RetryableError):
         message: str,
         timeout_seconds: Optional[float] = None,
         operation: Optional[str] = None,
-        **kwargs: Any,
+        **kwargs,
     ):
-        details = kwargs.get("details", {})
+        details = kwargs.pop("details", {})
         if timeout_seconds is not None:
             details["timeout_seconds"] = timeout_seconds
         if operation:
             details["operation"] = operation
 
-        super().__init__(
-            message,
-            details=details,
-            suggestions=[
+        suggestions = kwargs.pop(
+            "suggestions",
+            [
                 "Increase timeout value with --timeout option",
                 "Check network connection stability",
                 "Try during off-peak hours for better performance",
             ],
-            **kwargs,
         )
+
+        super().__init__(message, details=details, suggestions=suggestions, **kwargs)
 
 
 class CircuitBreakerError(CodeRabbitFetcherError):
     """Exception raised when circuit breaker is open."""
 
-    def __init__(self, message: str, failure_count: int, threshold: int, **kwargs: Any) -> None:
-        details = kwargs.get("details", {})
+    def __init__(self, message: str, failure_count: int, threshold: int, **kwargs):
+        details = kwargs.pop("details", {})
         details.update(
             {
                 "failure_count": failure_count,
@@ -136,4 +148,15 @@ class CircuitBreakerError(CodeRabbitFetcherError):
             }
         )
 
-        super().__init__(message, details=str(details) if details else None)
+        suggestions = kwargs.pop(
+            "suggestions",
+            [
+                "Wait for circuit breaker to reset",
+                "Check underlying service health",
+                "Review recent error patterns",
+            ],
+        )
+
+        super().__init__(
+            message, details=details, suggestions=suggestions, recoverable=True, **kwargs
+        )

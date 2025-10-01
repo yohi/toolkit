@@ -9,16 +9,17 @@ import json
 import re
 import subprocess
 import time
+from pathlib import Path
 from typing import Any, Dict, Tuple
+from urllib.parse import urlparse
 
 from rich.console import Console
 
 from ..exceptions import (
-    APIRateLimitError,
-    CodeRabbitFetcherError,
     GitHubAuthenticationError,
     InvalidPRUrlError,
-    NetworkError,
+    APIRateLimitError,
+    CodeRabbitFetcherError,
 )
 
 console = Console()
@@ -31,16 +32,21 @@ class GitHubClient:
     and managing authentication through the GitHub CLI.
     """
 
-    def __init__(self, max_retries: int = 3, retry_delay: float = 1.0) -> None:
+    def __init__(
+        self, max_retries: int = 3, retry_delay: float = 1.0, check_gh_cli: bool = True
+    ) -> None:
         """Initialize GitHub client.
 
         Args:
             max_retries: Maximum number of retries for failed requests
             retry_delay: Base delay between retries in seconds
+            check_gh_cli: Whether to check GitHub CLI availability on initialization
         """
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        self._check_gh_cli_availability()
+
+        if check_gh_cli:
+            self._check_gh_cli_availability()
 
     def _check_gh_cli_availability(self) -> None:
         """Check if GitHub CLI is available on the system.
@@ -55,13 +61,13 @@ class GitHubClient:
                     "GitHub CLI is not properly installed",
                     details="Install GitHub CLI from https://cli.github.com/",
                 )
-        except FileNotFoundError as e:
+        except FileNotFoundError:
             raise CodeRabbitFetcherError(
                 "GitHub CLI (gh) not found in PATH",
                 details="Install GitHub CLI from https://cli.github.com/",
-            ) from e
-        except subprocess.TimeoutExpired as e:
-            raise CodeRabbitFetcherError("GitHub CLI command timed out") from e
+            )
+        except subprocess.TimeoutExpired:
+            raise CodeRabbitFetcherError("GitHub CLI command timed out")
 
     def check_authentication(self) -> bool:
         """Verify GitHub CLI authentication status.
@@ -78,76 +84,12 @@ class GitHubClient:
             )
 
             # gh auth status returns 0 when authenticated
-            if result.returncode == 0:
-                return True
-            else:
-                # Authentication failed, raise an error
-                error_msg = (
-                    result.stderr.strip() if result.stderr else "Authentication check failed"
-                )
-                raise GitHubAuthenticationError(f"Not authenticated: {error_msg}")
+            return result.returncode == 0
 
-        except subprocess.TimeoutExpired as e:
-            raise GitHubAuthenticationError("Authentication check timed out") from e
+        except subprocess.TimeoutExpired:
+            raise GitHubAuthenticationError("Authentication check timed out")
         except Exception as e:
-            raise GitHubAuthenticationError(f"Authentication check failed: {e}") from e
-
-    def validate(self) -> Dict[str, Any]:
-        """Validate GitHub CLI availability and authentication.
-
-        Returns:
-            Dict with validation result and any issues
-        """
-        issues = []
-
-        try:
-            # Check if GitHub CLI is available
-            result = subprocess.run(["gh", "--version"], capture_output=True, text=True, timeout=10)
-
-            if result.returncode != 0:
-                issues.append("GitHub CLI not available")
-                return {"valid": False, "issues": issues}
-
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            issues.append("GitHub CLI not available")
-            return {"valid": False, "issues": issues}
-
-        try:
-            # Check authentication
-            self.check_authentication()
-        except GitHubAuthenticationError as e:
-            issues.append(f"Authentication failed: {e}")
-            return {"valid": False, "issues": issues}
-
-        return {"valid": True, "issues": issues}
-
-    def check_rate_limits(self) -> Dict[str, Any]:
-        """Check GitHub API rate limits.
-
-        Returns:
-            Dict with rate limit information
-        """
-        try:
-            result = subprocess.run(
-                ["gh", "api", "rate_limit"], capture_output=True, text=True, timeout=10
-            )
-
-            if result.returncode == 0:
-                import json
-
-                rate_data = json.loads(result.stdout)
-                return {
-                    "core": rate_data.get("rate", {}),
-                    "search": rate_data.get("resources", {}).get("search", {}),
-                    "graphql": rate_data.get("resources", {}).get("graphql", {}),
-                }
-
-            raise NetworkError("Failed to get rate limit information")
-
-        except subprocess.TimeoutExpired as e:
-            raise NetworkError("Rate limit check timed out") from e
-        except Exception as e:
-            raise NetworkError(f"Rate limit check failed: {e}") from e
+            raise GitHubAuthenticationError(f"Authentication check failed: {e}")
 
     def parse_pr_url(self, pr_url: str) -> Tuple[str, str, int]:
         """Parse GitHub pull request URL.
@@ -208,7 +150,7 @@ class GitHubClient:
                         raise CodeRabbitFetcherError(
                             f"Invalid JSON response from GitHub CLI: {e}",
                             details=f"Output: {result.stdout[:500]}",
-                        ) from e
+                        )
 
                 # Handle specific error cases
                 stderr_lower = result.stderr.lower()
@@ -246,9 +188,11 @@ class GitHubClient:
                     f"GitHub CLI command timed out after {timeout} seconds"
                 )
                 if attempt < self.max_retries:
+                    wait_time = self.retry_delay * (2**attempt)  # Exponential backoff
                     console.print(
-                        f"⏳ [yellow]Command timed out, retrying... (attempt {attempt + 1}/{self.max_retries})[/yellow]"
+                        f"⏳ [yellow]Command timed out, retrying in {wait_time}s... (attempt {attempt + 1}/{self.max_retries})[/yellow]"
                     )
+                    time.sleep(wait_time)
                     continue
             except (APIRateLimitError, GitHubAuthenticationError):
                 # Don't retry these specific errors
@@ -256,9 +200,11 @@ class GitHubClient:
             except Exception as e:
                 last_exception = CodeRabbitFetcherError(f"Unexpected error: {e}")
                 if attempt < self.max_retries:
+                    wait_time = self.retry_delay * (2**attempt)  # Exponential backoff
                     console.print(
-                        f"⏳ [yellow]Unexpected error, retrying... (attempt {attempt + 1}/{self.max_retries})[/yellow]"
+                        f"⏳ [yellow]Unexpected error, retrying in {wait_time}s... (attempt {attempt + 1}/{self.max_retries})[/yellow]"
                     )
+                    time.sleep(wait_time)
                     continue
 
         # All retries exhausted
@@ -315,7 +261,7 @@ class GitHubClient:
 
         console.print(f"📥 [blue]Fetching PR data for {owner}/{repo}#{pr_number}[/blue]")
 
-        # Fetch PR data with comments, reviews, and additional metadata
+        # Fetch PR data with comments and reviews
         pr_data = self._execute_gh_command(
             [
                 "pr",
@@ -324,14 +270,14 @@ class GitHubClient:
                 "--repo",
                 f"{owner}/{repo}",
                 "--json",
-                "number,title,body,comments,reviews,state,author,createdAt,updatedAt,headRefName,changedFiles,additions,deletions",
+                "number,title,body,comments,reviews,state,author,createdAt,updatedAt",
             ]
         )
 
         # Fetch additional comment details (reviews contain inline comments)
         try:
             review_comments = self._execute_gh_command(
-                ["api", f"repos/{owner}/{repo}/pulls/{pr_number}/comments", "--paginate"]
+                ["api", f"repos/{owner}/{repo}/pulls/{pr_number}/comments?per_page=100"]
             )
 
             # Merge review comments into the main data structure
@@ -368,8 +314,16 @@ class GitHubClient:
         console.print(f"📤 [blue]Posting comment to {owner}/{repo}#{pr_number}[/blue]")
 
         try:
+            # PRはIssueとしてコメントAPIが利用可能
             self._execute_gh_command(
-                ["pr", "comment", str(pr_number), "--repo", f"{owner}/{repo}", "--body", comment]
+                [
+                    "api",
+                    f"repos/{owner}/{repo}/issues/{pr_number}/comments",
+                    "--method",
+                    "POST",
+                    "--raw-field",
+                    f"body={comment}",
+                ]
             )
 
             console.print("✅ [green]Comment posted successfully[/green]")
@@ -398,64 +352,7 @@ class GitHubClient:
 
             raise GitHubAuthenticationError("Could not get authenticated user")
 
-        except subprocess.TimeoutExpired as e:
-            raise GitHubAuthenticationError("Authentication check timed out") from e
+        except subprocess.TimeoutExpired:
+            raise GitHubAuthenticationError("Authentication check timed out")
         except Exception as e:
-            raise GitHubAuthenticationError(f"Authentication check failed: {e}") from e
-
-    def validate(self) -> Dict[str, Any]:
-        """Validate GitHub CLI availability and authentication.
-
-        Returns:
-            Dict with validation result and any issues
-        """
-        issues = []
-
-        try:
-            # Check if GitHub CLI is available
-            result = subprocess.run(["gh", "--version"], capture_output=True, text=True, timeout=10)
-
-            if result.returncode != 0:
-                issues.append("GitHub CLI not available")
-                return {"valid": False, "issues": issues}
-
-        except (subprocess.TimeoutExpired, FileNotFoundError):
-            issues.append("GitHub CLI not available")
-            return {"valid": False, "issues": issues}
-
-        try:
-            # Check authentication
-            self.check_authentication()
-        except GitHubAuthenticationError as e:
-            issues.append(f"Authentication failed: {e}")
-            return {"valid": False, "issues": issues}
-
-        return {"valid": True, "issues": issues}
-
-    def check_rate_limits(self) -> Dict[str, Any]:
-        """Check GitHub API rate limits.
-
-        Returns:
-            Dict with rate limit information
-        """
-        try:
-            result = subprocess.run(
-                ["gh", "api", "rate_limit"], capture_output=True, text=True, timeout=10
-            )
-
-            if result.returncode == 0:
-                import json
-
-                rate_data = json.loads(result.stdout)
-                return {
-                    "core": rate_data.get("rate", {}),
-                    "search": rate_data.get("resources", {}).get("search", {}),
-                    "graphql": rate_data.get("resources", {}).get("graphql", {}),
-                }
-
-            raise NetworkError("Failed to get rate limit information")
-
-        except subprocess.TimeoutExpired as e:
-            raise NetworkError("Rate limit check timed out") from e
-        except Exception as e:
-            raise NetworkError(f"Rate limit check failed: {e}") from e
+            raise GitHubAuthenticationError(f"Authentication check failed: {e}")

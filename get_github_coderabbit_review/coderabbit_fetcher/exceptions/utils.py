@@ -1,11 +1,13 @@
 """Utility functions for exception handling and error reporting."""
 
-import logging
+import sys
 import traceback
+import logging
+from typing import List, Dict, Any, Optional, Union, Type
 from datetime import datetime
-from typing import Any, Dict, List, Optional
 
 from .base import CodeRabbitFetcherError
+
 
 logger = logging.getLogger(__name__)
 
@@ -65,11 +67,11 @@ def create_error_summary(exceptions: List[Exception]) -> Dict[str, Any]:
         "error_types": {},
         "recoverable_count": 0,
         "critical_count": 0,
-        "error_timeline": [],
         "suggestions": set(),
         "most_common_error": None,
         "first_error": None,
         "last_error": None,
+        "error_timeline": [],
     }
 
     for i, exc in enumerate(exceptions):
@@ -341,20 +343,22 @@ def chain_exceptions(*exceptions: Exception) -> Exception:
     for i, exc in enumerate(exceptions):
         messages.append(f"{i+1}. {type(exc).__name__}: {exc}")
 
-    chained_message = "Multiple errors occurred:\n" + "\n".join(messages)
+    chained_message = f"Multiple errors occurred:\n" + "\n".join(messages)
 
     # If main exception is a CodeRabbitFetcherError, preserve its structure
     if isinstance(main_exc, CodeRabbitFetcherError):
-        details = getattr(main_exc, "details", {})
-        details["chained_exceptions"] = [str(exc) for exc in exceptions[:-1]]
+        merged_details = dict(getattr(main_exc, "details", {}) or {})
+        merged_details["chained_exceptions"] = [str(exc) for exc in exceptions[:-1]]
 
-        return type(main_exc)(
-            chained_message,
-            details=details,
-            suggestions=getattr(main_exc, "suggestions", []),
-            error_code=getattr(main_exc, "error_code", None),
-            recoverable=getattr(main_exc, "recoverable", True),
-        )
+        # Update the exception message and details in place
+        args = list(getattr(main_exc, "args", ()))
+        if args:
+            args[0] = chained_message
+        else:
+            args.append(chained_message)
+        main_exc.args = tuple(args)
+        main_exc.details = merged_details
+        return main_exc
 
     # For non-CodeRabbit exceptions, wrap in a generic error
     return CodeRabbitFetcherError(

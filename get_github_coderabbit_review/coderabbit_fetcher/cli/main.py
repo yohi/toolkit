@@ -1,19 +1,24 @@
 """Main CLI interface for CodeRabbit Comment Fetcher."""
 
+import sys
 import argparse
 import logging
-import sys
-from typing import Any, Dict
+from pathlib import Path
+from typing import Dict, List, Optional, Any, TextIO
+import json
 
-from ..config import DEFAULT_RESOLVED_MARKER, QUIET_MODE_LOG_MODULES
-from ..exceptions import CodeRabbitFetcherError
-from ..github_client import GitHubClient
+from ..exceptions import CodeRabbitFetcherError, GitHubAuthenticationError, InvalidPRUrlError
+from ..github_client import GitHubClient, GitHubAPIError
+from ..comment_analyzer import CommentAnalyzer, CommentAnalysisError
+from ..persona_manager import PersonaManager
+from ..formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter
+from ..resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
+from ..comment_poster import ResolutionRequestManager, ResolutionRequestConfig
+from ..models import CommentMetadata
 from ..orchestrator import CodeRabbitOrchestrator, ExecutionConfig
 
-# import click  # Will be added in later version
 
-
-# Configure logging - will be reconfigured based on command line args
+# Configure logging
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
@@ -26,7 +31,7 @@ class CLIError(CodeRabbitFetcherError):
     pass
 
 
-# Removed old CodeRabbitFetcherCLI class - replaced by orchestrator pattern
+# Use orchestrator pattern - old CLI class removed and replaced with new architecture
 
 
 def create_argument_parser() -> argparse.ArgumentParser:
@@ -59,8 +64,13 @@ Examples:
         """,
     )
 
-    # PR URL (optional for utility commands like --version)
-    parser.add_argument("pr_url", nargs="?", help="GitHub pull request URL")
+    # Optional positional argument (required only for fetch command)
+    parser.add_argument(
+        "pr_url",
+        nargs="?",
+        default=None,
+        help="GitHub pull request URL (omit for --validate/--version/--examples/--validate-marker)",
+    )
 
     # Optional arguments
     parser.add_argument(
@@ -70,7 +80,7 @@ Examples:
     parser.add_argument(
         "--output-format",
         "-f",
-        choices=["markdown", "json", "plain", "llm-instruction", "ai-agent-prompt"],
+        choices=["markdown", "json", "plain"],
         default="markdown",
         help="Output format (default: markdown)",
     )
@@ -81,7 +91,7 @@ Examples:
         "--resolved-marker",
         "-m",
         type=str,
-        default=DEFAULT_RESOLVED_MARKER,
+        default="🔒 CODERABBIT_RESOLVED 🔒",
         help="Resolved marker string (default: 🔒 CODERABBIT_RESOLVED 🔒)",
     )
 
@@ -106,51 +116,26 @@ Examples:
 
     parser.add_argument("--examples", action="store_true", help="Show usage examples")
 
-    parser.add_argument(
-        "--quiet", "-q", action="store_true", help="Reduce output verbosity (minimal output)"
-    )
-
     return parser
 
 
 def run_fetch_command(args) -> int:
     """Run the main fetch command using orchestrator."""
     try:
-        # Configure logging level based on quiet mode
-        if args.quiet:
-            # In quiet mode, show only warnings and errors
-            logging.getLogger().setLevel(logging.WARNING)
-            # Also suppress logging from other modules
-            for log_name in QUIET_MODE_LOG_MODULES:
-                logging.getLogger(log_name).setLevel(logging.WARNING)
-
         # Create execution configuration
-        # In quiet mode, use ai-agent-prompt format if no format is explicitly specified
-        output_format = args.output_format
-        if args.quiet and args.output_format == "markdown":
-            output_format = "ai-agent-prompt"
-
-        # Check if pr_url is required for the operation
-        if not args.pr_url and not (
-            getattr(args, "version", False) or getattr(args, "validate", False)
-        ):
-            raise ValueError("pr_url is required unless using --version or --validate")
-
         config = ExecutionConfig(
             pr_url=args.pr_url,
             persona_file=args.persona_file,
-            output_format=output_format,
+            output_format=args.output_format,
             output_file=args.output_file,
             resolved_marker=args.resolved_marker,
             post_resolution_request=args.post_resolution_request,
             show_stats=args.show_stats,
             debug=args.debug,
-            quiet=args.quiet,
         )
 
         # Validate configuration
-        if not args.quiet:
-            print("🔍 Validating configuration...")
+        print("🔍 Validating configuration...")
         orchestrator = CodeRabbitOrchestrator(config)
         validation_result = orchestrator.validate_configuration()
 
@@ -160,21 +145,17 @@ def run_fetch_command(args) -> int:
                 print(f"   • {issue}", file=sys.stderr)
             return 1
 
-        if validation_result["warnings"] and not args.quiet:
+        if validation_result["warnings"]:
             print("⚠️  Configuration warnings:")
             for warning in validation_result["warnings"]:
                 print(f"   • {warning}")
 
         # Execute main workflow
-        if not args.quiet:
-            print("🚀 Starting CodeRabbit Comment Fetcher...")
+        print("🚀 Starting CodeRabbit Comment Fetcher...")
         results = orchestrator.execute()
 
         if results["success"]:
-            if not args.quiet:
-                print(
-                    f"\n✅ Processing completed successfully in {results['execution_time']:.2f}s!"
-                )
+            print(f"\n✅ Processing completed successfully in {results['execution_time']:.2f}s!")
 
             # Show statistics if requested
             if args.show_stats:
@@ -261,7 +242,7 @@ def run_validate_command() -> int:
                 remaining = core_limit.get("remaining", "unknown")
                 limit = core_limit.get("limit", "unknown")
                 print(f"\n📊 API Rate Limit: {remaining}/{limit} remaining")
-            except Exception as e:
+            except (GitHubAPIError, ValueError, KeyError) as e:
                 print(f"\n⚠️  Could not check rate limit: {e}")
 
         if validation_result["issues"]:
@@ -282,8 +263,9 @@ def run_validate_marker_command(marker: str) -> int:
     try:
         from ..resolved_marker import ResolvedMarkerConfig, ResolvedMarkerManager
 
-        config = ResolvedMarkerConfig(default_marker=marker)
-        validation = config.validate_marker(marker)
+        # Use ResolvedMarkerManager's validate_marker method instead of config
+        manager = ResolvedMarkerManager()
+        validation = manager.validate_marker(marker)
 
         if validation["valid"]:
             print("✅ Marker is valid")
@@ -292,9 +274,8 @@ def run_validate_marker_command(marker: str) -> int:
             for issue in validation["issues"]:
                 print(f"   • {issue}", file=sys.stderr)
 
-        # Calculate uniqueness score
-        manager = ResolvedMarkerManager()
-        score = manager._calculate_uniqueness_score(marker)
+        # Use public API to calculate uniqueness score
+        score = manager.calculate_uniqueness_score(marker)
 
         print(f"\n📊 Uniqueness Score: {score:.2f}/1.0")
         if score < 0.3:
@@ -313,13 +294,21 @@ def run_validate_marker_command(marker: str) -> int:
 
 def run_version_command() -> int:
     """Run the version command."""
-    try:
-        # Try to get version from package metadata
-        from importlib.metadata import version as get_version
+    version = "development"
 
-        version = get_version("coderabbit-comment-fetcher")
-    except Exception:
+    try:
+        # First, try to import the required modules
+        from importlib.metadata import version as get_version, PackageNotFoundError
+    except ImportError:
+        # If import fails, use development version
         version = "development"
+    else:
+        # If import succeeds, try to get the actual version
+        try:
+            version = get_version("coderabbit-comment-fetcher")
+        except PackageNotFoundError:
+            # If package is not found, use development version
+            version = "development"
 
     print(f"CodeRabbit Comment Fetcher v{version}")
     print("Python script for extracting and formatting CodeRabbit comments")
@@ -384,53 +373,46 @@ def run_examples_command() -> int:
     return 0
 
 
-def main() -> None:
+def main():
     """Main entry point for the CLI."""
     try:
         parser = create_argument_parser()
 
-        # Debug: Print argv for troubleshooting
-        # print(f"DEBUG sys.argv: {sys.argv}", file=sys.stderr)
-
         # Handle special case when no arguments provided
         if len(sys.argv) == 1:
             parser.print_help()
-            sys.exit(0)
+            return 0
 
         args = parser.parse_args()
-        # print(f"DEBUG parsed args: {args}", file=sys.stderr)
 
-        # Handle utility commands first (these don't need PR URL)
-        if hasattr(args, 'version') and getattr(args, 'version', False):
-            sys.exit(run_version_command())
+        # Handle utility commands first
+        if args.version:
+            return run_version_command()
 
-        if hasattr(args, 'examples') and getattr(args, 'examples', False):
-            sys.exit(run_examples_command())
+        if args.examples:
+            return run_examples_command()
 
-        if hasattr(args, 'validate') and getattr(args, 'validate', False):
-            sys.exit(run_validate_command())
+        if args.validate:
+            return run_validate_command()
 
-        if hasattr(args, 'validate_marker') and getattr(args, 'validate_marker', None):
-            sys.exit(run_validate_marker_command(args.validate_marker))
+        if args.validate_marker:
+            return run_validate_marker_command(args.validate_marker)
 
         # Main fetch command (requires pr_url)
-        if not hasattr(args, "pr_url") or not getattr(args, "pr_url", None):
+        if not args.pr_url:
             print("❌ PR URL is required for fetch command", file=sys.stderr)
             parser.print_help()
-            sys.exit(1)
+            return 1
 
-        sys.exit(run_fetch_command(args))
+        return run_fetch_command(args)
 
-    except SystemExit:
-        # Re-raise SystemExit to allow proper exit codes
-        raise
     except KeyboardInterrupt:
         print("\n⚠️  Operation cancelled by user", file=sys.stderr)
-        sys.exit(130)
+        return 130
     except Exception as e:
         logger.exception("CLI startup error")
         print(f"❌ Failed to start CLI: {e}", file=sys.stderr)
-        sys.exit(1)
+        return 1
 
 
 if __name__ == "__main__":

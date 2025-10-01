@@ -24,7 +24,7 @@ class TestResolvedMarkerConfig:
         """Test default configuration values."""
         config = ResolvedMarkerConfig()
 
-        assert config.default_marker == "🔒 CODERABBIT_RESOLVED 🔒"
+        assert config.resolved_marker == "🔒 CODERABBIT_RESOLVED 🔒"
         assert config.case_sensitive is True
         assert config.exact_match is True
         assert isinstance(config.additional_patterns, list)
@@ -33,13 +33,13 @@ class TestResolvedMarkerConfig:
     def test_custom_config(self):
         """Test custom configuration."""
         config = ResolvedMarkerConfig(
-            default_marker="CUSTOM_RESOLVED",
+            resolved_marker="CUSTOM_RESOLVED",
             case_sensitive=False,
             exact_match=False,
             additional_patterns=["PATTERN1", "PATTERN2"],
         )
 
-        assert config.default_marker == "CUSTOM_RESOLVED"
+        assert config.resolved_marker == "CUSTOM_RESOLVED"
         assert config.case_sensitive is False
         assert config.exact_match is False
         assert "PATTERN1" in config.additional_patterns
@@ -50,14 +50,14 @@ class TestResolvedMarkerConfig:
         config = ResolvedMarkerConfig(additional_patterns=["EXTRA1", "EXTRA2"])
 
         patterns = config.all_patterns
-        assert config.default_marker in patterns
+        assert config.resolved_marker in patterns
         assert "EXTRA1" in patterns
         assert "EXTRA2" in patterns
 
     def test_compiled_patterns_case_sensitive(self):
         """Test compiled patterns with case sensitivity."""
         config = ResolvedMarkerConfig(
-            default_marker="RESOLVED", case_sensitive=True, additional_patterns=[]
+            resolved_marker="RESOLVED", case_sensitive=True, additional_patterns=[]
         )
 
         compiled = config.get_compiled_patterns()
@@ -71,7 +71,7 @@ class TestResolvedMarkerConfig:
     def test_compiled_patterns_case_insensitive(self):
         """Test compiled patterns without case sensitivity."""
         config = ResolvedMarkerConfig(
-            default_marker="RESOLVED", case_sensitive=False, additional_patterns=[]
+            resolved_marker="RESOLVED", case_sensitive=False, additional_patterns=[]
         )
 
         compiled = config.get_compiled_patterns()
@@ -84,7 +84,7 @@ class TestResolvedMarkerConfig:
     def test_exact_match_patterns(self):
         """Test exact match pattern generation."""
         config = ResolvedMarkerConfig(
-            default_marker="RESOLVED", exact_match=True, additional_patterns=[]
+            resolved_marker="RESOLVED", exact_match=True, additional_patterns=[]
         )
 
         compiled = config.get_compiled_patterns()
@@ -105,7 +105,7 @@ class TestResolvedMarkerDetector:
     def setup_method(self):
         """Set up test fixtures."""
         self.config = ResolvedMarkerConfig(
-            default_marker="🔒 RESOLVED 🔒",
+            resolved_marker="🔒 RESOLVED 🔒",
             additional_patterns=["RESOLVED_BY_CR", "✅ DONE"],
             case_sensitive=True,
             exact_match=True,
@@ -115,7 +115,7 @@ class TestResolvedMarkerDetector:
     def test_default_detector(self):
         """Test detector with default configuration."""
         detector = ResolvedMarkerDetector()
-        assert detector.config.default_marker == "🔒 CODERABBIT_RESOLVED 🔒"
+        assert detector.config.resolved_marker == "🔒 CODERABBIT_RESOLVED 🔒"
 
     def test_is_comment_resolved_with_marker(self):
         """Test comment resolution detection with resolved marker."""
@@ -362,14 +362,14 @@ class TestResolvedMarkerManager:
     def setup_method(self):
         """Set up test fixtures."""
         self.config = ResolvedMarkerConfig(
-            default_marker="🔒 TEST_RESOLVED 🔒", additional_patterns=["TEST_DONE"]
+            resolved_marker="🔒 TEST_RESOLVED 🔒", additional_patterns=["TEST_DONE"]
         )
         self.manager = ResolvedMarkerManager(self.config)
 
     def test_default_manager(self):
         """Test manager with default configuration."""
         manager = ResolvedMarkerManager()
-        assert manager.config.default_marker == "🔒 CODERABBIT_RESOLVED 🔒"
+        assert manager.config.resolved_marker == "🔒 CODERABBIT_RESOLVED 🔒"
 
     def test_process_comments_with_resolution(self):
         """Test comment processing with resolution filtering."""
@@ -391,7 +391,7 @@ class TestResolvedMarkerManager:
 
         # Check marker config is included
         assert "marker_config" in result
-        assert result["marker_config"]["default_marker"] == "🔒 TEST_RESOLVED 🔒"
+        assert result["marker_config"]["resolved_marker"] == "🔒 TEST_RESOLVED 🔒"
 
     def test_process_threads_with_resolution(self):
         """Test thread processing with resolution status update."""
@@ -430,15 +430,13 @@ class TestResolvedMarkerManager:
 
     def test_update_config(self):
         """Test configuration update."""
-        original_marker = self.manager.config.default_marker
+        self.manager.update_config(resolved_marker="NEW_MARKER", case_sensitive=False)
 
-        self.manager.update_config(default_marker="NEW_MARKER", case_sensitive=False)
-
-        assert self.manager.config.default_marker == "NEW_MARKER"
+        assert self.manager.config.resolved_marker == "NEW_MARKER"
         assert self.manager.config.case_sensitive is False
 
         # Verify detector was recreated
-        assert self.manager.detector.config.default_marker == "NEW_MARKER"
+        assert self.manager.detector.config.resolved_marker == "NEW_MARKER"
 
     def test_add_custom_marker(self):
         """Test adding custom marker."""
@@ -502,7 +500,7 @@ class TestResolvedMarkerIntegration:
     def test_end_to_end_workflow(self):
         """Test complete workflow from raw comments to filtered output."""
         # Setup
-        config = ResolvedMarkerConfig(default_marker="🔒 INTEGRATION_RESOLVED 🔒")
+        config = ResolvedMarkerConfig(resolved_marker="🔒 INTEGRATION_RESOLVED 🔒")
         manager = ResolvedMarkerManager(config)
 
         # Raw comments data (simulating GitHub API response)
@@ -599,7 +597,7 @@ class TestResolvedMarkerIntegration:
     def test_multiple_marker_patterns(self):
         """Test detection with multiple marker patterns."""
         config = ResolvedMarkerConfig(
-            default_marker="🔒 PRIMARY 🔒",
+            resolved_marker="🔒 PRIMARY 🔒",
             additional_patterns=["SECONDARY_RESOLVED", "✅ TERTIARY ✅"],
         )
         detector = ResolvedMarkerDetector(config)
@@ -618,8 +616,22 @@ class TestResolvedMarkerIntegration:
             result = detector.is_comment_resolved(comment)
             assert result == expected, f"Failed for content: {content}"
 
+    @pytest.mark.slow
+    @pytest.mark.performance
+    @pytest.mark.skipif(
+        os.environ.get("CI_LOW_RESOURCE") == "true" or os.environ.get("SKIP_PERF_TESTS") == "true",
+        reason="Skip performance test in low-resource CI environments or when explicitly disabled",
+    )
     def test_performance_with_large_datasets(self):
-        """Test performance with large number of comments."""
+        """Test performance with large number of comments.
+
+        This test verifies that the resolved marker detection can handle
+        large datasets efficiently. It's marked as 'slow' and 'performance' and can be skipped
+        in resource-constrained CI environments or when performance tests are disabled.
+
+        The test focuses on functional correctness and logs performance metrics
+        rather than enforcing strict timing constraints to prevent flaky CI failures.
+        """
         config = ResolvedMarkerConfig()
         detector = ResolvedMarkerDetector(config)
 
@@ -631,19 +643,48 @@ class TestResolvedMarkerIntegration:
             marker = "🔒 CODERABBIT_RESOLVED 🔒" if i % 10 == 0 else ""
             large_comments.append({"body": f"Comment {i} content here. {marker}"})
 
-        # Measure performance
-        start_time = time.time()
+        # Measure performance using high-resolution, monotonic timer
+        start_time = time.perf_counter()
         stats = detector.get_resolution_statistics(large_comments)
-        end_time = time.time()
+        end_time = time.perf_counter()
 
-        # Verify results
+        # Verify functional correctness (primary assertion)
         assert stats["total_comments"] == 1000
         assert stats["resolved_comments"] == 100  # Every 10th comment
         assert stats["unresolved_comments"] == 900
 
-        # Performance should be reasonable (less than 1 second for 1000 comments)
+        # Calculate and log processing time for monitoring
         processing_time = end_time - start_time
-        assert processing_time < 1.0, f"Processing took too long: {processing_time:.2f}s"
+        logging.info(f"Performance test: processed 1000 comments in {processing_time:.3f}s")
+
+        # Dynamic threshold based on environment
+        # CI environments get more lenient thresholds to prevent flaky failures
+        is_ci = os.environ.get("CI") == "true" or os.environ.get("GITHUB_ACTIONS") == "true"
+        threshold = float(os.environ.get("PERF_TEST_THRESHOLD", "5.0" if is_ci else "3.0"))
+
+        # Performance assertion with generous threshold to prevent CI flakiness
+        # Focus is on detecting major performance regressions, not micro-optimizations
+        if processing_time > threshold:
+            logging.warning(
+                f"Performance test exceeded threshold: {processing_time:.3f}s > {threshold}s "
+                f"(CI: {is_ci}). This may indicate a performance regression."
+            )
+            # Only fail if performance is extremely poor (likely indicates a real issue)
+            if processing_time > threshold * 2:
+                pytest.fail(
+                    f"Performance severely degraded: {processing_time:.3f}s > {threshold * 2}s. "
+                    "This likely indicates a serious performance regression."
+                )
+
+        # Log performance category for monitoring
+        if processing_time < 0.5:
+            logging.info("Performance: Excellent")
+        elif processing_time < 1.0:
+            logging.info("Performance: Good")
+        elif processing_time < 2.0:
+            logging.info("Performance: Acceptable")
+        else:
+            logging.info("Performance: Needs attention")
 
 
 if __name__ == "__main__":

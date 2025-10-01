@@ -30,7 +30,10 @@ Usage:
 """
 
 import importlib.metadata
-from typing import Any, Dict
+from typing import Dict, Any, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .cli.main import main
 
 try:
     __version__ = importlib.metadata.version("coderabbit-comment-fetcher")
@@ -47,6 +50,17 @@ __email__ = "coderabbit-fetcher@example.com"
 __license__ = "MIT"
 __copyright__ = "Copyright 2025 CodeRabbit Fetcher Team"
 
+from .exceptions import CodeRabbitFetcherError
+from .models import (
+    AnalyzedComments,
+    SummaryComment,
+    ReviewComment,
+    ActionableComment,
+    AIAgentPrompt,
+    ThreadContext,
+    CommentMetadata,
+)
+
 # Package metadata
 __all__ = [
     "__version__",
@@ -58,6 +72,15 @@ __all__ = [
     "__copyright__",
     "get_version_info",
     "get_package_info",
+    "main",
+    "CodeRabbitFetcherError",
+    "AnalyzedComments",
+    "SummaryComment",
+    "ReviewComment",
+    "ActionableComment",
+    "AIAgentPrompt",
+    "ThreadContext",
+    "CommentMetadata",
 ]
 
 
@@ -67,8 +90,8 @@ def get_version_info() -> Dict[str, str]:
     Returns:
         Dictionary containing version details
     """
-    import platform
     import sys
+    import platform
 
     return {
         "version": __version__,
@@ -110,15 +133,23 @@ DEFAULT_CONFIG = {
     "supported_output_formats": ["markdown", "json", "plain"],
 }
 
-# Version check
-import sys  # noqa: E402
-
-from .comment_analyzer import CommentAnalyzer  # noqa: E402
-from .exceptions import CodeRabbitFetcherError  # noqa: E402
-from .github_client import GitHubClient  # noqa: E402
-
 # Export key components for programmatic usage
-from .orchestrator import CodeRabbitOrchestrator, ExecutionConfig  # noqa: E402
+from .orchestrator import CodeRabbitOrchestrator, ExecutionConfig
+from .github_client import GitHubClient
+from .comment_analyzer import CommentAnalyzer
+
+
+# Lazily expose CLI entry to avoid import-time side effects.
+def __getattr__(name: str):
+    if name == "main":
+        from .cli.main import main as _main
+
+        return _main
+    raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
+
+
+# Version check
+import sys
 
 if sys.version_info < (3, 13):
     import warnings

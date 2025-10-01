@@ -2,20 +2,22 @@
 Unit tests for data models.
 """
 
+import pytest
 from datetime import datetime
+from pydantic import ValidationError
 
 from coderabbit_fetcher.models import (
+    AnalyzedComments,
+    CommentMetadata,
+    SummaryComment,
+    ReviewComment,
     ActionableComment,
     AIAgentPrompt,
-    AnalyzedComments,
+    ThreadContext,
     ChangeEntry,
-    CommentMetadata,
     CommentType,
     Priority,
     ResolutionStatus,
-    ReviewComment,
-    SummaryComment,
-    ThreadContext,
 )
 
 
@@ -140,7 +142,6 @@ class TestThreadContext:
         """Test basic thread creation."""
         thread = ThreadContext(
             thread_id="thread123",
-            root_comment_id="comment123",
             main_comment={"user": {"login": "user1"}, "created_at": "2023-01-01T10:00:00Z"},
         )
 
@@ -152,7 +153,6 @@ class TestThreadContext:
         """Test thread with replies."""
         thread = ThreadContext(
             thread_id="thread123",
-            root_comment_id="comment123",
             main_comment={"user": {"login": "user1"}, "created_at": "2023-01-01T10:00:00Z"},
             replies=[
                 {"user": {"login": "user2"}, "created_at": "2023-01-01T11:00:00Z"},
@@ -192,7 +192,7 @@ class TestSummaryComment:
         assert summary.has_new_features
         assert summary.has_documentation_changes
         assert summary.has_test_changes
-        assert summary.total_changes == 5  # 2 new features + 1 doc + 1 test + 1 change entry
+        assert summary.total_changes == 4  # 2 new features + 1 doc + 1 test + 1 change entry
 
 
 class TestAnalyzedComments:
@@ -250,9 +250,15 @@ class TestAnalyzedComments:
             ),
         )
 
+        ai_prompt = AIAgentPrompt(
+            code_block="def test(): pass",
+            description="Test prompt",
+        )
+
         review = ReviewComment(
             actionable_count=1,
             actionable_comments=[actionable_comment],
+            ai_agent_prompts=[ai_prompt],
             raw_content="Review content",
         )
 

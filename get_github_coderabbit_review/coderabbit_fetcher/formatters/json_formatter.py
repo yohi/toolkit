@@ -1,20 +1,20 @@
 """JSON formatter for CodeRabbit comment output."""
 
 import json
+from typing import Dict, Any, List, Optional
 from datetime import datetime
-from typing import Any, Dict, List, Optional
 
+from .base_formatter import BaseFormatter
 from ..models import (
-    ActionableComment,
-    AIAgentPrompt,
     AnalyzedComments,
+    SummaryComment,
+    ReviewComment,
+    ThreadContext,
+    AIAgentPrompt,
+    ActionableComment,
     NitpickComment,
     OutsideDiffComment,
-    ReviewComment,
-    SummaryComment,
-    ThreadContext,
 )
-from .base_formatter import BaseFormatter
 
 
 class JSONFormatter(BaseFormatter):
@@ -31,13 +31,12 @@ class JSONFormatter(BaseFormatter):
         self.pretty_print = pretty_print
         self.include_raw_content = include_raw_content
 
-    def format(self, persona: str, analyzed_comments: AnalyzedComments, quiet: bool = False) -> str:
+    def format(self, persona: str, analyzed_comments: AnalyzedComments) -> str:
         """Format analyzed comments as JSON.
 
         Args:
             persona: AI persona prompt string
             analyzed_comments: Analyzed CodeRabbit comments
-            quiet: Use quiet mode for minimal output (ignored for JSON)
 
         Returns:
             Formatted JSON string
@@ -83,26 +82,31 @@ class JSONFormatter(BaseFormatter):
         Returns:
             JSON-serializable dictionary
         """
+        # Safe attribute access with None coercion
+        chronological_order = getattr(thread, "chronological_order", []) or []
+        resolution_status = getattr(thread, "resolution_status", None)
+        comment_count = getattr(thread, "comment_count", None)
+
+        # Ensure comment_count is a valid integer
+        if not isinstance(comment_count, int) or comment_count < 0:
+            comment_count = len(chronological_order)
+
         return {
             "thread_id": getattr(thread, "thread_id", None),
             "root_comment_id": getattr(thread, "root_comment_id", None),
-            "resolution_status": str(thread.resolution_status),
+            "resolution_status": (
+                str(resolution_status) if resolution_status is not None else "unknown"
+            ),
             "file_context": getattr(thread, "file_context", None),
             "line_context": getattr(thread, "line_context", None),
             "participants": getattr(thread, "participants", []),
-            "comment_count": getattr(
-                thread,
-                "comment_count",
-                len(thread.chronological_order) if thread.chronological_order else 0,
-            ),
+            "comment_count": comment_count,
             "coderabbit_comment_count": getattr(thread, "coderabbit_comment_count", 0),
             "is_resolved": getattr(thread, "is_resolved", False),
             "context_summary": getattr(thread, "context_summary", None),
             "ai_summary": getattr(thread, "ai_summary", None),
-            "contextual_summary": thread.contextual_summary,
-            "chronological_comments": self._format_chronological_comments(
-                thread.chronological_order
-            ),
+            "contextual_summary": getattr(thread, "contextual_summary", None),
+            "chronological_comments": self._format_chronological_comments(chronological_order),
         }
 
     def _format_metadata(self, analyzed_comments: AnalyzedComments) -> Dict[str, Any]:
@@ -154,7 +158,7 @@ class JSONFormatter(BaseFormatter):
                 "test_changes": summary.test_changes,
                 "changes_table": [
                     {"cohort_or_files": c.cohort_or_files, "summary": c.summary}
-                    for c in summary.changes_table
+                    for c in (summary.changes_table or [])
                 ],
                 "sequence_diagram": summary.sequence_diagram,
             }
@@ -168,7 +172,8 @@ class JSONFormatter(BaseFormatter):
                 "has_sequence_diagram": summary.has_sequence_diagram,
             }
 
-            if self.include_raw_content:
+            # Include raw content if enabled and available
+            if self.include_raw_content and hasattr(summary, "raw_content"):
                 summary_dict["raw_content"] = summary.raw_content
 
             formatted.append(summary_dict)
@@ -204,12 +209,15 @@ class JSONFormatter(BaseFormatter):
                 "ai_agent_prompts": [
                     self.format_ai_agent_prompt(p) for p in review.ai_agent_prompts
                 ],
-                "has_ai_prompts": getattr(
-                    review, "has_ai_prompts", len(review.ai_agent_prompts) > 0
+                "has_ai_prompts": (
+                    review.has_ai_prompts
+                    if hasattr(review, "has_ai_prompts")
+                    else bool(getattr(review, "ai_agent_prompts", []))
                 ),
             }
 
-            if self.include_raw_content:
+            # Include raw content if enabled and available
+            if self.include_raw_content and hasattr(review, "raw_content"):
                 review_dict["raw_content"] = review.raw_content
 
             # Add metadata
@@ -254,10 +262,10 @@ class JSONFormatter(BaseFormatter):
         return {
             "type": "actionable",
             "title": comment.title,
-            "description": comment.issue_description,
+            "description": comment.description,
             "file_path": comment.file_path,
             "line_number": comment.line_number,
-            "priority": self._extract_priority_level(comment.issue_description or ""),
+            "priority": self._extract_priority_level(comment.description or ""),
         }
 
     def _format_nitpick_comment(self, comment: NitpickComment) -> Dict[str, Any]:
@@ -289,10 +297,10 @@ class JSONFormatter(BaseFormatter):
         return {
             "type": "outside_diff",
             "issue": comment.issue,
-            "description": comment.issue_description,
+            "description": comment.description,
             "file_path": comment.file_path,
             "line_range": comment.line_range,
-            "severity": self._assess_severity(comment.issue, comment.issue_description),
+            "severity": self._assess_severity(comment.issue, comment.description),
         }
 
     def _format_chronological_comments(
@@ -321,9 +329,18 @@ class JSONFormatter(BaseFormatter):
             if hasattr(comment, "created_at"):
                 comment_dict["timestamp"] = getattr(comment, "created_at", None)
 
-            # Add author if available
+            # Add author if available with safe user handling
             if hasattr(comment, "user"):
-                comment_dict["author"] = getattr(comment, "user", {}).get("login", "Unknown")
+                user = getattr(comment, "user", None)
+                if user is None:
+                    author = "Unknown"
+                elif isinstance(user, dict):
+                    author = user.get("login", "Unknown")
+                elif hasattr(user, "login"):
+                    author = getattr(user, "login", "Unknown")
+                else:
+                    author = "Unknown"
+                comment_dict["author"] = author
 
             formatted.append(comment_dict)
 
@@ -362,7 +379,7 @@ class JSONFormatter(BaseFormatter):
         priorities = []
 
         for comment in review.actionable_comments:
-            priority = self._extract_priority_level(comment.issue_description or "")
+            priority = self._extract_priority_level(comment.description or "")
             priorities.append(priority)
 
         # Return highest priority found
@@ -445,14 +462,29 @@ class JSONFormatter(BaseFormatter):
         Returns:
             Comment source string
         """
-        if hasattr(comment, "user"):
-            user_login = getattr(comment, "user", {}).get("login", "").lower()
-            if "coderabbit" in user_login:
-                return "coderabbit"
-            else:
-                return "human"
+        # First normalize comment to handle both dict and object
+        if isinstance(comment, dict):
+            user = comment.get("user")
         else:
+            user = getattr(comment, "user", None)
+
+        # Then normalize user similarly
+        if user is None:
             return "unknown"
+
+        if isinstance(user, dict):
+            user_login = user.get("login", "")
+        else:
+            user_login = getattr(user, "login", "")
+
+        if not user_login:
+            return "unknown"
+
+        user_login = user_login.lower()
+        if "coderabbit" in user_login:
+            return "coderabbit"
+        else:
+            return "human"
 
     def _json_serializer(self, obj) -> str:
         """Custom JSON serializer for datetime and other objects.

@@ -1,15 +1,12 @@
 """GitHub CLI wrapper for authenticated API access."""
 
 import json
-import logging
-import re
 import subprocess
-from typing import Any, Dict, List, Tuple
+import re
+from typing import Dict, List, Optional, Any, Tuple
 from urllib.parse import urlparse
 
-from .exceptions import CodeRabbitFetcherError, GitHubAuthenticationError, InvalidPRUrlError
-
-logger = logging.getLogger(__name__)
+from .exceptions import GitHubAuthenticationError, InvalidPRUrlError, CodeRabbitFetcherError
 
 
 class GitHubAPIError(CodeRabbitFetcherError):
@@ -108,11 +105,12 @@ class GitHubClient:
             "warnings": result.warnings or [],
         }
 
-    def fetch_pr_comments(self, pr_url: str) -> Dict[str, Any]:
+    def fetch_pr_comments(self, pr_url: str, timeout: Optional[int] = None) -> Dict[str, Any]:
         """Fetch pull request comments using GitHub CLI.
 
         Args:
             pr_url: GitHub pull request URL
+            timeout: Timeout in seconds for GitHub CLI operations
 
         Returns:
             Dictionary containing PR data and comments
@@ -126,6 +124,7 @@ class GitHubClient:
 
         try:
             # Fetch PR data with comments
+            actual_timeout = timeout if timeout is not None else 60
             result = subprocess.run(
                 [
                     "gh",
@@ -139,7 +138,7 @@ class GitHubClient:
                 ],
                 capture_output=True,
                 text=True,
-                timeout=60,
+                timeout=actual_timeout,
             )
 
             if result.returncode != 0:
@@ -192,7 +191,7 @@ class GitHubClient:
             return json.loads(result.stdout)
 
         except subprocess.TimeoutExpired:
-            raise GitHubAPIError("GitHub API request timed out for review comments")
+            raise GitHubAPIError(f"GitHub API request timed out for review comments")
         except json.JSONDecodeError as e:
             raise GitHubAPIError(f"Failed to parse review comments response: {e}")
         except Exception as e:
@@ -201,14 +200,14 @@ class GitHubClient:
             raise GitHubAPIError(f"Unexpected error fetching review comments: {e}")
 
     def post_comment(self, pr_url: str, comment: str) -> Dict[str, Any]:
-        """Post a comment to a pull request.
+        """Post a comment to a pull request using GitHub REST API.
 
         Args:
             pr_url: GitHub pull request URL
             comment: Comment text to post
 
         Returns:
-            Dictionary with comment metadata
+            Dictionary with comment metadata including id, html_url, created_at
 
         Raises:
             GitHubAPIError: If posting fails
@@ -217,49 +216,46 @@ class GitHubClient:
         owner, repo, pr_number = self.parse_pr_url(pr_url)
 
         try:
+            # Use GitHub REST API to post comment
+            # POST /repos/{owner}/{repo}/issues/{issue_number}/comments
+            api_data = json.dumps({"body": comment})
+
             result = subprocess.run(
                 [
                     "gh",
-                    "pr",
-                    "comment",
-                    str(pr_number),
-                    "--repo",
-                    f"{owner}/{repo}",
-                    "--body",
-                    comment,
+                    "api",
+                    f"/repos/{owner}/{repo}/issues/{pr_number}/comments",
+                    "--method",
+                    "POST",
+                    "--input",
+                    "-",
                 ],
+                input=api_data,
                 capture_output=True,
                 text=True,
                 timeout=30,
             )
 
             if result.returncode != 0:
-                raise GitHubAPIError(f"Failed to post comment: {result.stderr.strip()}")
+                raise GitHubAPIError(f"Failed to post comment via API: {result.stderr.strip()}")
 
-            # Extract comment URL from output
-            output_lines = result.stdout.strip().split("\n")
-            comment_url = None
-            for line in output_lines:
-                if "github.com" in line and "#issuecomment-" in line:
-                    comment_url = line.strip()
-                    break
-
-            # Extract comment ID from URL if available
-            comment_id = None
-            if comment_url:
-                id_match = re.search(r"#issuecomment-(\d+)", comment_url)
-                if id_match:
-                    comment_id = int(id_match.group(1))
+            # Parse JSON response from GitHub API
+            comment_data = json.loads(result.stdout)
 
             return {
-                "id": comment_id,
-                "html_url": comment_url,
-                "body": comment,
-                "created_at": None,  # Not available from gh pr comment output
+                "id": comment_data.get("id"),
+                "html_url": comment_data.get("html_url"),
+                "body": comment_data.get("body"),
+                "created_at": comment_data.get("created_at"),
+                "updated_at": comment_data.get("updated_at"),
+                "user": comment_data.get("user", {}).get("login"),
+                "node_id": comment_data.get("node_id"),
             }
 
         except subprocess.TimeoutExpired:
-            raise GitHubAPIError("GitHub CLI comment posting timed out")
+            raise GitHubAPIError("GitHub API comment posting timed out")
+        except json.JSONDecodeError as e:
+            raise GitHubAPIError(f"Failed to parse GitHub API response: {e}")
         except Exception as e:
             if isinstance(e, GitHubAPIError):
                 raise
@@ -306,7 +302,7 @@ class GitHubClient:
         return path_parts[0], path_parts[1], pr_number
 
     def get_pr_info(self, pr_url: str) -> Dict[str, Any]:
-        """Get comprehensive pull request information.
+        """Get basic pull request information.
 
         Args:
             pr_url: GitHub pull request URL
@@ -330,7 +326,7 @@ class GitHubClient:
                     "--repo",
                     f"{owner}/{repo}",
                     "--json",
-                    "title,body,number,state,url,author,createdAt,updatedAt,headRefName,changedFiles,additions,deletions",
+                    "title,body,number,state,url,author,createdAt,updatedAt",
                 ],
                 capture_output=True,
                 text=True,
@@ -345,29 +341,13 @@ class GitHubClient:
 
             pr_info = json.loads(result.stdout)
 
-            # Fetch files information separately
-            try:
-                files_result = subprocess.run(
-                    ["gh", "api", f"repos/{owner}/{repo}/pulls/{pr_number}/files"],
-                    capture_output=True,
-                    text=True,
-                    timeout=30,
-                )
-
-                if files_result.returncode == 0:
-                    files_data = json.loads(files_result.stdout)
-                    pr_info["files"] = files_data
-            except Exception as e:
-                logger.debug(f"Failed to fetch files info: {e}")
-                pr_info["files"] = []
-
             # Add parsed URL components
             pr_info.update({"owner": owner, "repo": repo, "pr_number": pr_number})
 
             return pr_info
 
         except subprocess.TimeoutExpired:
-            raise GitHubAPIError("GitHub CLI request timed out")
+            raise GitHubAPIError(f"GitHub CLI request timed out")
         except json.JSONDecodeError as e:
             raise GitHubAPIError(f"Failed to parse PR info response: {e}")
         except Exception as e:
@@ -446,77 +426,7 @@ class GitHubClient:
         if "reviews" not in pr_data:
             pr_data["reviews"] = []
 
-        # Fetch inline/review comments using GitHub API
-        try:
-            inline_comments = self._fetch_inline_comments(owner, repo, pr_number)
-            if inline_comments:
-                # Add inline comments to the main comments list
-                pr_data["comments"].extend(inline_comments)
-        except Exception as e:
-            # Log warning but don't fail the entire request
-            import logging
-
-            logging.warning(f"Failed to fetch inline comments: {e}")
-
         return pr_data
-
-    def _fetch_inline_comments(self, owner: str, repo: str, pr_number: str) -> List[Dict[str, Any]]:
-        """Fetch inline/review comments for a pull request.
-
-        Args:
-            owner: Repository owner
-            repo: Repository name
-            pr_number: Pull request number
-
-        Returns:
-            List of inline comment objects
-
-        Raises:
-            GitHubAPIError: If fetching fails
-        """
-        try:
-            # Use gh api to get inline comments
-            result = subprocess.run(
-                ["gh", "api", f"repos/{owner}/{repo}/pulls/{pr_number}/comments", "--paginate"],
-                capture_output=True,
-                text=True,
-                timeout=60,
-            )
-
-            if result.returncode != 0:
-                raise GitHubAPIError(f"Failed to fetch inline comments: {result.stderr.strip()}")
-
-            inline_comments = json.loads(result.stdout)
-
-            # Format inline comments to match expected structure
-            formatted_comments = []
-            for comment in inline_comments:
-                # Only include CodeRabbit comments
-                if comment.get("user", {}).get("login", "").lower().startswith("coderabbit"):
-                    formatted_comment = {
-                        "id": comment.get("id"),
-                        "body": comment.get("body", ""),
-                        "user": comment.get("user", {}),
-                        "created_at": comment.get("created_at"),
-                        "comment_type": "review_comment",  # Mark as review comment
-                        "path": comment.get("path"),
-                        "line": comment.get("line"),
-                        "start_line": comment.get("start_line"),
-                        "original_line": comment.get("original_line"),
-                        "original_start_line": comment.get("original_start_line"),
-                        "diff_hunk": comment.get("diff_hunk"),
-                        "position": comment.get("position"),
-                    }
-                    formatted_comments.append(formatted_comment)
-
-            return formatted_comments
-
-        except subprocess.TimeoutExpired:
-            raise GitHubAPIError("GitHub API request for inline comments timed out")
-        except json.JSONDecodeError as e:
-            raise GitHubAPIError(f"Failed to parse inline comments response: {e}")
-        except Exception as e:
-            raise GitHubAPIError(f"Unexpected error fetching inline comments: {e}")
 
     def validate_github_cli(self) -> Dict[str, Any]:
         """Validate GitHub CLI installation and configuration.
@@ -524,7 +434,7 @@ class GitHubClient:
         Returns:
             Dictionary with validation results
         """
-        validation_result: Dict[str, Any] = {
+        validation_result = {
             "gh_installed": False,
             "gh_version": None,
             "authenticated": False,
@@ -579,3 +489,112 @@ class GitHubClient:
                 validation_result["issues"].append(f"Authentication check failed: {e}")
 
         return validation_result
+
+    def get_comment(self, pr_url: str, comment_id: int) -> Dict[str, Any]:
+        """Get a specific comment by ID using GitHub REST API.
+
+        Args:
+            pr_url: GitHub pull request URL
+            comment_id: Comment ID to retrieve
+
+        Returns:
+            Dictionary with comment data
+
+        Raises:
+            GitHubAPIError: If fetching fails
+        """
+        self._ensure_authenticated()
+        owner, repo, _ = self.parse_pr_url(pr_url)
+
+        try:
+            result = subprocess.run(
+                ["gh", "api", f"/repos/{owner}/{repo}/issues/comments/{comment_id}"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+
+            if result.returncode != 0:
+                raise GitHubAPIError(f"Failed to get comment {comment_id}: {result.stderr.strip()}")
+
+            comment_data = json.loads(result.stdout)
+
+            return {
+                "id": comment_data.get("id"),
+                "html_url": comment_data.get("html_url"),
+                "body": comment_data.get("body"),
+                "created_at": comment_data.get("created_at"),
+                "updated_at": comment_data.get("updated_at"),
+                "user": comment_data.get("user", {}).get("login"),
+                "node_id": comment_data.get("node_id"),
+            }
+
+        except subprocess.TimeoutExpired:
+            raise GitHubAPIError("GitHub API comment retrieval timed out")
+        except json.JSONDecodeError as e:
+            raise GitHubAPIError(f"Failed to parse comment response: {e}")
+        except Exception as e:
+            if isinstance(e, GitHubAPIError):
+                raise
+            raise GitHubAPIError(f"Unexpected error getting comment: {e}")
+
+    def get_latest_comments(self, pr_url: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get the latest comments from a pull request.
+
+        Args:
+            pr_url: GitHub pull request URL
+            limit: Maximum number of comments to retrieve
+
+        Returns:
+            List of comment dictionaries, sorted by creation time (newest first)
+
+        Raises:
+            GitHubAPIError: If fetching fails
+        """
+        self._ensure_authenticated()
+        owner, repo, pr_number = self.parse_pr_url(pr_url)
+
+        try:
+            result = subprocess.run(
+                [
+                    "gh",
+                    "api",
+                    f"/repos/{owner}/{repo}/issues/{pr_number}/comments",
+                    "--jq",
+                    f"sort_by(.created_at) | reverse | .[:{ limit }]",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
+
+            if result.returncode != 0:
+                raise GitHubAPIError(f"Failed to get latest comments: {result.stderr.strip()}")
+
+            comments = json.loads(result.stdout)
+
+            # Normalize comment data
+            normalized_comments = []
+            for comment in comments:
+                normalized_comments.append(
+                    {
+                        "id": comment.get("id"),
+                        "html_url": comment.get("html_url"),
+                        "body": comment.get("body"),
+                        "created_at": comment.get("created_at"),
+                        "updated_at": comment.get("updated_at"),
+                        "user": comment.get("user", {}).get("login"),
+                        "node_id": comment.get("node_id"),
+                    }
+                )
+
+            return normalized_comments
+
+        except subprocess.TimeoutExpired:
+            raise GitHubAPIError("GitHub API latest comments retrieval timed out")
+        except json.JSONDecodeError as e:
+            raise GitHubAPIError(f"Failed to parse latest comments response: {e}")
+        except Exception as e:
+            if isinstance(e, GitHubAPIError):
+                raise
+            raise GitHubAPIError(f"Unexpected error getting latest comments: {e}")

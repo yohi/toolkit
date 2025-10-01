@@ -4,4 +4,4 @@ from .review_processor import ReviewProcessor
 from .summary_processor import SummaryProcessor
 from .thread_processor import ThreadProcessor
 
-__all__ = ["SummaryProcessor", "ReviewProcessor", "ThreadProcessor"]
+__all__ = ["ReviewProcessor", "SummaryProcessor", "ThreadProcessor"]

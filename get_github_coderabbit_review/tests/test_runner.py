@@ -1,11 +1,11 @@
 """Test runner for CodeRabbit Comment Fetcher tests."""
 
-import argparse
-import os
-import sys
-import time
 import unittest
-from typing import Any, Dict, Optional
+import sys
+import os
+import time
+import argparse
+from typing import Dict, List, Any, Optional
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -35,53 +35,26 @@ class CodeRabbitTestRunner:
         loader = unittest.TestLoader()
         suite = unittest.TestSuite()
 
-        # Get absolute paths
-        test_dir = os.path.dirname(os.path.abspath(__file__))
-        project_root = os.path.dirname(test_dir)
-
         if test_type in ("unit", "all"):
             # Discover unit tests
-            unit_dir = os.path.join(test_dir, "unit")
-            if os.path.exists(unit_dir):
-                unit_tests = loader.discover(
-                    start_dir=unit_dir, pattern="test_*.py", top_level_dir=project_root
-                )
-                suite.addTest(unit_tests)
+            unit_tests = loader.discover(
+                start_dir="tests/unit", pattern="test_*.py", top_level_dir="tests"
+            )
+            suite.addTest(unit_tests)
 
         if test_type in ("integration", "all"):
             # Discover integration tests
-            integration_dir = os.path.join(test_dir, "integration")
-            if os.path.exists(integration_dir):
-                integration_tests = loader.discover(
-                    start_dir=integration_dir, pattern="test_*.py", top_level_dir=project_root
-                )
-                suite.addTest(integration_tests)
+            integration_tests = loader.discover(
+                start_dir="tests/integration", pattern="test_*.py", top_level_dir="tests"
+            )
+            suite.addTest(integration_tests)
 
         if test_type in ("performance", "all"):
             # Discover performance tests
-            performance_dir = os.path.join(test_dir, "performance")
-            if os.path.exists(performance_dir):
-                performance_tests = loader.discover(
-                    start_dir=performance_dir, pattern="test_*.py", top_level_dir=project_root
-                )
-                suite.addTest(performance_tests)
-
-        if test_type in ("integration", "all"):
-            # Add PR2 tests
-            pr2_dir = os.path.join(test_dir, "pr2")
-            if os.path.exists(pr2_dir):
-                pr2_tests = loader.discover(
-                    start_dir=pr2_dir, pattern="test_*.py", top_level_dir=project_root
-                )
-                suite.addTest(pr2_tests)
-
-            # Add PR38 tests
-            pr38_dir = os.path.join(test_dir, "pr38")
-            if os.path.exists(pr38_dir):
-                pr38_tests = loader.discover(
-                    start_dir=pr38_dir, pattern="test_*.py", top_level_dir=project_root
-                )
-                suite.addTest(pr38_tests)
+            performance_tests = loader.discover(
+                start_dir="tests/performance", pattern="test_*.py", top_level_dir="tests"
+            )
+            suite.addTest(performance_tests)
 
         return suite
 
@@ -219,10 +192,19 @@ class CodeRabbitTestRunner:
         for filename in cov.get_data().measured_files():
             if "coderabbit_fetcher" in filename:
                 analysis = cov.analysis(filename)
+                statements_count = len(analysis[1])
+                missing_count = len(analysis[3])
+
+                # Prevent ZeroDivisionError
+                if statements_count == 0:
+                    coverage = 100.0
+                else:
+                    coverage = (statements_count - missing_count) / statements_count * 100
+
                 coverage_data[filename] = {
-                    "statements": len(analysis[1]),
-                    "missing": len(analysis[3]),
-                    "coverage": (len(analysis[1]) - len(analysis[3])) / len(analysis[1]) * 100,
+                    "statements": statements_count,
+                    "missing": missing_count,
+                    "coverage": coverage,
                 }
 
         return coverage_data
@@ -371,8 +353,12 @@ def main():
 
     if args.coverage:
         coverage_results = runner.run_coverage_analysis()
+        if coverage_results and args.verbosity >= 1:
+            print(f"\n📊 Coverage analysis completed for {len(coverage_results)} files")
     else:
         test_results = runner.run_tests(args.type, args.pattern)
+        if test_results and args.verbosity >= 1:
+            print(f"\n✅ Test execution completed: {test_results['total_tests']} tests run")
 
     # Generate report if requested
     if args.report:

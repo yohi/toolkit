@@ -61,8 +61,13 @@ class AIAgentPrompt(BaseCodeRabbitModel):
         Returns:
             True if prompt contains complete implementation suggestion
         """
-        return (
-            self.code_block
-            and len(self.code_block.strip()) > 20  # Relaxed from 50 to 20
-            and self.language is not None
-        )
+        if not self.code_block or self.language is None:
+            return False
+
+        stripped_code = self.code_block.strip()
+        non_empty_lines = [line for line in stripped_code.split("\n") if line.strip()]
+
+        # 完全な提案と判定する条件:
+        # - 複数の非空行がある、または
+        # - 単一行でも20文字以上の有効なコード
+        return len(non_empty_lines) >= 2 or len(stripped_code) >= 20
