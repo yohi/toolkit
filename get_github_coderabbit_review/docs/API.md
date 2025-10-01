@@ -212,8 +212,18 @@ class GitHubClient:
     def check_authentication(self) -> bool:
         """Check if GitHub CLI is authenticated."""
 
-    def validate(self) -> ValidationResult:
-        """Validate GitHub CLI availability and authentication."""
+    def validate(self) -> Dict[str, Any]:
+        """Validate GitHub CLI setup and authentication.
+
+        Returns:
+            Dictionary containing:
+            - valid: bool - Whether validation passed
+            - issues: List[str] - List of validation issues found
+            - warnings: List[str] - List of warnings (if any)
+
+        Raises:
+            No exceptions raised directly - errors are returned in the result dictionary
+        """
 
     def fetch_pr_comments(self, owner: str, repo: str, pr_number: int) -> List[Dict[str, Any]]:
         """Fetch pull request comments using GitHub CLI.
@@ -240,9 +250,19 @@ class GitHubClient:
 
 ```python
 from coderabbit_fetcher import GitHubClient
-from coderabbit_fetcher.exceptions import GitHubAuthenticationError
+from coderabbit_fetcher.exceptions import GitHubAuthenticationError, NetworkError
 
 client = GitHubClient(timeout=60)
+
+# Validate GitHub CLI setup (recommended before use)
+validation = client.validate()
+if not validation["valid"]:
+    print("❌ GitHub CLI validation failed:")
+    for issue in validation["issues"]:
+        print(f"  - {issue}")
+    exit(1)
+
+print("✅ GitHub CLI validated successfully")
 
 # Check authentication
 if not client.check_authentication():
@@ -259,6 +279,8 @@ try:
 
 except GitHubAuthenticationError:
     print("❌ Authentication required")
+except NetworkError as e:
+    print(f"❌ Network error: {e}")
 except Exception as e:
     print(f"❌ Error fetching comments: {e}")
 ```
@@ -516,6 +538,7 @@ custom_output = formatter.format(comments, metadata)
 ```python
 from coderabbit_fetcher.exceptions import (
     CodeRabbitFetcherError,           # Base exception
+    NetworkError,                     # Network-related errors
     GitHubAuthenticationError,        # Authentication issues
     APIRateLimitError,               # Rate limiting
     InvalidPRUrlError,               # Invalid PR URL
@@ -550,6 +573,58 @@ except CodeRabbitFetcherError as e:
 
 except Exception as e:
     print(f"❌ Unexpected error: {e}")
+```
+
+#### NetworkError
+
+Base exception class for network-related errors during GitHub API operations.
+
+**Base Class:** `CodeRabbitFetcherError`
+
+**Constructor Signature:**
+```python
+def __init__(self, message: str, details: str | None = None) -> None:
+    """Initialize network error.
+
+    Args:
+        message: Human-readable error message
+        details: Optional additional details about the error
+    """
+```
+
+**Typical Use Cases:**
+- Network connectivity issues
+- DNS resolution failures
+- Connection timeouts
+- SSL/TLS errors
+- API endpoint unreachable
+
+**When It's Thrown:**
+This is a base class for network-related exceptions. It's typically not raised directly but through its subclasses:
+- `APIRateLimitError` - When GitHub API rate limit is exceeded
+- Other network-specific errors during API operations
+
+**Example:**
+```python
+from coderabbit_fetcher import GitHubClient
+from coderabbit_fetcher.exceptions import NetworkError, APIRateLimitError
+
+client = GitHubClient()
+
+try:
+    comments = client.fetch_pr_comments(
+        "https://github.com/owner/repo/pull/123"
+    )
+except APIRateLimitError as e:
+    # Handle rate limiting (subclass of NetworkError)
+    print(f"⏱️ Rate limit exceeded: {e}")
+    if e.details:
+        print(f"Details: {e.details}")
+except NetworkError as e:
+    # Handle other network errors
+    print(f"🌐 Network error: {e.message}")
+    if e.details:
+        print(f"Additional info: {e.details}")
 ```
 
 ### Error Recovery
