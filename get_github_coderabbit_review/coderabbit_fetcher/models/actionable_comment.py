@@ -2,17 +2,19 @@
 Actionable comment data model.
 """
 
-from typing import Optional, Any, Dict
 from enum import Enum
+from typing import Any, Dict, Optional
 
 from pydantic import model_validator
-from .base import BaseCodeRabbitModel
+
 from .ai_agent_prompt import AIAgentPrompt
+from .base import BaseCodeRabbitModel
 from .thread_context import ThreadContext
 
 
 class CommentType(str, Enum):
     """Types of actionable comments."""
+
     NITPICK = "nitpick"
     POTENTIAL_ISSUE = "potential_issue"
     REFACTOR_SUGGESTION = "refactor_suggestion"
@@ -22,6 +24,7 @@ class CommentType(str, Enum):
 
 class Priority(str, Enum):
     """Priority levels for actionable comments."""
+
     HIGH = "high"
     MEDIUM = "medium"
     LOW = "low"
@@ -44,7 +47,7 @@ class ActionableComment(BaseCodeRabbitModel):
     thread_context: Optional[ThreadContext] = None
     raw_content: str
     is_resolved: bool = False
-    
+
     @model_validator(mode="before")
     @classmethod
     def normalize_data(cls, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -52,18 +55,15 @@ class ActionableComment(BaseCodeRabbitModel):
         # Auto-detect priority from content if not provided or explicitly None
         if data.get("priority") is None:
             data["priority"] = cls._detect_priority(
-                data.get("issue_description", ""),
-                data.get("raw_content", "")
+                data.get("issue_description", ""), data.get("raw_content", "")
             )
-        
+
         # Auto-detect comment type if not provided or explicitly None
         if data.get("comment_type") is None:
-            data["comment_type"] = cls._detect_comment_type(
-                data.get("raw_content", "")
-            )
-        
+            data["comment_type"] = cls._detect_comment_type(data.get("raw_content", ""))
+
         return data
-    
+
     @staticmethod
     def _detect_priority(description: str, raw_content: str) -> Priority:
         """Detect priority level from comment content.
@@ -79,14 +79,30 @@ class ActionableComment(BaseCodeRabbitModel):
 
         # High priority keywords
         high_keywords = [
-            "security", "vulnerability", "critical", "urgent", "fatal",
-            "error", "exception", "crash", "fail", "broken", "bug"
+            "security",
+            "vulnerability",
+            "critical",
+            "urgent",
+            "fatal",
+            "error",
+            "exception",
+            "crash",
+            "fail",
+            "broken",
+            "bug",
         ]
 
         # Low priority keywords
         low_keywords = [
-            "nitpick", "style", "formatting", "whitespace", "comment",
-            "documentation", "typo", "minor", "suggestion"
+            "nitpick",
+            "style",
+            "formatting",
+            "whitespace",
+            "comment",
+            "documentation",
+            "typo",
+            "minor",
+            "suggestion",
         ]
 
         if any(keyword in content for keyword in high_keywords):

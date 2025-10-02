@@ -1,0 +1,49 @@
+# Makefile for pre-commit and code quality management
+.PHONY: install setup-precommit fix-all run-precommit clean help
+.DEFAULT_GOAL := help
+
+PYTHON ?= python3
+# Dynamically detect existing directories to avoid fix-all failures
+EXISTING_DIRS := $(shell find . -maxdepth 2 -type d \( -name "coderabbit_fetcher" -o -name "auth" -o -name "cicd" -o -name "microservices" -o -name "scripts" -o -name "tests" \) 2>/dev/null | sort)
+
+# Install development dependencies
+install:
+	@echo "Installing development dependencies..."
+	$(PYTHON) -m pip install -e ".[dev]"
+
+# Setup pre-commit hooks
+setup-precommit:
+	@echo "Setting up pre-commit hooks..."
+	pre-commit install
+
+# Fix formatting and basic issues
+fix-all:
+	@echo "Fixing code formatting and basic issues..."
+	@echo "Target directories: $(EXISTING_DIRS)"
+	@if [ -n "$(EXISTING_DIRS)" ]; then \
+		$(PYTHON) -m black --line-length=100 $(EXISTING_DIRS); \
+		$(PYTHON) -m isort --profile=black --line-length=100 $(EXISTING_DIRS); \
+	else \
+		echo "No target directories found"; \
+	fi
+
+# Run pre-commit on all files
+run-precommit:
+	@echo "Running pre-commit on all files..."
+	pre-commit run --all-files
+
+# Clean pre-commit cache
+clean:
+	@echo "Cleaning pre-commit cache..."
+	pre-commit clean
+
+# Show help
+help:
+	@echo "Available targets:"
+	@echo "  install         - Install development dependencies"
+	@echo "  setup-precommit - Setup pre-commit hooks"
+	@echo "  fix-all         - Fix formatting and basic issues"
+	@echo "  run-precommit   - Run pre-commit on all files"
+	@echo "  clean           - Clean pre-commit cache"
+
+default: help

@@ -1,25 +1,23 @@
 """Unit tests for formatter classes."""
 
 import json
-import pytest
-from datetime import datetime
 
 from coderabbit_fetcher.formatters import (
     BaseFormatter,
-    MarkdownFormatter,
     JSONFormatter,
-    PlainTextFormatter
+    MarkdownFormatter,
+    PlainTextFormatter,
 )
 from coderabbit_fetcher.models import (
-    AnalyzedComments,
-    SummaryComment,
-    ReviewComment,
-    ThreadContext,
-    AIAgentPrompt,
     ActionableComment,
+    AIAgentPrompt,
+    AnalyzedComments,
     NitpickComment,
     OutsideDiffComment,
-    ResolutionStatus
+    ResolutionStatus,
+    ReviewComment,
+    SummaryComment,
+    ThreadContext,
 )
 
 
@@ -28,10 +26,13 @@ class TestBaseFormatter:
 
     def setup_method(self):
         """Set up test fixtures."""
+
         # Create a concrete implementation for testing
         class ConcreteFormatter(BaseFormatter):
             def format(self, persona: str, analyzed_comments: AnalyzedComments) -> str:
-                return f"Persona: {persona}\nComments: {len(analyzed_comments.summary_comments or [])}"
+                return (
+                    f"Persona: {persona}\nComments: {len(analyzed_comments.summary_comments or [])}"
+                )
 
         self.formatter = ConcreteFormatter()
 
@@ -40,7 +41,7 @@ class TestBaseFormatter:
             description="Test AI prompt",
             file_path="test.py",
             line_range="10-15",
-            code_block="def test():\n    pass"
+            code_block="def test():\n    pass",
         )
 
         self.sample_thread = ThreadContext(
@@ -50,7 +51,7 @@ class TestBaseFormatter:
             resolution_status=ResolutionStatus.UNRESOLVED,
             chronological_order=[{"body": "Comment 1"}],
             contextual_summary="Test thread summary",
-            root_comment_id="123"
+            root_comment_id="123",
         )
 
     def test_format_ai_agent_prompt(self):
@@ -77,14 +78,14 @@ class TestBaseFormatter:
                 title="Fix security issue",
                 description="Critical security vulnerability",
                 file_path="security.py",
-                line_number=42
+                line_number=42,
             ),
             ActionableComment(
                 title="Optimize performance",
                 description="Improve algorithm efficiency",
                 file_path="perf.py",
-                line_number=100
-            )
+                line_number=100,
+            ),
         ]
 
         result = self.formatter.format_actionable_comments(comments)
@@ -98,9 +99,7 @@ class TestBaseFormatter:
         """Test nitpick comments formatting."""
         comments = [
             NitpickComment(
-                suggestion="Use consistent indentation",
-                file_path="style.py",
-                line_number=25
+                suggestion="Use consistent indentation", file_path="style.py", line_number=25
             )
         ]
 
@@ -117,7 +116,7 @@ class TestBaseFormatter:
                 issue="Configuration issue",
                 description="Invalid configuration detected",
                 file_path="config.yaml",
-                line_range="1-5"
+                line_range="1-5",
             )
         ]
 
@@ -130,9 +129,18 @@ class TestBaseFormatter:
     def test_format_metadata(self):
         """Test metadata formatting."""
         analyzed_comments = AnalyzedComments(
-            summary_comments=[SummaryComment(new_features=[], documentation_changes=[], test_changes=[], walkthrough="Test summary", changes_table=[], raw_content="Test summary")],
+            summary_comments=[
+                SummaryComment(
+                    new_features=[],
+                    documentation_changes=[],
+                    test_changes=[],
+                    walkthrough="Test summary",
+                    changes_table=[],
+                    raw_content="Test summary",
+                )
+            ],
             review_comments=[],
-            thread_contexts=[]
+            thread_contexts=[],
         )
 
         metadata = self.formatter.format_metadata(analyzed_comments)
@@ -205,7 +213,7 @@ class TestMarkdownFormatter:
                     test_changes=["Added tests"],
                     walkthrough="Test walkthrough",
                     changes_table=[],
-                    raw_content="Test summary content"
+                    raw_content="Test summary content",
                 )
             ],
             review_comments=[
@@ -215,13 +223,13 @@ class TestMarkdownFormatter:
                             title="Fix bug",
                             description="Critical bug fix needed",
                             file_path="bug.py",
-                            line_number=10
+                            line_number=10,
                         )
                     ],
                     nitpick_comments=[],
                     outside_diff_comments=[],
                     ai_agent_prompts=[],
-                    raw_content="Raw comment content"
+                    raw_content="Raw comment content",
                 )
             ],
             thread_contexts=[
@@ -232,9 +240,9 @@ class TestMarkdownFormatter:
                     resolution_status=ResolutionStatus.UNRESOLVED,
                     chronological_order=[{"body": "Thread comment"}],
                     contextual_summary="Thread summary",
-                    root_comment_id="456"
+                    root_comment_id="456",
                 )
-            ]
+            ],
         )
 
     def test_format_complete_document(self):
@@ -277,7 +285,7 @@ class TestMarkdownFormatter:
             test_changes=[],
             walkthrough="Test summary",
             changes_table=[],
-            raw_content="Test summary"
+            raw_content="Test summary",
         )
 
         result = self.formatter.format_summary_section(summary)
@@ -295,13 +303,13 @@ class TestMarkdownFormatter:
                     title="Security fix",
                     description="Fix security vulnerability",
                     file_path="security.py",
-                    line_number=42
+                    line_number=42,
                 )
             ],
             nitpick_comments=[],
             outside_diff_comments=[],
             ai_agent_prompts=[],
-            raw_content="Raw content here"
+            raw_content="Raw content here",
         )
 
         result = self.formatter.format_review_section(review)
@@ -317,7 +325,7 @@ class TestMarkdownFormatter:
             description="Fix the function",
             file_path="test.py",
             line_range="1-5",
-            code_block="def fixed_function():\n    return True"
+            code_block="def fixed_function():\n    return True",
         )
 
         result = self.formatter.format_ai_agent_prompt(prompt)
@@ -330,16 +338,14 @@ class TestMarkdownFormatter:
 
     def test_format_thread_section(self):
         """Test thread section formatting."""
-        thread = ThreadContext(thread_id="test_thread",
+        thread = ThreadContext(
+            thread_id="test_thread",
             main_comment={"body": "Main comment"},
             replies=[{"body": "Reply"}],
             resolution_status=ResolutionStatus.RESOLVED,
-            chronological_order=[
-                {"body": "Comment 1"},
-                {"body": "Comment 2"}
-            ],
+            chronological_order=[{"body": "Comment 1"}, {"body": "Comment 2"}],
             contextual_summary="Thread about bug fix",
-            root_comment_id="789"
+            root_comment_id="789",
         )
 
         result = self.formatter.format_thread_section(thread)
@@ -374,18 +380,27 @@ class TestMarkdownFormatter:
             actionable_comments=[],
             nitpick_comments=[],
             outside_diff_comments=[],
-            ai_agent_prompts=[AIAgentPrompt(description="Test", file_path="", line_range="", code_block="")],
-            raw_content=""
+            ai_agent_prompts=[
+                AIAgentPrompt(description="Test", file_path="", line_range="", code_block="")
+            ],
+            raw_content="",
         )
         assert self.formatter._determine_comment_type(ai_review) == "ai_prompt"
 
         # Security type
         security_review = ReviewComment(
-            actionable_comments=[ActionableComment(title="Security", description="security vulnerability", file_path="", line_number=1)],
+            actionable_comments=[
+                ActionableComment(
+                    title="Security",
+                    description="security vulnerability",
+                    file_path="",
+                    line_number=1,
+                )
+            ],
             nitpick_comments=[],
             outside_diff_comments=[],
             ai_agent_prompts=[],
-            raw_content=""
+            raw_content="",
         )
         assert self.formatter._determine_comment_type(security_review) == "security"
 
@@ -406,7 +421,7 @@ class TestJSONFormatter:
                     test_changes=[],
                     walkthrough="JSON test summary",
                     changes_table=[],
-                    raw_content="JSON test summary"
+                    raw_content="JSON test summary",
                 )
             ],
             review_comments=[
@@ -416,16 +431,16 @@ class TestJSONFormatter:
                             title="JSON fix",
                             description="Fix JSON issue",
                             file_path="json.py",
-                            line_number=5
+                            line_number=5,
                         )
                     ],
                     nitpick_comments=[],
                     outside_diff_comments=[],
                     ai_agent_prompts=[],
-                    raw_content="JSON raw content"
+                    raw_content="JSON raw content",
                 )
             ],
-            thread_contexts=[]
+            thread_contexts=[],
         )
 
     def test_format_valid_json(self):
@@ -449,7 +464,9 @@ class TestJSONFormatter:
         compact_formatter = JSONFormatter(pretty_print=False)
 
         pretty_result = pretty_formatter.format(self.sample_persona, self.sample_analyzed_comments)
-        compact_result = compact_formatter.format(self.sample_persona, self.sample_analyzed_comments)
+        compact_result = compact_formatter.format(
+            self.sample_persona, self.sample_analyzed_comments
+        )
 
         # Pretty should have indentation
         assert "  " in pretty_result
@@ -466,7 +483,7 @@ class TestJSONFormatter:
             description="JSON test prompt",
             file_path="prompt.py",
             line_range="10-20",
-            code_block="print('hello')"
+            code_block="print('hello')",
         )
 
         result = self.formatter.format_ai_agent_prompt(prompt)
@@ -478,13 +495,14 @@ class TestJSONFormatter:
 
     def test_format_thread_context_json(self):
         """Test thread context JSON formatting."""
-        thread = ThreadContext(thread_id="test_thread",
+        thread = ThreadContext(
+            thread_id="test_thread",
             main_comment={"body": "JSON thread main"},
             replies=[{"body": "JSON reply"}],
             resolution_status=ResolutionStatus.RESOLVED,
             chronological_order=[{"body": "JSON comment"}],
             contextual_summary="JSON thread summary",
-            root_comment_id="json123"
+            root_comment_id="json123",
         )
 
         result = self.formatter.format_thread_context(thread)
@@ -500,7 +518,9 @@ class TestJSONFormatter:
         formatter_without_raw = JSONFormatter(include_raw_content=False)
 
         result_with = formatter_with_raw.format(self.sample_persona, self.sample_analyzed_comments)
-        result_without = formatter_without_raw.format(self.sample_persona, self.sample_analyzed_comments)
+        result_without = formatter_without_raw.format(
+            self.sample_persona, self.sample_analyzed_comments
+        )
 
         parsed_with = json.loads(result_with)
         parsed_without = json.loads(result_without)
@@ -562,7 +582,7 @@ class TestPlainTextFormatter:
                     test_changes=[],
                     walkthrough="Plain text summary",
                     changes_table=[],
-                    raw_content="Plain text summary"
+                    raw_content="Plain text summary",
                 )
             ],
             review_comments=[
@@ -572,16 +592,16 @@ class TestPlainTextFormatter:
                             title="Text fix",
                             description="Fix text issue",
                             file_path="text.py",
-                            line_number=15
+                            line_number=15,
                         )
                     ],
                     nitpick_comments=[],
                     outside_diff_comments=[],
                     ai_agent_prompts=[],
-                    raw_content="Text raw content"
+                    raw_content="Text raw content",
                 )
             ],
-            thread_contexts=[]
+            thread_contexts=[],
         )
 
     def test_format_plain_text_structure(self):
@@ -616,7 +636,7 @@ class TestPlainTextFormatter:
         long_text = "This is a very long line that should be wrapped to fit within the specified line width for better readability."
 
         wrapped = self.formatter._wrap_text(long_text)
-        lines = wrapped.split('\n')
+        lines = wrapped.split("\n")
 
         # Each line should be within the line width
         for line in lines:
@@ -624,7 +644,7 @@ class TestPlainTextFormatter:
 
         # Should contain all original words
         original_words = long_text.split()
-        wrapped_words = wrapped.replace('\n', ' ').split()
+        wrapped_words = wrapped.replace("\n", " ").split()
         assert original_words == wrapped_words
 
     def test_text_wrapping_with_indent(self):
@@ -632,7 +652,7 @@ class TestPlainTextFormatter:
         text = "Short text that should be indented properly when wrapped."
 
         wrapped = self.formatter._wrap_text(text, indent=4)
-        lines = wrapped.split('\n')
+        lines = wrapped.split("\n")
 
         # Continuation lines should be indented
         if len(lines) > 1:
@@ -665,14 +685,14 @@ class TestPlainTextFormatter:
                 title="High priority fix",
                 description="Critical security vulnerability that needs immediate attention",
                 file_path="security.py",
-                line_number=42
+                line_number=42,
             ),
             ActionableComment(
                 title="Performance optimization",
                 description="Should improve algorithm efficiency",
                 file_path="perf.py",
-                line_number=100
-            )
+                line_number=100,
+            ),
         ]
 
         result = self.formatter.format_actionable_comments(comments)
@@ -689,11 +709,11 @@ class TestPlainTextFormatter:
     def test_extract_comment_content_safe(self):
         """Test safe comment content extraction."""
         # Test different comment formats
-        comment_with_body = type('Comment', (), {'body': 'Test body'})()
+        comment_with_body = type("Comment", (), {"body": "Test body"})()
         content = self.formatter._extract_comment_content_safe(comment_with_body)
         assert content == "Test body"
 
-        comment_with_content = type('Comment', (), {'content': 'Test content'})()
+        comment_with_content = type("Comment", (), {"content": "Test content"})()
         content = self.formatter._extract_comment_content_safe(comment_with_content)
         assert content == "Test content"
 
@@ -702,7 +722,7 @@ class TestPlainTextFormatter:
         assert content == "String comment"
 
         # Test error handling
-        problematic_comment = type('Comment', (), {})()
+        problematic_comment = type("Comment", (), {})()
         content = self.formatter._extract_comment_content_safe(problematic_comment)
         assert isinstance(content, str)  # Should return some string
 
@@ -723,7 +743,7 @@ class TestFormatterIntegration:
                     test_changes=[],
                     walkthrough="Integration test summary with comprehensive data",
                     changes_table=[],
-                    raw_content="Integration test summary with comprehensive data"
+                    raw_content="Integration test summary with comprehensive data",
                 )
             ],
             review_comments=[
@@ -733,14 +753,14 @@ class TestFormatterIntegration:
                             title="Security vulnerability",
                             description="Critical SQL injection vulnerability",
                             file_path="api/users.py",
-                            line_number=127
+                            line_number=127,
                         )
                     ],
                     nitpick_comments=[
                         NitpickComment(
                             suggestion="Use consistent naming convention",
                             file_path="models/user.py",
-                            line_number=45
+                            line_number=45,
                         )
                     ],
                     outside_diff_comments=[
@@ -748,7 +768,7 @@ class TestFormatterIntegration:
                             issue="Configuration mismatch",
                             description="Database configuration inconsistent with environment",
                             file_path="config/database.yaml",
-                            line_range="15-20"
+                            line_range="15-20",
                         )
                     ],
                     ai_agent_prompts=[
@@ -756,38 +776,35 @@ class TestFormatterIntegration:
                             description="Fix validation function",
                             file_path="utils/validators.py",
                             line_range="30-35",
-                            code_block="def validate_email(email: str) -> bool:\n    import re\n    pattern = r'^[\\w\\.-]+@[\\w\\.-]+\\.\\w+$'\n    return bool(re.match(pattern, email))"
+                            code_block="def validate_email(email: str) -> bool:\n    import re\n    pattern = r'^[\\w\\.-]+@[\\w\\.-]+\\.\\w+$'\n    return bool(re.match(pattern, email))",
                         )
                     ],
-                    raw_content="This is the raw content of the review comment with all original formatting."
+                    raw_content="This is the raw content of the review comment with all original formatting.",
                 )
             ],
             thread_contexts=[
-                ThreadContext(thread_id="test_thread",
+                ThreadContext(
+                    thread_id="test_thread",
                     main_comment={"body": "Initial discussion about the security issue"},
                     replies=[
                         {"body": "I agree this needs immediate attention"},
-                        {"body": "Let me fix this right away"}
+                        {"body": "Let me fix this right away"},
                     ],
                     resolution_status=ResolutionStatus.IN_PROGRESS,
                     chronological_order=[
                         {"body": "Found a security vulnerability"},
                         {"body": "This looks serious"},
-                        {"body": "Working on a fix now"}
+                        {"body": "Working on a fix now"},
                     ],
                     contextual_summary="Discussion thread about security vulnerability requiring immediate attention",
-                    root_comment_id="integration_test_123"
+                    root_comment_id="integration_test_123",
                 )
-            ]
+            ],
         )
 
     def test_all_formatters_produce_output(self):
         """Test that all formatters produce non-empty output."""
-        formatters = [
-            MarkdownFormatter(),
-            JSONFormatter(),
-            PlainTextFormatter()
-        ]
+        formatters = [MarkdownFormatter(), JSONFormatter(), PlainTextFormatter()]
 
         for formatter in formatters:
             result = formatter.format(self.persona, self.analyzed_comments)
@@ -808,7 +825,7 @@ class TestFormatterIntegration:
             "api/users.py",
             "Configuration mismatch",
             "validate_email",
-            "IN_PROGRESS"
+            "IN_PROGRESS",
         ]
 
         for content in essential_content:
@@ -818,7 +835,9 @@ class TestFormatterIntegration:
 
     def test_json_formatter_data_integrity(self):
         """Test JSON formatter preserves all data accurately."""
-        result = JSONFormatter(include_raw_content=True).format(self.persona, self.analyzed_comments)
+        result = JSONFormatter(include_raw_content=True).format(
+            self.persona, self.analyzed_comments
+        )
         parsed = json.loads(result)
 
         # Verify summary data
@@ -849,11 +868,7 @@ class TestFormatterIntegration:
         """Test formatter performance with reasonable execution time."""
         import time
 
-        formatters = [
-            MarkdownFormatter(),
-            JSONFormatter(),
-            PlainTextFormatter()
-        ]
+        formatters = [MarkdownFormatter(), JSONFormatter(), PlainTextFormatter()]
 
         for formatter in formatters:
             start_time = time.time()
@@ -878,18 +893,14 @@ class TestFormatterIntegration:
                     test_changes=[],
                     walkthrough="Tëst with spëcial characers: áéíóú ñ ü 中文 日本語 🚀",
                     changes_table=[],
-                    raw_content="Tëst with spëcial characers: áéíóú ñ ü 中文 日本語 🚀"
+                    raw_content="Tëst with spëcial characers: áéíóú ñ ü 中文 日本語 🚀",
                 )
             ],
             review_comments=[],
-            thread_contexts=[]
+            thread_contexts=[],
         )
 
-        formatters = [
-            MarkdownFormatter(),
-            JSONFormatter(),
-            PlainTextFormatter()
-        ]
+        formatters = [MarkdownFormatter(), JSONFormatter(), PlainTextFormatter()]
 
         for formatter in formatters:
             result = formatter.format(special_persona, special_comments)

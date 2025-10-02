@@ -1,11 +1,9 @@
 """Unit tests for ThreadProcessor class."""
 
-import pytest
-from datetime import datetime, timezone
 
-from coderabbit_fetcher.processors.thread_processor import ThreadProcessor
+
 from coderabbit_fetcher.models import ThreadContext
-from coderabbit_fetcher.exceptions import CommentParsingError
+from coderabbit_fetcher.processors.thread_processor import ThreadProcessor
 
 
 class TestThreadProcessor:
@@ -24,7 +22,7 @@ class TestThreadProcessor:
                 "body": "This implementation looks problematic",
                 "path": "src/auth.py",
                 "line": 45,
-                "in_reply_to_id": None
+                "in_reply_to_id": None,
             },
             {
                 "id": 1002,
@@ -33,7 +31,7 @@ class TestThreadProcessor:
                 "body": "I agree. The password hashing should use bcrypt instead of md5.",
                 "path": "src/auth.py",
                 "line": 45,
-                "in_reply_to_id": 1001
+                "in_reply_to_id": 1001,
             },
             {
                 "id": 1003,
@@ -42,8 +40,8 @@ class TestThreadProcessor:
                 "body": "Thanks for the suggestion. I'll implement that.",
                 "path": "src/auth.py",
                 "line": 45,
-                "in_reply_to_id": 1002
-            }
+                "in_reply_to_id": 1002,
+            },
         ]
 
         # Sample resolved thread
@@ -55,7 +53,7 @@ class TestThreadProcessor:
                 "body": "Please fix the security issue here.",
                 "path": "src/utils.py",
                 "line": 20,
-                "in_reply_to_id": None
+                "in_reply_to_id": None,
             },
             {
                 "id": 2002,
@@ -64,7 +62,7 @@ class TestThreadProcessor:
                 "body": "Fixed the issue as suggested.",
                 "path": "src/utils.py",
                 "line": 20,
-                "in_reply_to_id": 2001
+                "in_reply_to_id": 2001,
             },
             {
                 "id": 2003,
@@ -73,8 +71,8 @@ class TestThreadProcessor:
                 "body": "Great! Issue resolved. 🔒 CODERABBIT_RESOLVED 🔒",
                 "path": "src/utils.py",
                 "line": 20,
-                "in_reply_to_id": 2002
-            }
+                "in_reply_to_id": 2002,
+            },
         ]
 
         # Sample complex thread with multiple participants
@@ -87,7 +85,7 @@ class TestThreadProcessor:
                 "path": "src/complex.py",
                 "start_line": 100,
                 "end_line": 150,
-                "in_reply_to_id": None
+                "in_reply_to_id": None,
             },
             {
                 "id": 3002,
@@ -97,7 +95,7 @@ class TestThreadProcessor:
                 "path": "src/complex.py",
                 "start_line": 100,
                 "end_line": 150,
-                "in_reply_to_id": 3001
+                "in_reply_to_id": 3001,
             },
             {
                 "id": 3003,
@@ -107,7 +105,7 @@ class TestThreadProcessor:
                 "path": "src/complex.py",
                 "start_line": 100,
                 "end_line": 150,
-                "in_reply_to_id": 3001
+                "in_reply_to_id": 3001,
             },
             {
                 "id": 3004,
@@ -117,8 +115,8 @@ class TestThreadProcessor:
                 "path": "src/complex.py",
                 "start_line": 100,
                 "end_line": 150,
-                "in_reply_to_id": 3003
-            }
+                "in_reply_to_id": 3003,
+            },
         ]
 
         # Sample mixed comments for thread grouping
@@ -131,7 +129,7 @@ class TestThreadProcessor:
                 "body": "First thread root",
                 "path": "file1.py",
                 "line": 10,
-                "in_reply_to_id": None
+                "in_reply_to_id": None,
             },
             {
                 "id": 4002,
@@ -140,7 +138,7 @@ class TestThreadProcessor:
                 "body": "Reply to first thread",
                 "path": "file1.py",
                 "line": 10,
-                "in_reply_to_id": 4001
+                "in_reply_to_id": 4001,
             },
             # Thread 2
             {
@@ -150,7 +148,7 @@ class TestThreadProcessor:
                 "body": "Second thread root",
                 "path": "file2.py",
                 "line": 20,
-                "in_reply_to_id": None
+                "in_reply_to_id": None,
             },
             # Reply to Thread 1
             {
@@ -160,8 +158,8 @@ class TestThreadProcessor:
                 "body": "Another reply to first thread",
                 "path": "file1.py",
                 "line": 10,
-                "in_reply_to_id": 4002
-            }
+                "in_reply_to_id": 4002,
+            },
         ]
 
     def test_sort_comments_chronologically(self):
@@ -237,7 +235,7 @@ class TestThreadProcessor:
                 "user": {"login": "coderabbitai[bot]"},
                 "created_at": "2025-01-01T10:00:00Z",
                 "body": "This has security vulnerabilities that need to be addressed",
-                "in_reply_to_id": None
+                "in_reply_to_id": None,
             }
         ]
 
@@ -374,17 +372,20 @@ class TestThreadProcessor:
         """Test specific complexity factors."""
         # Create a high complexity scenario with mock comments
         from coderabbit_fetcher.models.thread_context import ResolutionStatus
+
         mock_comments = []
         for i in range(10):
             user_login = f"user{i % 4}" if i % 4 < 3 else "coderabbitai[bot]"
-            mock_comments.append({
-                "id": 4000 + i,
-                "user": {"login": user_login},
-                "created_at": f"2025-01-01T{10 + i}:00:00Z",
-                "body": f"Comment {i}",
-                "path": "src/important.py",
-                "line": 45
-            })
+            mock_comments.append(
+                {
+                    "id": 4000 + i,
+                    "user": {"login": user_login},
+                    "created_at": f"2025-01-01T{10 + i}:00:00Z",
+                    "body": f"Comment {i}",
+                    "path": "src/important.py",
+                    "line": 45,
+                }
+            )
 
         high_complexity_context = ThreadContext(
             thread_id="test",
@@ -392,7 +393,7 @@ class TestThreadProcessor:
             replies=mock_comments[1:],
             resolution_status=ResolutionStatus.UNRESOLVED,
             contextual_summary="Complex discussion",
-            chronological_order=mock_comments
+            chronological_order=mock_comments,
         )
 
         complexity = self.processor.analyze_thread_complexity(high_complexity_context)
@@ -412,7 +413,7 @@ class TestThreadProcessor:
                 "user": {"login": "test"},
                 "created_at": "invalid-date",
                 "body": "Test comment",
-                "in_reply_to_id": None
+                "in_reply_to_id": None,
             }
         ]
 
@@ -426,7 +427,7 @@ class TestThreadProcessor:
                 "id": 5002,
                 "created_at": "2025-01-01T10:00:00Z",
                 "body": "Test comment",
-                "in_reply_to_id": None
+                "in_reply_to_id": None,
             }
         ]
 
@@ -440,7 +441,7 @@ class TestThreadProcessor:
             "✅ This issue is resolved",
             "Issue fixed successfully",
             "implemented the suggestion as requested",
-            "[CR_RESOLUTION_CONFIRMED:TECHNICAL_ISSUE_RESOLVED]"
+            "[CR_RESOLUTION_CONFIRMED:TECHNICAL_ISSUE_RESOLVED]",
         ]
 
         for pattern in resolution_patterns:
@@ -449,16 +450,16 @@ class TestThreadProcessor:
                     "id": 6001,
                     "user": {"login": "coderabbitai[bot]"},
                     "created_at": "2025-01-01T10:00:00Z",
-                    "body": f"Original issue here",
-                    "in_reply_to_id": None
+                    "body": "Original issue here",
+                    "in_reply_to_id": None,
                 },
                 {
                     "id": 6002,
                     "user": {"login": "coderabbitai[bot]"},
                     "created_at": "2025-01-01T11:00:00Z",
                     "body": pattern,
-                    "in_reply_to_id": 6001
-                }
+                    "in_reply_to_id": 6001,
+                },
             ]
 
             is_resolved = self.processor._determine_resolution_status(thread)
@@ -474,7 +475,7 @@ class TestThreadProcessor:
                 "body": "セキュリティの問題があります。パスワードハッシュ化を改善してください。",
                 "path": "src/auth.py",
                 "line": 45,
-                "in_reply_to_id": None
+                "in_reply_to_id": None,
             },
             {
                 "id": 7002,
@@ -483,8 +484,8 @@ class TestThreadProcessor:
                 "body": "分かりました。修正します。",
                 "path": "src/auth.py",
                 "line": 45,
-                "in_reply_to_id": 7001
-            }
+                "in_reply_to_id": 7001,
+            },
         ]
 
         result = self.processor.process_thread(japanese_thread)
@@ -506,7 +507,7 @@ class TestThreadProcessor:
                 "body": f"Comment number {i}",
                 "path": "src/large.py",
                 "line": 100 + i,
-                "in_reply_to_id": 8000 + i - 1 if i > 0 else None
+                "in_reply_to_id": 8000 + i - 1 if i > 0 else None,
             }
             large_thread.append(comment)
 
@@ -527,15 +528,15 @@ class TestThreadProcessor:
                 "user": {"login": "test"},
                 "created_at": "2025-01-01T10:00:00Z",
                 "body": "Valid comment",
-                "in_reply_to_id": None
+                "in_reply_to_id": None,
             },
             # Problematic comment (missing required data)
             {
                 "user": {"login": "test"},
                 "created_at": "invalid",
                 "body": "Problematic comment",
-                "in_reply_to_id": None
-            }
+                "in_reply_to_id": None,
+            },
         ]
 
         # Should not crash and should return at least one valid context

@@ -1,11 +1,11 @@
 """Test runner for CodeRabbit Comment Fetcher tests."""
 
-import unittest
-import sys
-import os
-import time
 import argparse
-from typing import Dict, List, Any, Optional
+import os
+import sys
+import time
+import unittest
+from typing import Any, Dict, Optional
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -38,27 +38,21 @@ class CodeRabbitTestRunner:
         if test_type in ("unit", "all"):
             # Discover unit tests
             unit_tests = loader.discover(
-                start_dir="tests/unit",
-                pattern="test_*.py",
-                top_level_dir="tests"
+                start_dir="tests/unit", pattern="test_*.py", top_level_dir="tests"
             )
             suite.addTest(unit_tests)
 
         if test_type in ("integration", "all"):
             # Discover integration tests
             integration_tests = loader.discover(
-                start_dir="tests/integration",
-                pattern="test_*.py",
-                top_level_dir="tests"
+                start_dir="tests/integration", pattern="test_*.py", top_level_dir="tests"
             )
             suite.addTest(integration_tests)
 
         if test_type in ("performance", "all"):
             # Discover performance tests
             performance_tests = loader.discover(
-                start_dir="tests/performance",
-                pattern="test_*.py",
-                top_level_dir="tests"
+                start_dir="tests/performance", pattern="test_*.py", top_level_dir="tests"
             )
             suite.addTest(performance_tests)
 
@@ -90,9 +84,7 @@ class CodeRabbitTestRunner:
 
         # Run tests with custom result collector
         runner = unittest.TextTestRunner(
-            verbosity=self.verbosity,
-            stream=sys.stdout,
-            resultclass=DetailedTestResult
+            verbosity=self.verbosity, stream=sys.stdout, resultclass=DetailedTestResult
         )
 
         start_time = time.time()
@@ -102,15 +94,20 @@ class CodeRabbitTestRunner:
         # Collect results
         test_results = {
             "total_tests": result.testsRun,
-            "successes": result.testsRun - len(result.failures) - len(result.errors) - len(result.skipped),
+            "successes": result.testsRun
+            - len(result.failures)
+            - len(result.errors)
+            - len(result.skipped),
             "failures": len(result.failures),
             "errors": len(result.errors),
             "skipped": len(result.skipped),
             "execution_time": end_time - start_time,
-            "success_rate": (result.testsRun - len(result.failures) - len(result.errors)) / max(result.testsRun, 1) * 100,
+            "success_rate": (result.testsRun - len(result.failures) - len(result.errors))
+            / max(result.testsRun, 1)
+            * 100,
             "failure_details": result.failures,
             "error_details": result.errors,
-            "skipped_details": result.skipped
+            "skipped_details": result.skipped,
         }
 
         self.results[test_type] = test_results
@@ -139,24 +136,24 @@ class CodeRabbitTestRunner:
         print(f"⏱️  Time:        {results['execution_time']:.2f}s")
         print(f"📈 Success Rate: {results['success_rate']:.1f}%")
 
-        if results['failures'] > 0:
+        if results["failures"] > 0:
             print(f"\n❌ FAILURES ({results['failures']}):")
-            for i, (test, traceback) in enumerate(results['failure_details'], 1):
+            for i, (test, traceback) in enumerate(results["failure_details"], 1):
                 print(f"  {i}. {test}")
                 if self.verbosity >= 2:
                     print(f"     {traceback.split('AssertionError:')[-1].strip()}")
 
-        if results['errors'] > 0:
+        if results["errors"] > 0:
             print(f"\n💥 ERRORS ({results['errors']}):")
-            for i, (test, traceback) in enumerate(results['error_details'], 1):
+            for i, (test, traceback) in enumerate(results["error_details"], 1):
                 print(f"  {i}. {test}")
                 if self.verbosity >= 2:
-                    error_line = traceback.split('\n')[-2] if '\n' in traceback else traceback
+                    error_line = traceback.split("\n")[-2] if "\n" in traceback else traceback
                     print(f"     {error_line.strip()}")
 
-        if results['skipped'] > 0:
+        if results["skipped"] > 0:
             print(f"\n⏭️  SKIPPED ({results['skipped']}):")
-            for i, (test, reason) in enumerate(results['skipped_details'], 1):
+            for i, (test, reason) in enumerate(results["skipped_details"], 1):
                 print(f"  {i}. {test}")
                 if reason and self.verbosity >= 2:
                     print(f"     Reason: {reason}")
@@ -193,7 +190,7 @@ class CodeRabbitTestRunner:
         # Get coverage data
         coverage_data = {}
         for filename in cov.get_data().measured_files():
-            if 'coderabbit_fetcher' in filename:
+            if "coderabbit_fetcher" in filename:
                 analysis = cov.analysis(filename)
                 statements_count = len(analysis[1])
                 missing_count = len(analysis[3])
@@ -207,7 +204,7 @@ class CodeRabbitTestRunner:
                 coverage_data[filename] = {
                     "statements": statements_count,
                     "missing": missing_count,
-                    "coverage": coverage
+                    "coverage": coverage,
                 }
 
         return coverage_data
@@ -220,7 +217,7 @@ class CodeRabbitTestRunner:
         """
         html_content = self._generate_html_report()
 
-        with open(output_file, 'w', encoding='utf-8') as f:
+        with open(output_file, "w", encoding="utf-8") as f:
             f.write(html_content)
 
         print(f"📄 Test report generated: {output_file}")
@@ -276,9 +273,7 @@ class CodeRabbitTestRunner:
         test_details = self._generate_test_details()
 
         return html.format(
-            timestamp=timestamp,
-            summary_metrics=summary_metrics,
-            test_details=test_details
+            timestamp=timestamp, summary_metrics=summary_metrics, test_details=test_details
         )
 
     def _generate_summary_metrics(self) -> str:
@@ -302,15 +297,15 @@ class CodeRabbitTestRunner:
             details_html += f"<h3>{test_type.upper()} Test Details</h3>"
 
             # Add failure details
-            if results['failure_details']:
+            if results["failure_details"]:
                 details_html += "<h4>❌ Failures</h4>"
-                for test, traceback in results['failure_details']:
+                for test, traceback in results["failure_details"]:
                     details_html += f'<div class="test-case failed"><strong>{test}</strong><br>{traceback}</div>'
 
             # Add error details
-            if results['error_details']:
+            if results["error_details"]:
                 details_html += "<h4>💥 Errors</h4>"
-                for test, traceback in results['error_details']:
+                for test, traceback in results["error_details"]:
                     details_html += f'<div class="test-case failed"><strong>{test}</strong><br>{traceback}</div>'
 
         return details_html
@@ -342,28 +337,14 @@ def main():
         "--type",
         choices=["unit", "integration", "performance", "all"],
         default="all",
-        help="Type of tests to run"
+        help="Type of tests to run",
     )
+    parser.add_argument("--pattern", help="Pattern to filter tests")
     parser.add_argument(
-        "--pattern",
-        help="Pattern to filter tests"
+        "--verbosity", "-v", type=int, choices=[0, 1, 2], default=2, help="Test output verbosity"
     )
-    parser.add_argument(
-        "--verbosity", "-v",
-        type=int,
-        choices=[0, 1, 2],
-        default=2,
-        help="Test output verbosity"
-    )
-    parser.add_argument(
-        "--coverage",
-        action="store_true",
-        help="Run coverage analysis"
-    )
-    parser.add_argument(
-        "--report",
-        help="Generate HTML report to specified file"
-    )
+    parser.add_argument("--coverage", action="store_true", help="Run coverage analysis")
+    parser.add_argument("--report", help="Generate HTML report to specified file")
 
     args = parser.parse_args()
 
@@ -385,7 +366,9 @@ def main():
 
     # Exit with appropriate code
     if runner.results:
-        total_failures = sum(r.get('failures', 0) + r.get('errors', 0) for r in runner.results.values())
+        total_failures = sum(
+            r.get("failures", 0) + r.get("errors", 0) for r in runner.results.values()
+        )
         sys.exit(0 if total_failures == 0 else 1)
 
 

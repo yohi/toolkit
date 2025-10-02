@@ -1,27 +1,26 @@
 """Main orchestration logic for CodeRabbit Comment Fetcher."""
 
-import time
 import logging
 import random
-from typing import Dict, List, Optional, Any, Callable
-from pathlib import Path
+import time
 from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional
 
+from .comment_analyzer import CommentAnalyzer
+from .comment_poster import ResolutionRequestConfig, ResolutionRequestManager
 from .exceptions import (
     CodeRabbitFetcherError,
+    CommentAnalysisError,
     GitHubAuthenticationError,
     InvalidPRUrlError,
     PersonaFileError,
-    CommentAnalysisError
 )
-from .github_client import GitHubClient, GitHubAPIError
-from .comment_analyzer import CommentAnalyzer
+from .formatters import JSONFormatter, MarkdownFormatter, PlainTextFormatter
+from .github_client import GitHubAPIError, GitHubClient
+from .models import AnalyzedComments
 from .persona_manager import PersonaManager
-from .formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter
-from .resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
-from .comment_poster import ResolutionRequestManager, ResolutionRequestConfig
-from .models import AnalyzedComments, CommentMetadata
-
+from .resolved_marker import ResolvedMarkerConfig, ResolvedMarkerManager
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -30,11 +29,12 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ExecutionConfig:
     """Configuration for main execution flow."""
+
     pr_url: str
     persona_file: Optional[str] = None
-    output_format: str = 'markdown'
+    output_format: str = "markdown"
     output_file: Optional[str] = None
-    resolved_marker: str = '🔒 CODERABBIT_RESOLVED 🔒'
+    resolved_marker: str = "🔒 CODERABBIT_RESOLVED 🔒"
     post_resolution_request: bool = False
     show_stats: bool = False
     debug: bool = False
@@ -46,6 +46,7 @@ class ExecutionConfig:
 @dataclass
 class ExecutionMetrics:
     """Metrics collected during execution."""
+
     start_time: float = field(default_factory=time.time)
     end_time: Optional[float] = None
     github_api_calls: int = 0
@@ -77,7 +78,11 @@ class ExecutionMetrics:
 class ProgressTracker:
     """Tracks and reports execution progress."""
 
-    def __init__(self, total_steps: int = 8, progress_callback: Optional[Callable[[str, int, int], None]] = None):
+    def __init__(
+        self,
+        total_steps: int = 8,
+        progress_callback: Optional[Callable[[str, int, int], None]] = None,
+    ):
         """Initialize progress tracker.
 
         Args:
@@ -95,7 +100,7 @@ class ProgressTracker:
             "Fetching PR data from GitHub",
             "Analyzing CodeRabbit comments",
             "Formatting output",
-            "Writing results"
+            "Writing results",
         ]
 
     def advance(self, description: Optional[str] = None) -> None:
@@ -107,11 +112,15 @@ class ProgressTracker:
 
         percentage = min(100, (self.current_step / self.total_steps) * 100)
 
-        logger.info(f"Progress: {self.current_step}/{self.total_steps} ({percentage:.1f}%) - {description}")
+        logger.info(
+            f"Progress: {self.current_step}/{self.total_steps} ({percentage:.1f}%) - {description}"
+        )
 
         if self.progress_callback:
             try:
-                self.progress_callback(description or "Processing...", self.current_step, self.total_steps)
+                self.progress_callback(
+                    description or "Processing...", self.current_step, self.total_steps
+                )
             except Exception as e:
                 logger.warning("Progress callback failed: %s", e, exc_info=True)
 
@@ -221,10 +230,12 @@ class CodeRabbitOrchestrator:
                 "output_info": output_info,
                 "resolution_info": resolution_info,
                 "metrics": self._get_metrics_summary(),
-                "execution_time": self.metrics.total_execution_time
+                "execution_time": self.metrics.total_execution_time,
             }
 
-            logger.info(f"Execution completed successfully in {self.metrics.total_execution_time:.2f}s")
+            logger.info(
+                f"Execution completed successfully in {self.metrics.total_execution_time:.2f}s"
+            )
             return results
 
         except Exception as e:
@@ -243,7 +254,7 @@ class CodeRabbitOrchestrator:
                 "error_type": type(e).__name__,
                 "recovery_info": recovery_info,
                 "metrics": self._get_metrics_summary(),
-                "execution_time": self.metrics.total_execution_time
+                "execution_time": self.metrics.total_execution_time,
             }
 
     def _initialize_components(self) -> None:
@@ -253,9 +264,9 @@ class CodeRabbitOrchestrator:
         try:
             # Initialize formatters
             self.formatters = {
-                'markdown': MarkdownFormatter(),
-                'json': JSONFormatter(),
-                'plain': PlainTextFormatter()
+                "markdown": MarkdownFormatter(),
+                "json": JSONFormatter(),
+                "plain": PlainTextFormatter(),
             }
 
             # Initialize persona manager
@@ -286,7 +297,7 @@ class CodeRabbitOrchestrator:
 
             logger.info("GitHub CLI authentication verified")
 
-        except GitHubAuthenticationError as e:
+        except GitHubAuthenticationError:
             logger.exception("GitHub authentication failed")
             raise
         except Exception as e:
@@ -303,13 +314,13 @@ class CodeRabbitOrchestrator:
                 "url": self.config.pr_url,
                 "owner": owner,
                 "repo": repo,
-                "pr_number": pr_number
+                "pr_number": pr_number,
             }
 
             logger.info(f"PR URL validated: {owner}/{repo}#{pr_number}")
             return pr_info
 
-        except InvalidPRUrlError as e:
+        except InvalidPRUrlError:
             logger.exception("Invalid PR URL")
             raise
         except Exception as e:
@@ -330,7 +341,7 @@ class CodeRabbitOrchestrator:
             logger.info(f"Persona loaded ({len(persona)} characters)")
             return persona
 
-        except PersonaFileError as e:
+        except PersonaFileError:
             logger.exception("Persona loading failed")
             raise
         except Exception as e:
@@ -348,8 +359,7 @@ class CodeRabbitOrchestrator:
             for i in range(attempts):
                 try:
                     pr_data = self.github_client.fetch_pr_comments(
-                        self.config.pr_url,
-                        timeout=self.config.timeout_seconds
+                        self.config.pr_url, timeout=self.config.timeout_seconds
                     )
                     fetch_time = time.time() - start_time
 
@@ -357,7 +367,9 @@ class CodeRabbitOrchestrator:
                     self.metrics.github_api_calls += 1
 
                     # Count comments
-                    total_comments = len(pr_data.get('comments', [])) + len(pr_data.get('reviews', []))
+                    total_comments = len(pr_data.get("comments", [])) + len(
+                        pr_data.get("reviews", [])
+                    )
                     self.metrics.total_comments_processed = total_comments
 
                     logger.info(f"PR data fetched in {fetch_time:.2f}s ({total_comments} comments)")
@@ -368,11 +380,16 @@ class CodeRabbitOrchestrator:
                     if i == attempts - 1:
                         raise
                     sleep = self._compute_backoff(i, self.config.retry_delay)
-                    logger.warning("Fetch PR data failed (attempt %d/%d): %s; retrying in %.2fs",
-                                   i + 1, attempts, e, sleep)
+                    logger.warning(
+                        "Fetch PR data failed (attempt %d/%d): %s; retrying in %.2fs",
+                        i + 1,
+                        attempts,
+                        e,
+                        sleep,
+                    )
                     time.sleep(sleep)
 
-        except GitHubAPIError as e:
+        except GitHubAPIError:
             logger.exception("GitHub API error")
             raise
         except Exception as e:
@@ -400,16 +417,20 @@ class CodeRabbitOrchestrator:
                 self.metrics.resolved_comments_filtered = result["statistics"]["resolved_threads"]
 
                 # Update metadata
-                if hasattr(analyzed_comments, 'metadata'):
-                    analyzed_comments.metadata.resolved_comments = self.metrics.resolved_comments_filtered
+                if hasattr(analyzed_comments, "metadata"):
+                    analyzed_comments.metadata.resolved_comments = (
+                        self.metrics.resolved_comments_filtered
+                    )
 
-            logger.info(f"Analysis completed in {analysis_time:.2f}s "
-                       f"({self.metrics.coderabbit_comments_found} CodeRabbit comments, "
-                       f"{self.metrics.resolved_comments_filtered} resolved)")
+            logger.info(
+                f"Analysis completed in {analysis_time:.2f}s "
+                f"({self.metrics.coderabbit_comments_found} CodeRabbit comments, "
+                f"{self.metrics.resolved_comments_filtered} resolved)"
+            )
 
             return analyzed_comments
 
-        except CommentAnalysisError as e:
+        except CommentAnalysisError:
             logger.exception("Comment analysis failed")
             raise
         except Exception as e:
@@ -424,16 +445,20 @@ class CodeRabbitOrchestrator:
 
             formatter = self.formatters.get(self.config.output_format)
             if not formatter:
-                raise CodeRabbitFetcherError(f"Unsupported output format: {self.config.output_format}")
+                raise CodeRabbitFetcherError(
+                    f"Unsupported output format: {self.config.output_format}"
+                )
 
             formatted_content = formatter.format(persona, analyzed_comments)
             format_time = time.time() - start_time
 
             self.metrics.formatting_time = format_time
-            self.metrics.output_size_bytes = len(formatted_content.encode('utf-8'))
+            self.metrics.output_size_bytes = len(formatted_content.encode("utf-8"))
 
-            logger.info(f"Output formatted in {format_time:.2f}s "
-                       f"({self.metrics.output_size_bytes} bytes)")
+            logger.info(
+                f"Output formatted in {format_time:.2f}s "
+                f"({self.metrics.output_size_bytes} bytes)"
+            )
 
             return formatted_content
 
@@ -448,7 +473,7 @@ class CodeRabbitOrchestrator:
             output_info = {
                 "content_length": len(formatted_content),
                 "output_file": self.config.output_file,
-                "format": self.config.output_format
+                "format": self.config.output_format,
             }
 
             if self.config.output_file:
@@ -457,7 +482,7 @@ class CodeRabbitOrchestrator:
 
                 # Atomic write using temporary file
                 tmp_path = output_path.with_suffix(output_path.suffix + ".tmp")
-                with open(tmp_path, 'w', encoding='utf-8') as f:
+                with open(tmp_path, "w", encoding="utf-8") as f:
                     f.write(formatted_content)
                 tmp_path.replace(output_path)
 
@@ -472,7 +497,9 @@ class CodeRabbitOrchestrator:
         except Exception as e:
             raise CodeRabbitFetcherError(f"Failed to write output: {e}") from e
 
-    def _post_resolution_request(self, analyzed_comments: AnalyzedComments) -> Optional[Dict[str, Any]]:
+    def _post_resolution_request(
+        self, analyzed_comments: AnalyzedComments
+    ) -> Optional[Dict[str, Any]]:
         """Post resolution request to CodeRabbit."""
         if not self.config.post_resolution_request:
             return None
@@ -482,7 +509,9 @@ class CodeRabbitOrchestrator:
         try:
             # Initialize resolution request manager if needed
             if not self.resolution_request_manager:
-                request_config = ResolutionRequestConfig(resolved_marker=self.config.resolved_marker)
+                request_config = ResolutionRequestConfig(
+                    resolved_marker=self.config.resolved_marker
+                )
                 self.resolution_request_manager = ResolutionRequestManager(
                     self.github_client, request_config
                 )
@@ -498,9 +527,7 @@ class CodeRabbitOrchestrator:
             for i in range(attempts):
                 try:
                     result = self.resolution_request_manager.validate_and_post(
-                        self.config.pr_url,
-                        context,
-                        timeout=self.config.timeout_seconds
+                        self.config.pr_url, context, timeout=self.config.timeout_seconds
                     )
                     break
                 except Exception as e:
@@ -508,8 +535,13 @@ class CodeRabbitOrchestrator:
                     if i == attempts - 1:
                         raise
                     sleep = self._compute_backoff(i, self.config.retry_delay)
-                    logger.warning("Posting resolution request failed (attempt %d/%d): %s; retrying in %.2fs",
-                                   i + 1, attempts, e, sleep)
+                    logger.warning(
+                        "Posting resolution request failed (attempt %d/%d): %s; retrying in %.2fs",
+                        i + 1,
+                        attempts,
+                        e,
+                        sleep,
+                    )
                     time.sleep(sleep)
 
             post_time = time.time() - start_time
@@ -535,15 +567,17 @@ class CodeRabbitOrchestrator:
         """Generate context for resolution request."""
         context_parts = []
 
-        if hasattr(analyzed_comments, 'metadata'):
+        if hasattr(analyzed_comments, "metadata"):
             metadata = analyzed_comments.metadata
-            context_parts.extend([
-                f"Total comments analyzed: {metadata.total_comments}",
-                f"CodeRabbit comments: {metadata.coderabbit_comments}",
-                f"Actionable comments: {metadata.actionable_comments}"
-            ])
+            context_parts.extend(
+                [
+                    f"Total comments analyzed: {metadata.total_comments}",
+                    f"CodeRabbit comments: {metadata.coderabbit_comments}",
+                    f"Actionable comments: {metadata.actionable_comments}",
+                ]
+            )
 
-        if hasattr(analyzed_comments, 'unresolved_threads'):
+        if hasattr(analyzed_comments, "unresolved_threads"):
             thread_count = len(analyzed_comments.unresolved_threads)
             if thread_count > 0:
                 context_parts.append(f"Unresolved threads: {thread_count}")
@@ -552,11 +586,7 @@ class CodeRabbitOrchestrator:
 
     def _attempt_error_recovery(self, error: Exception) -> Dict[str, Any]:
         """Attempt graceful error recovery."""
-        recovery_info = {
-            "attempted": False,
-            "successful": False,
-            "recommendations": []
-        }
+        recovery_info = {"attempted": False, "successful": False, "recommendations": []}
 
         logger.debug(f"Attempting error recovery for: {type(error).__name__}")
 
@@ -567,7 +597,7 @@ class CodeRabbitOrchestrator:
                 "1. Install GitHub CLI: https://cli.github.com/",
                 "2. Run: gh auth login",
                 "3. Follow the authentication prompts",
-                "4. Verify with: gh auth status"
+                "4. Verify with: gh auth status",
             ]
 
         # GitHub API errors
@@ -577,7 +607,7 @@ class CodeRabbitOrchestrator:
                 "1. Check your internet connection",
                 "2. Verify the PR URL is correct and accessible",
                 "3. Check GitHub API rate limits with: gh api /rate_limit",
-                "4. Try again in a few minutes if rate limited"
+                "4. Try again in a few minutes if rate limited",
             ]
 
         # Invalid PR URL errors
@@ -586,7 +616,7 @@ class CodeRabbitOrchestrator:
             recovery_info["recommendations"] = [
                 "1. Verify the PR URL format: https://github.com/owner/repo/pull/123",
                 "2. Ensure the pull request exists and is accessible",
-                "3. Check for typos in the URL"
+                "3. Check for typos in the URL",
             ]
 
         # Persona file errors
@@ -595,7 +625,7 @@ class CodeRabbitOrchestrator:
             recovery_info["recommendations"] = [
                 "1. Check that the persona file exists and is readable",
                 "2. Verify file permissions",
-                "3. Try using the default persona (omit --persona-file option)"
+                "3. Try using the default persona (omit --persona-file option)",
             ]
 
         # Generic network/timeout errors
@@ -604,7 +634,7 @@ class CodeRabbitOrchestrator:
             recovery_info["recommendations"] = [
                 "1. Check your internet connection",
                 "2. Try again with increased timeout",
-                "3. Verify GitHub is accessible: https://status.github.com/"
+                "3. Verify GitHub is accessible: https://status.github.com/",
             ]
 
         return recovery_info
@@ -623,7 +653,7 @@ class CodeRabbitOrchestrator:
             "output_size_bytes": self.metrics.output_size_bytes,
             "errors_count": len(self.metrics.errors_encountered),
             "warnings_count": len(self.metrics.warnings_issued),
-            "success_rate": self.metrics.success_rate
+            "success_rate": self.metrics.success_rate,
         }
 
     def get_detailed_metrics(self) -> ExecutionMetrics:
@@ -635,8 +665,9 @@ class CodeRabbitOrchestrator:
         return {
             "current_step": self.progress_tracker.current_step,
             "total_steps": self.progress_tracker.total_steps,
-            "percentage": (self.progress_tracker.current_step / self.progress_tracker.total_steps) * 100,
-            "is_complete": self.progress_tracker.current_step >= self.progress_tracker.total_steps
+            "percentage": (self.progress_tracker.current_step / self.progress_tracker.total_steps)
+            * 100,
+            "is_complete": self.progress_tracker.current_step >= self.progress_tracker.total_steps,
         }
 
     def validate_configuration(self) -> Dict[str, Any]:
@@ -645,11 +676,7 @@ class CodeRabbitOrchestrator:
         Returns:
             Dictionary with validation results
         """
-        validation_result = {
-            "valid": True,
-            "issues": [],
-            "warnings": []
-        }
+        validation_result = {"valid": True, "issues": [], "warnings": []}
 
         # Validate PR URL format
         if not self.config.pr_url:
@@ -660,19 +687,25 @@ class CodeRabbitOrchestrator:
             validation_result["issues"].append("PR URL must be a valid HTTP/HTTPS URL")
 
         # Validate output format
-        if self.config.output_format not in ['markdown', 'json', 'plain']:
+        if self.config.output_format not in ["markdown", "json", "plain"]:
             validation_result["valid"] = False
-            validation_result["issues"].append(f"Invalid output format: {self.config.output_format}")
+            validation_result["issues"].append(
+                f"Invalid output format: {self.config.output_format}"
+            )
 
         # Validate persona file
         if self.config.persona_file:
             persona_path = Path(self.config.persona_file)
             if not persona_path.exists():
                 validation_result["valid"] = False
-                validation_result["issues"].append(f"Persona file not found: {self.config.persona_file}")
+                validation_result["issues"].append(
+                    f"Persona file not found: {self.config.persona_file}"
+                )
             elif not persona_path.is_file():
                 validation_result["valid"] = False
-                validation_result["issues"].append(f"Persona path is not a file: {self.config.persona_file}")
+                validation_result["issues"].append(
+                    f"Persona path is not a file: {self.config.persona_file}"
+                )
             elif not persona_path.stat().st_size > 0:
                 validation_result["warnings"].append("Persona file is empty")
 
@@ -715,7 +748,7 @@ class CodeRabbitOrchestrator:
             Delay in seconds with exponential backoff and jitter
         """
         # Exponential backoff: base_delay * (2 ^ attempt)
-        delay = base_delay * (2 ** attempt)
+        delay = base_delay * (2**attempt)
 
         # Add jitter (±25% of the delay)
         jitter = delay * 0.25 * (2 * random.random() - 1)

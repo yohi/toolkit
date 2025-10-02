@@ -1,13 +1,13 @@
 """Integration tests for the main orchestrator."""
 
-import unittest
-from unittest.mock import Mock, patch, MagicMock
-import tempfile
 import json
+import tempfile
+import unittest
 from pathlib import Path
+from unittest.mock import Mock, patch
 
-from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionConfig
 from coderabbit_fetcher.exceptions import GitHubAuthenticationError, InvalidPRUrlError
+from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionConfig
 
 
 class TestOrchestratorIntegration(unittest.TestCase):
@@ -18,7 +18,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
         self.config = ExecutionConfig(
             pr_url="https://github.com/test/repo/pull/123",
             output_format="json",
-            resolved_marker="🔒 TEST_RESOLVED 🔒"
+            resolved_marker="🔒 TEST_RESOLVED 🔒",
         )
 
         # Sample PR data
@@ -31,7 +31,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
                     "id": 1,
                     "body": "This is a test comment from CodeRabbit",
                     "user": {"login": "coderabbitai[bot]"},
-                    "created_at": "2024-01-01T00:00:00Z"
+                    "created_at": "2024-01-01T00:00:00Z",
                 }
             ],
             "reviews": [
@@ -39,9 +39,9 @@ class TestOrchestratorIntegration(unittest.TestCase):
                     "id": 2,
                     "body": "## Summary by CodeRabbit\n\nTest summary",
                     "user": {"login": "coderabbitai[bot]"},
-                    "created_at": "2024-01-01T00:00:00Z"
+                    "created_at": "2024-01-01T00:00:00Z",
                 }
-            ]
+            ],
         }
 
     def test_configuration_validation_valid(self):
@@ -65,8 +65,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
     def test_configuration_validation_invalid_format(self):
         """Test invalid output format configuration validation."""
         invalid_config = ExecutionConfig(
-            pr_url="https://github.com/test/repo/pull/123",
-            output_format="invalid"
+            pr_url="https://github.com/test/repo/pull/123", output_format="invalid"
         )
         orchestrator = CodeRabbitOrchestrator(invalid_config)
         result = orchestrator.validate_configuration()
@@ -77,8 +76,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
     def test_configuration_validation_missing_persona_file(self):
         """Test missing persona file configuration validation."""
         invalid_config = ExecutionConfig(
-            pr_url="https://github.com/test/repo/pull/123",
-            persona_file="/nonexistent/file.txt"
+            pr_url="https://github.com/test/repo/pull/123", persona_file="/nonexistent/file.txt"
         )
         orchestrator = CodeRabbitOrchestrator(invalid_config)
         result = orchestrator.validate_configuration()
@@ -86,9 +84,9 @@ class TestOrchestratorIntegration(unittest.TestCase):
         self.assertFalse(result["valid"])
         self.assertIn("Persona file not found", str(result["issues"]))
 
-    @patch('coderabbit_fetcher.orchestrator.GitHubClient')
-    @patch('coderabbit_fetcher.orchestrator.PersonaManager')
-    @patch('coderabbit_fetcher.orchestrator.CommentAnalyzer')
+    @patch("coderabbit_fetcher.orchestrator.GitHubClient")
+    @patch("coderabbit_fetcher.orchestrator.PersonaManager")
+    @patch("coderabbit_fetcher.orchestrator.CommentAnalyzer")
     def test_successful_execution_with_mocks(self, mock_analyzer, mock_persona, mock_github):
         """Test successful execution with all components mocked."""
         # Setup mocks
@@ -116,7 +114,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
         # Execute
         orchestrator = CodeRabbitOrchestrator(self.config)
 
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".json") as f:
             orchestrator.config.output_file = f.name
 
         try:
@@ -139,7 +137,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
             self.assertTrue(output_path.exists())
 
             # Verify output content
-            with open(output_path, 'r', encoding='utf-8') as f:
+            with open(output_path, encoding="utf-8") as f:
                 content = f.read()
                 self.assertGreater(len(content), 0)
                 parsed = json.loads(content)
@@ -151,7 +149,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
             if output_path.exists():
                 output_path.unlink()
 
-    @patch('coderabbit_fetcher.orchestrator.GitHubClient')
+    @patch("coderabbit_fetcher.orchestrator.GitHubClient")
     def test_github_authentication_failure(self, mock_github):
         """Test handling of GitHub authentication failure."""
         # Setup mock to raise authentication error
@@ -166,7 +164,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
         self.assertIn("recovery_info", results)
         self.assertIn("recommendations", results["recovery_info"])
 
-    @patch('coderabbit_fetcher.orchestrator.GitHubClient')
+    @patch("coderabbit_fetcher.orchestrator.GitHubClient")
     def test_invalid_pr_url_failure(self, mock_github):
         """Test handling of invalid PR URL."""
         mock_github_instance = Mock()
@@ -227,14 +225,13 @@ class TestOrchestratorIntegration(unittest.TestCase):
 
     def test_persona_file_handling(self):
         """Test persona file handling."""
-        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.txt') as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".txt") as f:
             f.write("Custom test persona for AI agent")
             persona_file = f.name
 
         try:
             config = ExecutionConfig(
-                pr_url="https://github.com/test/repo/pull/123",
-                persona_file=persona_file
+                pr_url="https://github.com/test/repo/pull/123", persona_file=persona_file
             )
             orchestrator = CodeRabbitOrchestrator(config)
 
@@ -251,8 +248,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
             output_file = Path(temp_dir) / "subdir" / "output.json"
 
             config = ExecutionConfig(
-                pr_url="https://github.com/test/repo/pull/123",
-                output_file=str(output_file)
+                pr_url="https://github.com/test/repo/pull/123", output_file=str(output_file)
             )
             orchestrator = CodeRabbitOrchestrator(config)
 
@@ -265,9 +261,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
         """Test retry configuration validation."""
         # Valid retry settings
         config = ExecutionConfig(
-            pr_url="https://github.com/test/repo/pull/123",
-            retry_attempts=3,
-            retry_delay=1.0
+            pr_url="https://github.com/test/repo/pull/123", retry_attempts=3, retry_delay=1.0
         )
         orchestrator = CodeRabbitOrchestrator(config)
         result = orchestrator.validate_configuration()
@@ -275,8 +269,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
 
         # Invalid retry attempts
         invalid_config = ExecutionConfig(
-            pr_url="https://github.com/test/repo/pull/123",
-            retry_attempts=-1
+            pr_url="https://github.com/test/repo/pull/123", retry_attempts=-1
         )
         orchestrator = CodeRabbitOrchestrator(invalid_config)
         result = orchestrator.validate_configuration()
@@ -287,8 +280,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
         """Test timeout configuration validation."""
         # Valid timeout
         config = ExecutionConfig(
-            pr_url="https://github.com/test/repo/pull/123",
-            timeout_seconds=120
+            pr_url="https://github.com/test/repo/pull/123", timeout_seconds=120
         )
         orchestrator = CodeRabbitOrchestrator(config)
         result = orchestrator.validate_configuration()
@@ -296,8 +288,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
 
         # Invalid timeout
         invalid_config = ExecutionConfig(
-            pr_url="https://github.com/test/repo/pull/123",
-            timeout_seconds=0
+            pr_url="https://github.com/test/repo/pull/123", timeout_seconds=0
         )
         orchestrator = CodeRabbitOrchestrator(invalid_config)
         result = orchestrator.validate_configuration()
@@ -306,8 +297,7 @@ class TestOrchestratorIntegration(unittest.TestCase):
 
         # Very short timeout (warning)
         warning_config = ExecutionConfig(
-            pr_url="https://github.com/test/repo/pull/123",
-            timeout_seconds=15
+            pr_url="https://github.com/test/repo/pull/123", timeout_seconds=15
         )
         orchestrator = CodeRabbitOrchestrator(warning_config)
         result = orchestrator.validate_configuration()
@@ -316,5 +306,5 @@ class TestOrchestratorIntegration(unittest.TestCase):
         self.assertIn("very short", str(result["warnings"]))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

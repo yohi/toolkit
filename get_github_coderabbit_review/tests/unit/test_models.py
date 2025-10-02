@@ -2,22 +2,20 @@
 Unit tests for data models.
 """
 
-import pytest
 from datetime import datetime
-from pydantic import ValidationError
 
 from coderabbit_fetcher.models import (
-    AnalyzedComments,
-    CommentMetadata,
-    SummaryComment,
-    ReviewComment,
     ActionableComment,
     AIAgentPrompt,
-    ThreadContext,
+    AnalyzedComments,
     ChangeEntry,
+    CommentMetadata,
     CommentType,
     Priority,
     ResolutionStatus,
+    ReviewComment,
+    SummaryComment,
+    ThreadContext,
 )
 
 
@@ -142,7 +140,7 @@ class TestThreadContext:
         """Test basic thread creation."""
         thread = ThreadContext(
             thread_id="thread123",
-            main_comment={"user": {"login": "user1"}, "created_at": "2023-01-01T10:00:00Z"}
+            main_comment={"user": {"login": "user1"}, "created_at": "2023-01-01T10:00:00Z"},
         )
 
         assert thread.participant_count == 1
@@ -157,7 +155,7 @@ class TestThreadContext:
             replies=[
                 {"user": {"login": "user2"}, "created_at": "2023-01-01T11:00:00Z"},
                 {"user": {"login": "user1"}, "created_at": "2023-01-01T12:00:00Z"},
-            ]
+            ],
         )
 
         assert thread.participant_count == 2

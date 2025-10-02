@@ -30,7 +30,7 @@ Usage:
 """
 
 import importlib.metadata
-from typing import Dict, Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict
 
 if TYPE_CHECKING:
     from .cli.main import main
@@ -42,7 +42,9 @@ except importlib.metadata.PackageNotFoundError:
     __version__ = "1.0.0-dev"
 
 __title__ = "CodeRabbit Comment Fetcher"
-__description__ = "Professional tool to fetch, analyze, and format CodeRabbit comments from GitHub Pull Requests"
+__description__ = (
+    "Professional tool to fetch, analyze, and format CodeRabbit comments from GitHub Pull Requests"
+)
 __author__ = "CodeRabbit Fetcher Team"
 __email__ = "coderabbit-fetcher@example.com"
 __license__ = "MIT"
@@ -50,13 +52,13 @@ __copyright__ = "Copyright 2025 CodeRabbit Fetcher Team"
 
 from .exceptions import CodeRabbitFetcherError
 from .models import (
-    AnalyzedComments,
-    SummaryComment,
-    ReviewComment,
     ActionableComment,
     AIAgentPrompt,
-    ThreadContext,
+    AnalyzedComments,
     CommentMetadata,
+    ReviewComment,
+    SummaryComment,
+    ThreadContext,
 )
 
 # Package metadata
@@ -88,8 +90,8 @@ def get_version_info() -> Dict[str, str]:
     Returns:
         Dictionary containing version details
     """
-    import sys
     import platform
+    import sys
 
     return {
         "version": __version__,
@@ -131,26 +133,32 @@ DEFAULT_CONFIG = {
     "supported_output_formats": ["markdown", "json", "plain"],
 }
 
+from .comment_analyzer import CommentAnalyzer
+from .github_client import GitHubClient
+
 # Export key components for programmatic usage
 from .orchestrator import CodeRabbitOrchestrator, ExecutionConfig
-from .github_client import GitHubClient
-from .comment_analyzer import CommentAnalyzer
+
 
 # Lazily expose CLI entry to avoid import-time side effects.
 def __getattr__(name: str):
     if name == "main":
         from .cli.main import main as _main
+
         return _main
     raise AttributeError(f"module '{__name__}' has no attribute '{name}'")
 
+
 # Version check
 import sys
+
 if sys.version_info < (3, 13):
     import warnings
+
     warnings.warn(
         f"CodeRabbit Comment Fetcher requires Python 3.13+, "
         f"but you're using Python {sys.version_info.major}.{sys.version_info.minor}. "
         f"Some features may not work correctly.",
         RuntimeWarning,
-        stacklevel=2
+        stacklevel=2,
     )

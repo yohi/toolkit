@@ -1,16 +1,17 @@
 """GitHub CLI wrapper for authenticated API access."""
 
 import json
-import subprocess
 import re
-from typing import Dict, List, Optional, Any, Tuple
+import subprocess
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlparse
 
-from .exceptions import GitHubAuthenticationError, InvalidPRUrlError, CodeRabbitFetcherError
+from .exceptions import CodeRabbitFetcherError, GitHubAuthenticationError, InvalidPRUrlError
 
 
 class GitHubAPIError(CodeRabbitFetcherError):
     """Exception raised when GitHub API operations fail."""
+
     pass
 
 
@@ -36,10 +37,7 @@ class GitHubClient:
 
         try:
             result = subprocess.run(
-                ["gh", "auth", "status"],
-                capture_output=True,
-                text=True,
-                timeout=10
+                ["gh", "auth", "status"], capture_output=True, text=True, timeout=10
             )
 
             # gh auth status returns 0 when authenticated
@@ -81,7 +79,8 @@ class GitHubClient:
         try:
             # Check if gh CLI is available
             import subprocess
-            subprocess.run(['gh', '--version'], capture_output=True, check=True, timeout=5)
+
+            subprocess.run(["gh", "--version"], capture_output=True, check=True, timeout=5)
         except FileNotFoundError:
             result.add_issue("GitHub CLI (gh) not found. Install from https://cli.github.com/")
         except subprocess.CalledProcessError:
@@ -103,7 +102,7 @@ class GitHubClient:
         return {
             "valid": result.valid,
             "issues": result.issues or [],
-            "warnings": result.warnings or []
+            "warnings": result.warnings or [],
         }
 
     def fetch_pr_comments(self, pr_url: str, timeout: Optional[int] = None) -> Dict[str, Any]:
@@ -126,11 +125,21 @@ class GitHubClient:
         try:
             # Fetch PR data with comments
             actual_timeout = timeout if timeout is not None else 60
-            result = subprocess.run([
-                "gh", "pr", "view", str(pr_number),
-                "--repo", f"{owner}/{repo}",
-                "--json", "title,body,number,state,url,comments,reviews"
-            ], capture_output=True, text=True, timeout=actual_timeout)
+            result = subprocess.run(
+                [
+                    "gh",
+                    "pr",
+                    "view",
+                    str(pr_number),
+                    "--repo",
+                    f"{owner}/{repo}",
+                    "--json",
+                    "title,body,number,state,url,comments,reviews",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=actual_timeout,
+            )
 
             if result.returncode != 0:
                 error_msg = f"Failed to fetch PR data: {result.stderr.strip()}"
@@ -169,11 +178,12 @@ class GitHubClient:
 
         try:
             # Fetch detailed review comments
-            result = subprocess.run([
-                "gh", "api",
-                f"/repos/{owner}/{repo}/pulls/{pr_number}/comments",
-                "--paginate"
-            ], capture_output=True, text=True, timeout=60)
+            result = subprocess.run(
+                ["gh", "api", f"/repos/{owner}/{repo}/pulls/{pr_number}/comments", "--paginate"],
+                capture_output=True,
+                text=True,
+                timeout=60,
+            )
 
             if result.returncode != 0:
                 raise GitHubAPIError(f"Failed to fetch review comments: {result.stderr.strip()}")
@@ -181,7 +191,7 @@ class GitHubClient:
             return json.loads(result.stdout)
 
         except subprocess.TimeoutExpired:
-            raise GitHubAPIError(f"GitHub API request timed out for review comments")
+            raise GitHubAPIError("GitHub API request timed out for review comments")
         except json.JSONDecodeError as e:
             raise GitHubAPIError(f"Failed to parse review comments response: {e}")
         except Exception as e:
@@ -210,12 +220,21 @@ class GitHubClient:
             # POST /repos/{owner}/{repo}/issues/{issue_number}/comments
             api_data = json.dumps({"body": comment})
 
-            result = subprocess.run([
-                "gh", "api",
-                f"/repos/{owner}/{repo}/issues/{pr_number}/comments",
-                "--method", "POST",
-                "--input", "-"
-            ], input=api_data, capture_output=True, text=True, timeout=30)
+            result = subprocess.run(
+                [
+                    "gh",
+                    "api",
+                    f"/repos/{owner}/{repo}/issues/{pr_number}/comments",
+                    "--method",
+                    "POST",
+                    "--input",
+                    "-",
+                ],
+                input=api_data,
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
 
             if result.returncode != 0:
                 raise GitHubAPIError(f"Failed to post comment via API: {result.stderr.strip()}")
@@ -230,7 +249,7 @@ class GitHubClient:
                 "created_at": comment_data.get("created_at"),
                 "updated_at": comment_data.get("updated_at"),
                 "user": comment_data.get("user", {}).get("login"),
-                "node_id": comment_data.get("node_id")
+                "node_id": comment_data.get("node_id"),
             }
 
         except subprocess.TimeoutExpired:
@@ -298,11 +317,21 @@ class GitHubClient:
         owner, repo, pr_number = self.parse_pr_url(pr_url)
 
         try:
-            result = subprocess.run([
-                "gh", "pr", "view", str(pr_number),
-                "--repo", f"{owner}/{repo}",
-                "--json", "title,body,number,state,url,author,createdAt,updatedAt"
-            ], capture_output=True, text=True, timeout=30)
+            result = subprocess.run(
+                [
+                    "gh",
+                    "pr",
+                    "view",
+                    str(pr_number),
+                    "--repo",
+                    f"{owner}/{repo}",
+                    "--json",
+                    "title,body,number,state,url,author,createdAt,updatedAt",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
 
             if result.returncode != 0:
                 error_msg = f"Failed to fetch PR info: {result.stderr.strip()}"
@@ -313,16 +342,12 @@ class GitHubClient:
             pr_info = json.loads(result.stdout)
 
             # Add parsed URL components
-            pr_info.update({
-                "owner": owner,
-                "repo": repo,
-                "pr_number": pr_number
-            })
+            pr_info.update({"owner": owner, "repo": repo, "pr_number": pr_number})
 
             return pr_info
 
         except subprocess.TimeoutExpired:
-            raise GitHubAPIError(f"GitHub CLI request timed out")
+            raise GitHubAPIError("GitHub CLI request timed out")
         except json.JSONDecodeError as e:
             raise GitHubAPIError(f"Failed to parse PR info response: {e}")
         except Exception as e:
@@ -342,9 +367,9 @@ class GitHubClient:
         self._ensure_authenticated()
 
         try:
-            result = subprocess.run([
-                "gh", "api", "/rate_limit"
-            ], capture_output=True, text=True, timeout=10)
+            result = subprocess.run(
+                ["gh", "api", "/rate_limit"], capture_output=True, text=True, timeout=10
+            )
 
             if result.returncode != 0:
                 raise GitHubAPIError(f"Failed to check rate limit: {result.stderr.strip()}")
@@ -369,7 +394,9 @@ class GitHubClient:
         if not self.is_authenticated():
             raise GitHubAuthenticationError("GitHub CLI is not authenticated")
 
-    def _enhance_pr_data(self, pr_data: Dict[str, Any], owner: str, repo: str, pr_number: str) -> Dict[str, Any]:
+    def _enhance_pr_data(
+        self, pr_data: Dict[str, Any], owner: str, repo: str, pr_number: str
+    ) -> Dict[str, Any]:
         """Enhance PR data with additional information if needed.
 
         Args:
@@ -382,12 +409,14 @@ class GitHubClient:
             Enhanced PR data
         """
         # Add metadata
-        pr_data.update({
-            "owner": owner,
-            "repo": repo,
-            "pr_number": pr_number,
-            "fetched_at": None  # Could add timestamp if needed
-        })
+        pr_data.update(
+            {
+                "owner": owner,
+                "repo": repo,
+                "pr_number": pr_number,
+                "fetched_at": None,  # Could add timestamp if needed
+            }
+        )
 
         # Ensure comments field exists
         if "comments" not in pr_data:
@@ -411,22 +440,17 @@ class GitHubClient:
             "authenticated": False,
             "auth_user": None,
             "issues": [],
-            "recommendations": []
+            "recommendations": [],
         }
 
         try:
             # Check if gh is installed
-            result = subprocess.run(
-                ["gh", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
+            result = subprocess.run(["gh", "--version"], capture_output=True, text=True, timeout=10)
 
             if result.returncode == 0:
                 validation_result["gh_installed"] = True
                 # Extract version from output
-                version_match = re.search(r'gh version (\S+)', result.stdout)
+                version_match = re.search(r"gh version (\S+)", result.stdout)
                 if version_match:
                     validation_result["gh_version"] = version_match.group(1)
             else:
@@ -434,7 +458,9 @@ class GitHubClient:
 
         except FileNotFoundError:
             validation_result["issues"].append("GitHub CLI (gh) is not installed")
-            validation_result["recommendations"].append("Install GitHub CLI: https://cli.github.com/")
+            validation_result["recommendations"].append(
+                "Install GitHub CLI: https://cli.github.com/"
+            )
         except subprocess.TimeoutExpired:
             validation_result["issues"].append("GitHub CLI version check timed out")
         except Exception as e:
@@ -444,21 +470,20 @@ class GitHubClient:
         if validation_result["gh_installed"]:
             try:
                 auth_result = subprocess.run(
-                    ["gh", "auth", "status"],
-                    capture_output=True,
-                    text=True,
-                    timeout=10
+                    ["gh", "auth", "status"], capture_output=True, text=True, timeout=10
                 )
 
                 if auth_result.returncode == 0:
                     validation_result["authenticated"] = True
                     # Try to extract username
-                    user_match = re.search(r'Logged in to github\.com as (\S+)', auth_result.stderr)
+                    user_match = re.search(r"Logged in to github\.com as (\S+)", auth_result.stderr)
                     if user_match:
                         validation_result["auth_user"] = user_match.group(1)
                 else:
                     validation_result["issues"].append("GitHub CLI is not authenticated")
-                    validation_result["recommendations"].append("Run 'gh auth login' to authenticate")
+                    validation_result["recommendations"].append(
+                        "Run 'gh auth login' to authenticate"
+                    )
 
             except Exception as e:
                 validation_result["issues"].append(f"Authentication check failed: {e}")
@@ -482,10 +507,12 @@ class GitHubClient:
         owner, repo, _ = self.parse_pr_url(pr_url)
 
         try:
-            result = subprocess.run([
-                "gh", "api",
-                f"/repos/{owner}/{repo}/issues/comments/{comment_id}"
-            ], capture_output=True, text=True, timeout=30)
+            result = subprocess.run(
+                ["gh", "api", f"/repos/{owner}/{repo}/issues/comments/{comment_id}"],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
 
             if result.returncode != 0:
                 raise GitHubAPIError(f"Failed to get comment {comment_id}: {result.stderr.strip()}")
@@ -499,7 +526,7 @@ class GitHubClient:
                 "created_at": comment_data.get("created_at"),
                 "updated_at": comment_data.get("updated_at"),
                 "user": comment_data.get("user", {}).get("login"),
-                "node_id": comment_data.get("node_id")
+                "node_id": comment_data.get("node_id"),
             }
 
         except subprocess.TimeoutExpired:
@@ -528,11 +555,18 @@ class GitHubClient:
         owner, repo, pr_number = self.parse_pr_url(pr_url)
 
         try:
-            result = subprocess.run([
-                "gh", "api",
-                f"/repos/{owner}/{repo}/issues/{pr_number}/comments",
-                "--jq", f"sort_by(.created_at) | reverse | .[:{ limit }]"
-            ], capture_output=True, text=True, timeout=30)
+            result = subprocess.run(
+                [
+                    "gh",
+                    "api",
+                    f"/repos/{owner}/{repo}/issues/{pr_number}/comments",
+                    "--jq",
+                    f"sort_by(.created_at) | reverse | .[:{ limit }]",
+                ],
+                capture_output=True,
+                text=True,
+                timeout=30,
+            )
 
             if result.returncode != 0:
                 raise GitHubAPIError(f"Failed to get latest comments: {result.stderr.strip()}")
@@ -542,15 +576,17 @@ class GitHubClient:
             # Normalize comment data
             normalized_comments = []
             for comment in comments:
-                normalized_comments.append({
-                    "id": comment.get("id"),
-                    "html_url": comment.get("html_url"),
-                    "body": comment.get("body"),
-                    "created_at": comment.get("created_at"),
-                    "updated_at": comment.get("updated_at"),
-                    "user": comment.get("user", {}).get("login"),
-                    "node_id": comment.get("node_id")
-                })
+                normalized_comments.append(
+                    {
+                        "id": comment.get("id"),
+                        "html_url": comment.get("html_url"),
+                        "body": comment.get("body"),
+                        "created_at": comment.get("created_at"),
+                        "updated_at": comment.get("updated_at"),
+                        "user": comment.get("user", {}).get("login"),
+                        "node_id": comment.get("node_id"),
+                    }
+                )
 
             return normalized_comments
 

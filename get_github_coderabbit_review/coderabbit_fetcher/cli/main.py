@@ -1,33 +1,24 @@
 """Main CLI interface for CodeRabbit Comment Fetcher."""
 
-import sys
 import argparse
 import logging
-from pathlib import Path
-from typing import Dict, List, Optional, Any, TextIO
-import json
+import sys
+from typing import Any, Dict
 
-from ..exceptions import CodeRabbitFetcherError, GitHubAuthenticationError, InvalidPRUrlError
-from ..github_client import GitHubClient, GitHubAPIError
-from ..comment_analyzer import CommentAnalyzer, CommentAnalysisError
-from ..persona_manager import PersonaManager
-from ..formatters import MarkdownFormatter, JSONFormatter, PlainTextFormatter
-from ..resolved_marker import ResolvedMarkerManager, ResolvedMarkerConfig
-from ..comment_poster import ResolutionRequestManager, ResolutionRequestConfig
-from ..models import CommentMetadata
+from ..exceptions import CodeRabbitFetcherError
+from ..github_client import GitHubAPIError, GitHubClient
 from ..orchestrator import CodeRabbitOrchestrator, ExecutionConfig
-
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
 
 class CLIError(CodeRabbitFetcherError):
     """CLI-specific errors."""
+
     pass
 
 
@@ -61,85 +52,60 @@ Examples:
       --post-resolution-request \\
       --show-stats \\
       --debug
-        """
+        """,
     )
 
     # Optional positional argument (required only for fetch command)
     parser.add_argument(
-        'pr_url',
-        nargs='?',
+        "pr_url",
+        nargs="?",
         default=None,
-        help='GitHub pull request URL (omit for --validate/--version/--examples/--validate-marker)'
+        help="GitHub pull request URL (omit for --validate/--version/--examples/--validate-marker)",
     )
 
     # Optional arguments
     parser.add_argument(
-        '--persona-file', '-p',
+        "--persona-file", "-p", type=str, help="Path to persona file for AI context"
+    )
+
+    parser.add_argument(
+        "--output-format",
+        "-f",
+        choices=["markdown", "json", "plain"],
+        default="markdown",
+        help="Output format (default: markdown)",
+    )
+
+    parser.add_argument("--output-file", "-o", type=str, help="Output file path (default: stdout)")
+
+    parser.add_argument(
+        "--resolved-marker",
+        "-m",
         type=str,
-        help='Path to persona file for AI context'
+        default="🔒 CODERABBIT_RESOLVED 🔒",
+        help="Resolved marker string (default: 🔒 CODERABBIT_RESOLVED 🔒)",
     )
 
     parser.add_argument(
-        '--output-format', '-f',
-        choices=['markdown', 'json', 'plain'],
-        default='markdown',
-        help='Output format (default: markdown)'
+        "--post-resolution-request",
+        "-r",
+        action="store_true",
+        help="Post resolution request comment to CodeRabbit",
     )
 
     parser.add_argument(
-        '--output-file', '-o',
-        type=str,
-        help='Output file path (default: stdout)'
+        "--show-stats", "-s", action="store_true", help="Show processing statistics"
     )
 
-    parser.add_argument(
-        '--resolved-marker', '-m',
-        type=str,
-        default='🔒 CODERABBIT_RESOLVED 🔒',
-        help='Resolved marker string (default: 🔒 CODERABBIT_RESOLVED 🔒)'
-    )
+    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
 
-    parser.add_argument(
-        '--post-resolution-request', '-r',
-        action='store_true',
-        help='Post resolution request comment to CodeRabbit'
-    )
+    parser.add_argument("--validate", action="store_true", help="Validate GitHub CLI setup only")
 
-    parser.add_argument(
-        '--show-stats', '-s',
-        action='store_true',
-        help='Show processing statistics'
-    )
+    parser.add_argument("--validate-marker", type=str, help="Validate a resolved marker string")
 
-    parser.add_argument(
-        '--debug',
-        action='store_true',
-        help='Enable debug logging'
-    )
+    parser.add_argument("--version", action="store_true", help="Show version information")
 
-    parser.add_argument(
-        '--validate',
-        action='store_true',
-        help='Validate GitHub CLI setup only'
-    )
-
-    parser.add_argument(
-        '--validate-marker',
-        type=str,
-        help='Validate a resolved marker string'
-    )
-
-    parser.add_argument(
-        '--version',
-        action='store_true',
-        help='Show version information'
-    )
-
-    parser.add_argument(
-        '--examples',
-        action='store_true',
-        help='Show usage examples'
-    )
+    parser.add_argument("--examples", action="store_true", help="Show usage examples")
 
     return parser
 
@@ -156,7 +122,7 @@ def run_fetch_command(args) -> int:
             resolved_marker=args.resolved_marker,
             post_resolution_request=args.post_resolution_request,
             show_stats=args.show_stats,
-            debug=args.debug
+            debug=args.debug,
         )
 
         # Validate configuration
@@ -286,7 +252,7 @@ def run_validate_marker_command(marker: str) -> int:
     print(f"🔍 Validating marker: '{marker}'")
 
     try:
-        from ..resolved_marker import ResolvedMarkerConfig, ResolvedMarkerManager
+        from ..resolved_marker import ResolvedMarkerManager
 
         # Use ResolvedMarkerManager's validate_marker method instead of config
         manager = ResolvedMarkerManager()
@@ -323,14 +289,15 @@ def run_version_command() -> int:
 
     try:
         # First, try to import the required modules
-        from importlib.metadata import version as get_version, PackageNotFoundError
+        from importlib.metadata import PackageNotFoundError
+        from importlib.metadata import version as get_version
     except ImportError:
         # If import fails, use development version
         version = "development"
     else:
         # If import succeeds, try to get the actual version
         try:
-            version = get_version('coderabbit-comment-fetcher')
+            version = get_version("coderabbit-comment-fetcher")
         except PackageNotFoundError:
             # If package is not found, use development version
             version = "development"

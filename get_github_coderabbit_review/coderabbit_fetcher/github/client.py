@@ -9,17 +9,15 @@ import json
 import re
 import subprocess
 import time
-from pathlib import Path
 from typing import Any, Dict, Tuple
-from urllib.parse import urlparse
 
 from rich.console import Console
 
 from ..exceptions import (
-    GitHubAuthenticationError,
-    InvalidPRUrlError,
     APIRateLimitError,
     CodeRabbitFetcherError,
+    GitHubAuthenticationError,
+    InvalidPRUrlError,
 )
 
 console = Console()
@@ -33,10 +31,7 @@ class GitHubClient:
     """
 
     def __init__(
-        self, 
-        max_retries: int = 3, 
-        retry_delay: float = 1.0,
-        check_gh_cli: bool = True
+        self, max_retries: int = 3, retry_delay: float = 1.0, check_gh_cli: bool = True
     ) -> None:
         """Initialize GitHub client.
 
@@ -47,7 +42,7 @@ class GitHubClient:
         """
         self.max_retries = max_retries
         self.retry_delay = retry_delay
-        
+
         if check_gh_cli:
             self._check_gh_cli_availability()
 
@@ -58,21 +53,16 @@ class GitHubClient:
             CodeRabbitFetcherError: If GitHub CLI is not found
         """
         try:
-            result = subprocess.run(
-                ["gh", "--version"],
-                capture_output=True,
-                text=True,
-                timeout=10
-            )
+            result = subprocess.run(["gh", "--version"], capture_output=True, text=True, timeout=10)
             if result.returncode != 0:
                 raise CodeRabbitFetcherError(
                     "GitHub CLI is not properly installed",
-                    details="Install GitHub CLI from https://cli.github.com/"
+                    details="Install GitHub CLI from https://cli.github.com/",
                 )
         except FileNotFoundError:
             raise CodeRabbitFetcherError(
                 "GitHub CLI (gh) not found in PATH",
-                details="Install GitHub CLI from https://cli.github.com/"
+                details="Install GitHub CLI from https://cli.github.com/",
             )
         except subprocess.TimeoutExpired:
             raise CodeRabbitFetcherError("GitHub CLI command timed out")
@@ -88,10 +78,7 @@ class GitHubClient:
         """
         try:
             result = subprocess.run(
-                ["gh", "auth", "status"],
-                capture_output=True,
-                text=True,
-                timeout=10
+                ["gh", "auth", "status"], capture_output=True, text=True, timeout=10
             )
 
             # gh auth status returns 0 when authenticated
@@ -151,10 +138,7 @@ class GitHubClient:
                 console.print(f"🔄 [dim]Executing: gh {' '.join(args)}[/dim]", highlight=False)
 
                 result = subprocess.run(
-                    ["gh"] + args,
-                    capture_output=True,
-                    text=True,
-                    timeout=timeout
+                    ["gh"] + args, capture_output=True, text=True, timeout=timeout
                 )
 
                 if result.returncode == 0:
@@ -163,7 +147,7 @@ class GitHubClient:
                     except json.JSONDecodeError as e:
                         raise CodeRabbitFetcherError(
                             f"Invalid JSON response from GitHub CLI: {e}",
-                            details=f"Output: {result.stdout[:500]}"
+                            details=f"Output: {result.stdout[:500]}",
                         )
 
                 # Handle specific error cases
@@ -176,26 +160,25 @@ class GitHubClient:
 
                 if "not found" in stderr_lower or "404" in stderr_lower:
                     raise CodeRabbitFetcherError(
-                        "Pull request not found or access denied",
-                        details=result.stderr
+                        "Pull request not found or access denied", details=result.stderr
                     )
 
                 if "authentication" in stderr_lower or "unauthorized" in stderr_lower:
-                    raise GitHubAuthenticationError(
-                        "GitHub CLI authentication required or expired"
-                    )
+                    raise GitHubAuthenticationError("GitHub CLI authentication required or expired")
 
                 # For other errors, retry if we have attempts left
                 if attempt < self.max_retries:
-                    wait_time = self.retry_delay * (2 ** attempt)  # Exponential backoff
-                    console.print(f"⏳ [yellow]Command failed, retrying in {wait_time}s... (attempt {attempt + 1}/{self.max_retries})[/yellow]")
+                    wait_time = self.retry_delay * (2**attempt)  # Exponential backoff
+                    console.print(
+                        f"⏳ [yellow]Command failed, retrying in {wait_time}s... (attempt {attempt + 1}/{self.max_retries})[/yellow]"
+                    )
                     time.sleep(wait_time)
                     continue
 
                 # Final attempt failed
                 raise CodeRabbitFetcherError(
                     f"GitHub CLI command failed: {result.stderr}",
-                    details=f"Return code: {result.returncode}\nStdout: {result.stdout}"
+                    details=f"Return code: {result.returncode}\nStdout: {result.stdout}",
                 )
 
             except subprocess.TimeoutExpired:
@@ -203,8 +186,10 @@ class GitHubClient:
                     f"GitHub CLI command timed out after {timeout} seconds"
                 )
                 if attempt < self.max_retries:
-                    wait_time = self.retry_delay * (2 ** attempt)  # Exponential backoff
-                    console.print(f"⏳ [yellow]Command timed out, retrying in {wait_time}s... (attempt {attempt + 1}/{self.max_retries})[/yellow]")
+                    wait_time = self.retry_delay * (2**attempt)  # Exponential backoff
+                    console.print(
+                        f"⏳ [yellow]Command timed out, retrying in {wait_time}s... (attempt {attempt + 1}/{self.max_retries})[/yellow]"
+                    )
                     time.sleep(wait_time)
                     continue
             except (APIRateLimitError, GitHubAuthenticationError):
@@ -213,8 +198,10 @@ class GitHubClient:
             except Exception as e:
                 last_exception = CodeRabbitFetcherError(f"Unexpected error: {e}")
                 if attempt < self.max_retries:
-                    wait_time = self.retry_delay * (2 ** attempt)  # Exponential backoff
-                    console.print(f"⏳ [yellow]Unexpected error, retrying in {wait_time}s... (attempt {attempt + 1}/{self.max_retries})[/yellow]")
+                    wait_time = self.retry_delay * (2**attempt)  # Exponential backoff
+                    console.print(
+                        f"⏳ [yellow]Unexpected error, retrying in {wait_time}s... (attempt {attempt + 1}/{self.max_retries})[/yellow]"
+                    )
                     time.sleep(wait_time)
                     continue
 
@@ -273,17 +260,23 @@ class GitHubClient:
         console.print(f"📥 [blue]Fetching PR data for {owner}/{repo}#{pr_number}[/blue]")
 
         # Fetch PR data with comments and reviews
-        pr_data = self._execute_gh_command([
-            "pr", "view", str(pr_number),
-            "--repo", f"{owner}/{repo}",
-            "--json", "number,title,body,comments,reviews,state,author,createdAt,updatedAt"
-        ])
+        pr_data = self._execute_gh_command(
+            [
+                "pr",
+                "view",
+                str(pr_number),
+                "--repo",
+                f"{owner}/{repo}",
+                "--json",
+                "number,title,body,comments,reviews,state,author,createdAt,updatedAt",
+            ]
+        )
 
         # Fetch additional comment details (reviews contain inline comments)
         try:
-            review_comments = self._execute_gh_command([
-                "api", f"repos/{owner}/{repo}/pulls/{pr_number}/comments?per_page=100"
-            ])
+            review_comments = self._execute_gh_command(
+                ["api", f"repos/{owner}/{repo}/pulls/{pr_number}/comments?per_page=100"]
+            )
 
             # Merge review comments into the main data structure
             if isinstance(review_comments, list):
@@ -293,7 +286,9 @@ class GitHubClient:
             console.print(f"⚠️ [yellow]Could not fetch review comments: {e}[/yellow]")
             pr_data["reviewComments"] = []
 
-        console.print(f"✅ [green]Fetched {len(pr_data.get('comments', []))} comments and {len(pr_data.get('reviewComments', []))} review comments[/green]")
+        console.print(
+            f"✅ [green]Fetched {len(pr_data.get('comments', []))} comments and {len(pr_data.get('reviewComments', []))} review comments[/green]"
+        )
 
         return pr_data
 
@@ -318,11 +313,16 @@ class GitHubClient:
 
         try:
             # PRはIssueとしてコメントAPIが利用可能
-            self._execute_gh_command([
-                "api", f"repos/{owner}/{repo}/issues/{pr_number}/comments",
-                "--method", "POST",
-                "--raw-field", f"body={comment}",
-            ])
+            self._execute_gh_command(
+                [
+                    "api",
+                    f"repos/{owner}/{repo}/issues/{pr_number}/comments",
+                    "--method",
+                    "POST",
+                    "--raw-field",
+                    f"body={comment}",
+                ]
+            )
 
             console.print("✅ [green]Comment posted successfully[/green]")
             return True
@@ -342,10 +342,7 @@ class GitHubClient:
         """
         try:
             result = subprocess.run(
-                ["gh", "api", "user", "--jq", ".login"],
-                capture_output=True,
-                text=True,
-                timeout=10
+                ["gh", "api", "user", "--jq", ".login"], capture_output=True, text=True, timeout=10
             )
 
             if result.returncode == 0:

@@ -7,8 +7,8 @@ on pull requests.
 
 from rich.console import Console
 
-from .client import GitHubClient
 from ..exceptions import CodeRabbitFetcherError
+from .client import GitHubClient
 
 console = Console()
 

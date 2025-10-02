@@ -1,16 +1,17 @@
 """Unit tests for comment posting functionality."""
 
-import pytest
-from unittest.mock import Mock, patch, MagicMock
+from unittest.mock import Mock
 
+import pytest
 from coderabbit_fetcher.comment_poster import (
     CommentPoster,
-    ResolutionRequestConfig,
-    ResolutionRequestManager,
     CommentPostingError,
     InvalidCommentError,
-    PRUrlValidationError
+    PRUrlValidationError,
+    ResolutionRequestConfig,
+    ResolutionRequestManager,
 )
+
 # GitHubClient will be implemented in Task 12 - using Mock for testing
 
 
@@ -33,7 +34,7 @@ class TestResolutionRequestConfig:
             request_template="Custom template {marker}",
             include_context=False,
             custom_prefix="PREFIX:",
-            custom_suffix="SUFFIX"
+            custom_suffix="SUFFIX",
         )
 
         assert config.resolved_marker == "✅ CUSTOM ✅"
@@ -45,8 +46,7 @@ class TestResolutionRequestConfig:
     def test_generate_message_basic(self):
         """Test basic message generation."""
         config = ResolutionRequestConfig(
-            resolved_marker="🔒 TEST 🔒",
-            request_template="@coderabbitai Test {marker}"
+            resolved_marker="🔒 TEST 🔒", request_template="@coderabbitai Test {marker}"
         )
 
         message = config.generate_message()
@@ -58,7 +58,7 @@ class TestResolutionRequestConfig:
         config = ResolutionRequestConfig(
             resolved_marker="🔒 TEST 🔒",
             request_template="@coderabbitai Test {marker}",
-            include_context=True
+            include_context=True,
         )
 
         message = config.generate_message("Additional context here")
@@ -72,7 +72,7 @@ class TestResolutionRequestConfig:
             resolved_marker="🔒 TEST 🔒",
             request_template="@coderabbitai Test {marker}",
             custom_prefix="PREFIX",
-            custom_suffix="SUFFIX"
+            custom_suffix="SUFFIX",
         )
 
         message = config.generate_message()
@@ -86,7 +86,7 @@ class TestResolutionRequestConfig:
         config = ResolutionRequestConfig(
             resolved_marker="🔒 TEST 🔒",
             request_template="@coderabbitai Test {marker}",
-            include_context=False
+            include_context=False,
         )
 
         message = config.generate_message("This context should be ignored")
@@ -100,7 +100,7 @@ class TestResolutionRequestConfig:
             resolved_marker="🔒 TEST 🔒",
             request_template="@coderabbitai Test {marker}",
             max_comment_length=100,
-            include_context=True
+            include_context=True,
         )
 
         long_context = "x" * 200
@@ -115,7 +115,7 @@ class TestResolutionRequestConfig:
             resolved_marker="🔒 TEST 🔒",
             request_template="x" * 100,  # Very long template
             max_comment_length=50,
-            include_context=False
+            include_context=False,
         )
 
         with pytest.raises(InvalidCommentError):
@@ -176,8 +176,7 @@ class TestCommentPoster:
         self.mock_github_client.is_authenticated.return_value = True
 
         self.config = ResolutionRequestConfig(
-            resolved_marker="🔒 TEST 🔒",
-            request_template="@coderabbitai Test {marker}"
+            resolved_marker="🔒 TEST 🔒", request_template="@coderabbitai Test {marker}"
         )
 
         self.poster = CommentPoster(self.mock_github_client, self.config)
@@ -206,7 +205,7 @@ class TestCommentPoster:
         mock_response = {
             "id": 12345,
             "html_url": "https://github.com/owner/repo/pull/123#issuecomment-12345",
-            "created_at": "2023-01-01T00:00:00Z"
+            "created_at": "2023-01-01T00:00:00Z",
         }
         self.mock_github_client.post_comment.return_value = mock_response
 
@@ -254,13 +253,10 @@ class TestCommentPoster:
         pr_urls = [
             "https://github.com/owner/repo/pull/123",
             "https://github.com/owner/repo/pull/124",
-            "https://github.com/owner/repo/pull/125"
+            "https://github.com/owner/repo/pull/125",
         ]
 
-        context_per_url = {
-            pr_urls[0]: "Context for PR 123",
-            pr_urls[1]: "Context for PR 124"
-        }
+        context_per_url = {pr_urls[0]: "Context for PR 123", pr_urls[1]: "Context for PR 124"}
 
         # Mock successful responses
         self.mock_github_client.post_comment.return_value = {"id": 12345}
@@ -279,7 +275,7 @@ class TestCommentPoster:
         pr_urls = [
             "https://github.com/owner/repo/pull/123",
             "invalid-url",
-            "https://github.com/owner/repo/pull/125"
+            "https://github.com/owner/repo/pull/125",
         ]
 
         # Mock successful response for valid URLs
@@ -290,7 +286,7 @@ class TestCommentPoster:
         assert result["total_urls"] == 3
         assert result["success_count"] == 2
         assert result["failure_count"] == 1
-        assert result["success_rate"] == 2/3
+        assert result["success_rate"] == 2 / 3
         assert len(result["successful_posts"]) == 2
         assert len(result["failed_posts"]) == 1
         assert "invalid-url" in result["failed_posts"][0]["pr_url"]
@@ -330,10 +326,7 @@ class TestCommentPoster:
 
     def test_update_config(self):
         """Test configuration update."""
-        self.poster.update_config(
-            resolved_marker="🔒 UPDATED 🔒",
-            include_context=False
-        )
+        self.poster.update_config(resolved_marker="🔒 UPDATED 🔒", include_context=False)
 
         assert self.poster.config.resolved_marker == "🔒 UPDATED 🔒"
         assert self.poster.config.include_context is False
@@ -358,7 +351,7 @@ class TestCommentPoster:
         valid_urls = [
             "https://github.com/owner/repo/pull/123",
             "http://github.com/owner/repo/pull/456",
-            "https://www.github.com/owner/repo/pull/789"
+            "https://www.github.com/owner/repo/pull/789",
         ]
 
         for url in valid_urls:
@@ -397,7 +390,7 @@ class TestCommentPoster:
             "x" * 70000,  # Too long
             "Comment with @everyone mention",  # Problematic mention
             "Code ```block``` with ```unmatched marker",  # Unbalanced markdown
-            "Comment\n\n\n\nwith excessive newlines"  # Excessive blank lines
+            "Comment\n\n\n\nwith excessive newlines",  # Excessive blank lines
         ]
 
         for content in invalid_contents:
@@ -438,8 +431,7 @@ class TestResolutionRequestManager:
         self.mock_github_client.is_authenticated.return_value = True
 
         self.config = ResolutionRequestConfig(
-            resolved_marker="🔒 TEST 🔒",
-            request_template="@coderabbitai Test {marker}"
+            resolved_marker="🔒 TEST 🔒", request_template="@coderabbitai Test {marker}"
         )
 
         self.manager = ResolutionRequestManager(self.mock_github_client, self.config)
@@ -504,7 +496,9 @@ class TestResolutionRequestManager:
 
         self.mock_github_client.post_comment.return_value = {"id": 12345}
 
-        result = self.manager.request_resolution_for_comments(pr_url, comment_ids, include_summary=False)
+        result = self.manager.request_resolution_for_comments(
+            pr_url, comment_ids, include_summary=False
+        )
 
         assert result["success"] is True
         # Should not contain specific comment IDs when summary is disabled
@@ -585,10 +579,7 @@ class TestResolutionRequestManager:
 
     def test_update_poster_config(self):
         """Test updating poster configuration through manager."""
-        self.manager.update_poster_config(
-            resolved_marker="🔒 UPDATED 🔒",
-            include_context=False
-        )
+        self.manager.update_poster_config(resolved_marker="🔒 UPDATED 🔒", include_context=False)
 
         assert self.manager.poster.config.resolved_marker == "🔒 UPDATED 🔒"
         assert self.manager.poster.config.include_context is False
@@ -605,13 +596,13 @@ class TestCommentPostingIntegration:
         mock_github_client.post_comment.return_value = {
             "id": 98765,
             "html_url": "https://github.com/test/repo/pull/1#issuecomment-98765",
-            "created_at": "2023-12-01T10:00:00Z"
+            "created_at": "2023-12-01T10:00:00Z",
         }
 
         config = ResolutionRequestConfig(
             resolved_marker="🔒 INTEGRATION_TEST 🔒",
             custom_prefix="🤖 Automated Request:",
-            custom_suffix="Thank you for your attention!"
+            custom_suffix="Thank you for your attention!",
         )
 
         poster = CommentPoster(mock_github_client, config)
@@ -713,7 +704,7 @@ class TestCommentPostingIntegration:
             request_template="@coderabbitai Custom request: please verify and mark as {marker}",
             custom_prefix="🔍 Code Review Request",
             custom_suffix="Generated by automated system",
-            include_context=True
+            include_context=True,
         )
 
         poster = CommentPoster(mock_github_client, custom_config)
@@ -733,10 +724,7 @@ class TestCommentPostingIntegration:
         assert "Authentication module refactoring" in message
 
         # Test dynamic configuration updates
-        poster.update_config(
-            resolved_marker="🔐 UPDATED_MARKER 🔐",
-            include_context=False
-        )
+        poster.update_config(resolved_marker="🔐 UPDATED_MARKER 🔐", include_context=False)
 
         result2 = poster.post_resolution_request(pr_url, "This context should be ignored")
 

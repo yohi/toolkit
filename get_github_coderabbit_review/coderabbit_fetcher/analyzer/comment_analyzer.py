@@ -1,12 +1,18 @@
 """Comment analyzer for filtering and processing CodeRabbit comments."""
 
 import re
-from typing import Dict, List, Optional, Any, Tuple
 from datetime import datetime
+from typing import Any, Dict, List
 
-from ..models import AnalyzedComments, SummaryComment, ReviewComment, ActionableComment, ThreadContext, CommentMetadata
 from ..exceptions import CommentParsingError
-from ..processors import SummaryProcessor, ReviewProcessor
+from ..models import (
+    ActionableComment,
+    AnalyzedComments,
+    CommentMetadata,
+    ReviewComment,
+    SummaryComment,
+)
+from ..processors import ReviewProcessor, SummaryProcessor
 
 
 class CommentAnalyzer:
@@ -61,23 +67,26 @@ class CommentAnalyzer:
             )
 
             # Create metadata (will be properly initialized from CLI)
-            total_coderabbit = len(coderabbit_inline) + len(coderabbit_reviews) + len(coderabbit_pr_comments)
+            total_coderabbit = (
+                len(coderabbit_inline) + len(coderabbit_reviews) + len(coderabbit_pr_comments)
+            )
             total_threads = len(inline_threads) + len(review_threads)
-            unresolved_threads = sum(1 for t in inline_threads if not self.is_resolved(t)) \
-                               + sum(1 for t in review_threads if not self.is_resolved(t))
+            unresolved_threads = sum(1 for t in inline_threads if not self.is_resolved(t)) + sum(
+                1 for t in review_threads if not self.is_resolved(t)
+            )
             resolved = total_threads - unresolved_threads
 
             metadata = CommentMetadata(
                 pr_number=0,  # Will be set from CLI
                 pr_title="",  # Will be set from CLI
-                owner="",     # Will be set from CLI
-                repo="",      # Will be set from CLI
+                owner="",  # Will be set from CLI
+                repo="",  # Will be set from CLI
                 processed_at=datetime.now(),
                 total_comments=total_coderabbit,
                 coderabbit_comments=total_coderabbit,
                 resolved_comments=resolved,
                 actionable_comments=len(actionable_comments),
-                processing_time_seconds=0.0  # Will be calculated in CLI
+                processing_time_seconds=0.0,  # Will be calculated in CLI
             )
 
             # Convert unresolved comments to ReviewComment objects using ReviewProcessor
@@ -91,7 +100,7 @@ class CommentAnalyzer:
                     # Fallback to basic ReviewComment
                     review_comment = ReviewComment(
                         actionable_count=1,  # Each unresolved comment is considered actionable
-                        raw_content=comment.get("body", "")
+                        raw_content=comment.get("body", ""),
                     )
                     review_comments.append(review_comment)
 
@@ -115,10 +124,7 @@ class CommentAnalyzer:
         Returns:
             List of CodeRabbit comments only
         """
-        return [
-            comment for comment in comments
-            if self._is_coderabbit_comment(comment)
-        ]
+        return [comment for comment in comments if self._is_coderabbit_comment(comment)]
 
     def is_resolved(self, comment_thread: List[Dict[str, Any]]) -> bool:
         """Check if a comment thread is marked as resolved.
@@ -133,10 +139,7 @@ class CommentAnalyzer:
             return False
 
         # Sort comments by creation time to find the last one
-        sorted_comments = sorted(
-            comment_thread,
-            key=lambda c: c.get("created_at", "")
-        )
+        sorted_comments = sorted(comment_thread, key=lambda c: c.get("created_at", ""))
 
         # Check if the last CodeRabbit comment contains the resolved marker
         for comment in reversed(sorted_comments):
@@ -196,7 +199,9 @@ class CommentAnalyzer:
 
         return list(threads.values())
 
-    def _filter_unresolved_threads(self, threads: List[List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
+    def _filter_unresolved_threads(
+        self, threads: List[List[Dict[str, Any]]]
+    ) -> List[Dict[str, Any]]:
         """Filter out resolved comment threads.
 
         Args:
@@ -242,7 +247,9 @@ class CommentAnalyzer:
 
         return summary_comments
 
-    def _extract_actionable_comments(self, comments: List[Dict[str, Any]]) -> List[ActionableComment]:
+    def _extract_actionable_comments(
+        self, comments: List[Dict[str, Any]]
+    ) -> List[ActionableComment]:
         """Extract actionable comments that require developer attention.
 
         Args:
@@ -276,14 +283,16 @@ class CommentAnalyzer:
                 line_range = f"{line_number}" if line_number else "0"
                 issue_description = self._extract_issue_description(body)
 
-                actionable_comments.append(ActionableComment(
-                    comment_id=comment_id,
-                    file_path=file_path,
-                    line_range=line_range,
-                    issue_description=issue_description,
-                    priority=priority,
-                    raw_content=body
-                ))
+                actionable_comments.append(
+                    ActionableComment(
+                        comment_id=comment_id,
+                        file_path=file_path,
+                        line_range=line_range,
+                        issue_description=issue_description,
+                        priority=priority,
+                        raw_content=body,
+                    )
+                )
 
         return actionable_comments
 
@@ -300,26 +309,55 @@ class CommentAnalyzer:
 
         # Critical priority patterns
         critical_patterns = [
-            "security", "vulnerability", "critical", "urgent", "breaking",
-            "セキュリティ", "脆弱性", "重要", "緊急", "致命的"
+            "security",
+            "vulnerability",
+            "critical",
+            "urgent",
+            "breaking",
+            "セキュリティ",
+            "脆弱性",
+            "重要",
+            "緊急",
+            "致命的",
         ]
 
         # High priority patterns
         high_patterns = [
-            "error", "bug", "issue", "problem", "failure", "fix",
-            "エラー", "バグ", "問題", "不具合", "修正"
+            "error",
+            "bug",
+            "issue",
+            "problem",
+            "failure",
+            "fix",
+            "エラー",
+            "バグ",
+            "問題",
+            "不具合",
+            "修正",
         ]
 
         # Medium priority patterns
         medium_patterns = [
-            "improvement", "optimize", "refactor", "performance",
-            "改善", "最適化", "リファクタリング", "性能"
+            "improvement",
+            "optimize",
+            "refactor",
+            "performance",
+            "改善",
+            "最適化",
+            "リファクタリング",
+            "性能",
         ]
 
         # Low priority patterns
         low_patterns = [
-            "style", "formatting", "convention", "documentation",
-            "スタイル", "フォーマット", "規約", "ドキュメント"
+            "style",
+            "formatting",
+            "convention",
+            "documentation",
+            "スタイル",
+            "フォーマット",
+            "規約",
+            "ドキュメント",
         ]
 
         if any(pattern in body_lower for pattern in critical_patterns):
@@ -349,7 +387,7 @@ class CommentAnalyzer:
             r"(?:Please|Consider|Should|Need to|Must)\s+([^.!?]+)",
             r"(?:してください|考慮してください|すべきです|する必要があります)\s*([^。！？]+)",
             r"```suggestion\s*\n([^`]+)```",
-            r"<!-- suggestion_start -->.*?```suggestion\s*\n([^`]+)```.*?<!-- suggestion_end -->"
+            r"<!-- suggestion_start -->.*?```suggestion\s*\n([^`]+)```.*?<!-- suggestion_end -->",
         ]
 
         for pattern in action_patterns:
@@ -374,13 +412,17 @@ class CommentAnalyzer:
 
         if any(word in body_lower for word in ["refactor", "リファクタリング", "restructure"]):
             return "refactor"
-        elif any(word in body_lower for word in ["security", "セキュリティ", "vulnerability", "脆弱性"]):
+        elif any(
+            word in body_lower for word in ["security", "セキュリティ", "vulnerability", "脆弱性"]
+        ):
             return "security"
         elif any(word in body_lower for word in ["performance", "性能", "optimize", "最適化"]):
             return "performance"
         elif any(word in body_lower for word in ["style", "format", "スタイル", "フォーマット"]):
             return "style"
-        elif any(word in body_lower for word in ["documentation", "ドキュメント"]) and not any(word in body_lower for word in ["comment", "コメント"]):
+        elif any(word in body_lower for word in ["documentation", "ドキュメント"]) and not any(
+            word in body_lower for word in ["comment", "コメント"]
+        ):
             return "documentation"
         else:
             return "general"
@@ -396,18 +438,19 @@ class CommentAnalyzer:
         """
         # Remove HTML/markdown formatting
         import re
-        clean_body = re.sub(r'<[^>]+>', '', body)
-        clean_body = re.sub(r'\*{1,2}([^*]+)\*{1,2}', r'\1', clean_body)
-        clean_body = re.sub(r'`([^`]+)`', r'\1', clean_body)
+
+        clean_body = re.sub(r"<[^>]+>", "", body)
+        clean_body = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", clean_body)
+        clean_body = re.sub(r"`([^`]+)`", r"\1", clean_body)
 
         # Split into sentences and find the first meaningful one
-        sentences = re.split(r'[.!?]\s+', clean_body.strip())
+        sentences = re.split(r"[.!?]\s+", clean_body.strip())
 
         for sentence in sentences:
             sentence = sentence.strip()
             # Skip very short sentences or common prefixes
-            if len(sentence) > 20 and not sentence.startswith('_') and not sentence.startswith('<'):
-                return sentence[:100] + '...' if len(sentence) > 100 else sentence
+            if len(sentence) > 20 and not sentence.startswith("_") and not sentence.startswith("<"):
+                return sentence[:100] + "..." if len(sentence) > 100 else sentence
 
         # Fallback to first 100 characters
-        return clean_body[:100] + '...' if len(clean_body) > 100 else clean_body
+        return clean_body[:100] + "..." if len(clean_body) > 100 else clean_body

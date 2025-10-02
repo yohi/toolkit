@@ -3,14 +3,14 @@
 
 import json
 import sys
-from pathlib import Path
 from datetime import datetime
+from pathlib import Path
 
 # Add the project root to Python path
 project_root = Path(__file__).parent
 sys.path.insert(0, str(project_root))
 
-from coderabbit_fetcher.github_client import GitHubClient, GitHubAPIError
+from coderabbit_fetcher.github_client import GitHubClient
 
 
 def demo_comment_posting():
@@ -39,7 +39,7 @@ def demo_comment_posting():
     # Show what the API call would look like
     print("\n🔧 API Implementation Details:")
     print(f"   Endpoint: POST /repos/{owner}/{repo}/issues/{pr_number}/comments")
-    print(f"   Method: gh api with JSON input")
+    print("   Method: gh api with JSON input")
     print(f"   Payload: {json.dumps({'body': demo_comment}, indent=2)}")
 
     # Show expected response structure
@@ -51,7 +51,7 @@ def demo_comment_posting():
         "created_at": "ISO timestamp",
         "updated_at": "ISO timestamp",
         "user": "Username who posted",
-        "node_id": "GraphQL node ID"
+        "node_id": "GraphQL node ID",
     }
 
     for key, description in expected_response.items():
@@ -97,26 +97,22 @@ def demo_error_handling():
     print("=" * 25)
 
     error_scenarios = [
-        {
-            "scenario": "Invalid PR URL",
-            "example": "not-a-url",
-            "exception": "InvalidPRUrlError"
-        },
+        {"scenario": "Invalid PR URL", "example": "not-a-url", "exception": "InvalidPRUrlError"},
         {
             "scenario": "API timeout",
             "example": "Network timeout during API call",
-            "exception": "GitHubAPIError"
+            "exception": "GitHubAPIError",
         },
         {
             "scenario": "JSON parse error",
             "example": "Malformed API response",
-            "exception": "GitHubAPIError"
+            "exception": "GitHubAPIError",
         },
         {
             "scenario": "Authentication failure",
             "example": "GitHub CLI not authenticated",
-            "exception": "GitHubAuthenticationError"
-        }
+            "exception": "GitHubAuthenticationError",
+        },
     ]
 
     print("🛡️  Robust error handling for:")
@@ -135,7 +131,8 @@ def show_migration_guide():
     print("=" * 35)
 
     print("🔴 OLD Implementation (Fragile):")
-    print("""
+    print(
+        """
     # gh pr comment command with text parsing
     result = subprocess.run([
         "gh", "pr", "comment", str(pr_number),
@@ -157,10 +154,12 @@ def show_migration_guide():
         id_match = re.search(r'#issuecomment-(\\d+)', comment_url)
         if id_match:
             comment_id = int(id_match.group(1))
-    """)
+    """
+    )
 
     print("\n🟢 NEW Implementation (Robust):")
-    print("""
+    print(
+        """
     # GitHub REST API with JSON
     api_data = json.dumps({"body": comment})
 
@@ -184,7 +183,8 @@ def show_migration_guide():
         "user": comment_data.get("user", {}).get("login"),
         "node_id": comment_data.get("node_id")
     }
-    """)
+    """
+    )
 
     print("\n✅ Key Improvements:")
     improvements = [
@@ -193,7 +193,7 @@ def show_migration_guide():
         "✓ Structured JSON response handling",
         "✓ Better error messages and debugging",
         "✓ Future-proof against CLI changes",
-        "✓ Consistent with GitHub API standards"
+        "✓ Consistent with GitHub API standards",
     ]
 
     for improvement in improvements:
@@ -206,7 +206,7 @@ def main():
         demo_comment_posting,
         demo_comment_retrieval,
         demo_error_handling,
-        show_migration_guide
+        show_migration_guide,
     ]
 
     success_count = 0

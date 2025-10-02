@@ -13,27 +13,27 @@ graph TB
     CLI[Command Line Interface] --> Parser[Argument Parser]
     Parser --> Fetcher[Comment Fetcher]
     Parser --> PersonaLoader[Persona Loader]
-    
+
     Fetcher --> GitHubCLI[GitHub CLI Wrapper]
     GitHubCLI --> GitHub[GitHub API]
-    
+
     Fetcher --> Analyzer[Comment Analyzer]
     Analyzer --> SummaryProcessor[Summary Processor]
     Analyzer --> ReviewProcessor[Review Processor]
     Analyzer --> ThreadProcessor[Thread Processor]
-    
+
     PersonaLoader --> DefaultPersona[Default Persona Generator]
     PersonaLoader --> FilePersona[File Persona Loader]
-    
+
     Analyzer --> Formatter[Output Formatter]
     PersonaLoader --> Formatter
-    
+
     Formatter --> MarkdownFormatter[Markdown Formatter]
     Formatter --> JSONFormatter[JSON Formatter]
     Formatter --> PlainTextFormatter[Plain Text Formatter]
-    
+
     Formatter --> Output[Formatted Output]
-    
+
     CLI --> CommentPoster[Comment Poster]
     CommentPoster --> GitHubCLI
 ```
@@ -56,7 +56,7 @@ class CodeRabbitFetcher:
     def __init__(self):
         self.parser = ArgumentParser()
         self.setup_arguments()
-    
+
     def setup_arguments(self):
         # PR URL (required)
         # Persona file (optional)
@@ -64,7 +64,7 @@ class CodeRabbitFetcher:
         # Resolved marker (optional, default: 🔒 CODERABBIT_RESOLVED 🔒)
         # Request resolution (optional flag)
         pass
-    
+
     def run(self, args: List[str]) -> int:
         # Main execution flow
         pass
@@ -76,19 +76,19 @@ class CodeRabbitFetcher:
 class GitHubClient:
     def __init__(self):
         self.check_authentication()
-    
+
     def check_authentication(self) -> bool:
         # Verify gh CLI is authenticated
         pass
-    
+
     def fetch_pr_comments(self, pr_url: str) -> Dict[str, Any]:
         # Execute: gh pr view <url> --comments --json
         pass
-    
+
     def post_comment(self, pr_url: str, comment: str) -> bool:
         # Execute: gh pr comment <url> --body <comment>
         pass
-    
+
     def parse_pr_url(self, url: str) -> Tuple[str, str, int]:
         # Extract owner, repo, pr_number from URL
         pass
@@ -103,17 +103,17 @@ class CommentAnalyzer:
         self.summary_processor = SummaryProcessor()
         self.review_processor = ReviewProcessor()
         self.thread_processor = ThreadProcessor()
-    
+
     def analyze_comments(self, comments_data: Dict) -> AnalyzedComments:
         # Filter CodeRabbit comments
         # Categorize comment types
         # Process threads and resolution status
         pass
-    
+
     def filter_coderabbit_comments(self, comments: List[Dict]) -> List[Dict]:
         # Filter by author: "coderabbitai"
         pass
-    
+
     def is_resolved(self, comment_thread: List[Dict]) -> bool:
         # Check for resolved marker in last CodeRabbit reply
         pass
@@ -131,10 +131,10 @@ class SummaryProcessor:
         # Extract walkthrough and changes table
         # Handle sequence diagrams
         pass
-    
+
     def extract_changes_table(self, content: str) -> List[ChangeEntry]:
         pass
-    
+
     def extract_sequence_diagram(self, content: str) -> Optional[str]:
         pass
 ```
@@ -149,16 +149,16 @@ class ReviewProcessor:
         # Process outside diff range comments
         # Handle AI agent prompts
         pass
-    
+
     def extract_actionable_comments(self, content: str) -> List[ActionableComment]:
         pass
-    
+
     def extract_nitpick_comments(self, content: str) -> List[NitpickComment]:
         pass
-    
+
     def extract_outside_diff_comments(self, content: str) -> List[OutsideDiffComment]:
         pass
-    
+
     def extract_ai_agent_prompts(self, content: str) -> List[AIAgentPrompt]:
         pass
 ```
@@ -173,7 +173,7 @@ class ThreadProcessor:
         # Determine resolution status
         # Generate contextual information for AI
         pass
-    
+
     def build_thread_context(self, comments: List[Dict]) -> ThreadContext:
         pass
 ```
@@ -184,12 +184,12 @@ class ThreadProcessor:
 class PersonaManager:
     def __init__(self):
         self.default_persona_generator = DefaultPersonaGenerator()
-    
+
     def load_persona(self, persona_file: Optional[str]) -> str:
         if persona_file:
             return self.load_from_file(persona_file)
         return self.default_persona_generator.generate()
-    
+
     def load_from_file(self, file_path: str) -> str:
         # Read and validate persona file
         pass
@@ -210,11 +210,11 @@ class BaseFormatter(ABC):
     @abstractmethod
     def format(self, persona: str, analyzed_comments: AnalyzedComments) -> str:
         pass
-    
+
     def format_ai_agent_prompt(self, prompt: AIAgentPrompt) -> str:
         # Special handling for AI agent code blocks
         pass
-    
+
     def format_thread_context(self, thread: ThreadContext) -> str:
         # Claude 4 best practices structured format
         pass
@@ -229,19 +229,19 @@ class MarkdownFormatter(BaseFormatter):
         # Visually distinguish comment types
         # Preserve AI agent prompts as-is
         pass
-    
+
     def format_summary_section(self, summary: SummaryComment) -> str:
         pass
-    
+
     def format_review_section(self, review: ReviewComment) -> str:
         pass
-    
+
     def format_actionable_comments(self, comments: List[ActionableComment]) -> str:
         pass
-    
+
     def format_nitpick_comments(self, comments: List[NitpickComment]) -> str:
         pass
-    
+
     def format_outside_diff_comments(self, comments: List[OutsideDiffComment]) -> str:
         pass
 ```
@@ -261,11 +261,11 @@ class JSONFormatter(BaseFormatter):
 class CommentPoster:
     def __init__(self, github_client: GitHubClient):
         self.github_client = github_client
-    
+
     def post_resolution_request(self, pr_url: str, resolved_marker: str) -> bool:
         comment = self.generate_resolution_request(resolved_marker)
         return self.github_client.post_comment(pr_url, comment)
-    
+
     def generate_resolution_request(self, resolved_marker: str) -> str:
         return f"@coderabbitai Please verify HEAD and add resolved marker {resolved_marker} if there are no issues"
 ```

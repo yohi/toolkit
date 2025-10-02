@@ -5,15 +5,15 @@ This module handles parsing command line arguments and orchestrating the
 main execution flow of the CodeRabbit Comment Fetcher.
 """
 
-import json
 from pathlib import Path
 from typing import Optional
 
 from rich.console import Console
-from ..github.client import GitHubClient
+
 from ..analyzer.comment_analyzer import CommentAnalyzer
-from ..persona.manager import PersonaManager
 from ..formatters.factory import FormatterFactory
+from ..github.client import GitHubClient
+from ..persona.manager import PersonaManager
 
 console = Console()
 
@@ -67,17 +67,20 @@ class ArgumentParser:
         # Validate persona file if provided
         if persona_file and not persona_file.is_file():
             from ..exceptions import PersonaFileError
+
             raise PersonaFileError(f"Persona file not found: {persona_file}")
 
         # Validate output format (expects normalized format)
         allowed_formats = {"markdown", "json", "plain"}
         if output_format not in allowed_formats:
             from ..exceptions import CodeRabbitFetcherError
+
             raise CodeRabbitFetcherError(f"Unsupported output_format: {output_format}")
 
         # Validate resolved marker
         if not resolved_marker.strip():
             from ..exceptions import CodeRabbitFetcherError
+
             raise CodeRabbitFetcherError("Resolved marker cannot be empty")
 
     def parse_and_execute(
@@ -122,6 +125,7 @@ class ArgumentParser:
         # Check GitHub CLI authentication
         if not self.github_client.check_authentication():
             from ..exceptions import GitHubAuthenticationError
+
             raise GitHubAuthenticationError(
                 "GitHub CLI is not authenticated. Please run 'gh auth login' first."
             )
@@ -136,9 +140,7 @@ class ArgumentParser:
         if verbose:
             console.print("🔍 [blue]Analyzing CodeRabbit comments...[/blue]")
 
-        analyzed_comments = self.comment_analyzer.analyze_comments(
-            comments_data, resolved_marker
-        )
+        analyzed_comments = self.comment_analyzer.analyze_comments(comments_data, resolved_marker)
 
         # Load persona
         if verbose:
@@ -175,6 +177,7 @@ class ArgumentParser:
                 console.print("📤 [blue]Posting resolution request...[/blue]")
 
             from ..github.comment_poster import CommentPoster
+
             poster = CommentPoster(self.github_client)
             success = poster.post_resolution_request(pr_url, resolved_marker)
 

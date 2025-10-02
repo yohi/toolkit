@@ -3,9 +3,9 @@ Metadata for comment analysis results.
 """
 
 from datetime import datetime, timezone
-from typing import Dict, List
 
 from pydantic import Field
+
 from .base import BaseCodeRabbitModel
 
 
@@ -26,7 +26,7 @@ class CommentMetadata(BaseCodeRabbitModel):
     resolved_comments: int
     actionable_comments: int
     processing_time_seconds: float
-    
+
     @property
     def resolution_rate(self) -> float:
         """Calculate the resolution rate of CodeRabbit comments.

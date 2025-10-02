@@ -1,23 +1,15 @@
 """Comprehensive input validation and error handling utilities."""
 
-import re
+import logging
 import os
+import re
 import sys
 import time
-import logging
 import urllib.parse
-from pathlib import Path
-from typing import Dict, List, Optional, Any, Union, Callable
 from dataclasses import dataclass
 from functools import wraps
-
-from .exceptions import (
-    CodeRabbitFetcherError,
-    InvalidPRUrlError,
-    PersonaFileError,
-    GitHubAuthenticationError
-)
-
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Union
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +17,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ValidationResult:
     """Result of validation operation."""
+
     valid: bool
     issues: List[str] = None
     warnings: List[str] = None
@@ -54,7 +47,7 @@ class ValidationResult:
         """Add a validation suggestion."""
         self.suggestions.append(message)
 
-    def merge(self, other: 'ValidationResult') -> None:
+    def merge(self, other: "ValidationResult") -> None:
         """Merge another validation result into this one."""
         if not other.valid:
             self.valid = False
@@ -69,12 +62,10 @@ class URLValidator:
 
     # GitHub URL patterns
     GITHUB_PR_PATTERN = re.compile(
-        r'^https://github\.com/([a-zA-Z0-9._-]+)/([a-zA-Z0-9._-]+)/pull/(\d+)(?:/.*)?$'
+        r"^https://github\.com/([a-zA-Z0-9._-]+)/([a-zA-Z0-9._-]+)/pull/(\d+)(?:/.*)?$"
     )
 
-    GITHUB_DOMAIN_PATTERN = re.compile(
-        r'^(https?://)?(www\.)?github\.com$'
-    )
+    GITHUB_DOMAIN_PATTERN = re.compile(r"^(https?://)?(www\.)?github\.com$")
 
     def __init__(self):
         self.timeout = 10  # seconds for connectivity checks
@@ -102,16 +93,16 @@ class URLValidator:
         url = url.strip()
 
         # Protocol validation
-        if not url.startswith(('http://', 'https://')):
+        if not url.startswith(("http://", "https://")):
             result.add_issue("URL must start with http:// or https://")
             result.add_suggestion("Use: https://github.com/owner/repo/pull/123")
             return result
 
         # Recommend HTTPS
-        if url.startswith('http://'):
+        if url.startswith("http://"):
             result.add_warning("HTTP URLs are not recommended, use HTTPS")
             # Auto-correct to HTTPS
-            url = url.replace('http://', 'https://', 1)
+            url = url.replace("http://", "https://", 1)
             result.add_suggestion(f"Corrected URL: {url}")
 
         # Parse URL components
@@ -147,21 +138,15 @@ class URLValidator:
         result.merge(pr_validation)
 
         # Store parsed components
-        result.details.update({
-            "owner": owner,
-            "repo": repo,
-            "pr_number": int(pr_number),
-            "normalized_url": url
-        })
+        result.details.update(
+            {"owner": owner, "repo": repo, "pr_number": int(pr_number), "normalized_url": url}
+        )
 
         return result
 
     def _is_github_domain(self, domain: str) -> bool:
         """Check if domain is a valid GitHub domain."""
-        valid_domains = [
-            'github.com',
-            'www.github.com'
-        ]
+        valid_domains = ["github.com", "www.github.com"]
         return domain.lower() in valid_domains
 
     def _validate_github_identifier(self, identifier: str, type_name: str) -> ValidationResult:
@@ -177,23 +162,27 @@ class URLValidator:
             result.add_issue(f"GitHub {type_name} cannot exceed 39 characters")
 
         # Character validation - different patterns for owner vs repository
-        if type_name.lower() == 'owner':
+        if type_name.lower() == "owner":
             # Stricter pattern for owners: alphanumeric with single hyphens, no leading/trailing/consecutive hyphens
-            if not re.match(r'^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$', identifier):
+            if not re.match(r"^[A-Za-z0-9]+(-[A-Za-z0-9]+)*$", identifier):
                 result.add_issue(f"GitHub {type_name} contains invalid characters")
-                result.add_suggestion("Owner names can only contain letters, numbers, and single hyphens (no leading/trailing/consecutive hyphens)")
+                result.add_suggestion(
+                    "Owner names can only contain letters, numbers, and single hyphens (no leading/trailing/consecutive hyphens)"
+                )
         else:
             # Existing pattern for repositories: allow dots, underscores
-            if not re.match(r'^[A-Za-z0-9._-]+$', identifier):
+            if not re.match(r"^[A-Za-z0-9._-]+$", identifier):
                 result.add_issue(f"GitHub {type_name} contains invalid characters")
-                result.add_suggestion("Repository names can contain letters, numbers, dots, hyphens, and underscores")
+                result.add_suggestion(
+                    "Repository names can contain letters, numbers, dots, hyphens, and underscores"
+                )
 
         # Cannot start/end with special characters
-        if identifier.startswith(('.', '-')) or identifier.endswith(('.', '-')):
+        if identifier.startswith((".", "-")) or identifier.endswith((".", "-")):
             result.add_issue(f"GitHub {type_name} cannot start or end with dots or hyphens")
 
         # Reserved names
-        reserved_names = ['api', 'www', 'github', 'help', 'status', 'blog']
+        reserved_names = ["api", "www", "github", "help", "status", "blog"]
         if identifier.lower() in reserved_names:
             result.add_warning(f"'{identifier}' is a reserved GitHub name")
 
@@ -220,7 +209,7 @@ class FileValidator:
 
     def __init__(self):
         self.max_file_size = 10 * 1024 * 1024  # 10MB
-        self.allowed_persona_extensions = {'.txt', '.md', '.text'}
+        self.allowed_persona_extensions = {".txt", ".md", ".text"}
 
     def validate_persona_file(self, file_path: str) -> ValidationResult:
         """Validate persona file comprehensively.
@@ -258,7 +247,9 @@ class FileValidator:
         # Extension validation
         if path.suffix.lower() not in self.allowed_persona_extensions:
             result.add_warning(f"Unusual file extension: {path.suffix}")
-            result.add_suggestion(f"Recommended extensions: {', '.join(self.allowed_persona_extensions)}")
+            result.add_suggestion(
+                f"Recommended extensions: {', '.join(self.allowed_persona_extensions)}"
+            )
 
         # Permissions check
         if not os.access(path, os.R_OK):
@@ -272,29 +263,31 @@ class FileValidator:
             if file_size == 0:
                 result.add_warning("Persona file is empty")
             elif file_size > self.max_file_size:
-                result.add_issue(f"Persona file too large: {file_size} bytes (max: {self.max_file_size})")
+                result.add_issue(
+                    f"Persona file too large: {file_size} bytes (max: {self.max_file_size})"
+                )
 
-            result.details['file_size'] = file_size
+            result.details["file_size"] = file_size
         except OSError as e:
             result.add_warning(f"Could not check file size: {e}")
 
         # Content validation
         try:
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, encoding="utf-8") as f:
                 content = f.read(1024)  # Read first 1KB for validation
 
                 # Check for binary content
-                if '\x00' in content:
+                if "\x00" in content:
                     result.add_issue("File appears to be binary, not text")
                     return result
 
                 # Check encoding
                 try:
-                    content.encode('utf-8')
+                    content.encode("utf-8")
                 except UnicodeEncodeError:
                     result.add_warning("File contains non-UTF-8 characters")
 
-                result.details['preview'] = content[:200]  # Store preview
+                result.details["preview"] = content[:200]  # Store preview
 
         except UnicodeDecodeError:
             result.add_issue("File is not valid UTF-8 text")
@@ -355,11 +348,11 @@ class FileValidator:
 
         # File extension validation
         if path.suffix:
-            common_extensions = {'.md', '.json', '.txt', '.html'}
+            common_extensions = {".md", ".json", ".txt", ".html"}
             if path.suffix.lower() not in common_extensions:
                 result.add_warning(f"Unusual output file extension: {path.suffix}")
 
-        result.details['resolved_path'] = str(path)
+        result.details["resolved_path"] = str(path)
         return result
 
 
@@ -367,8 +360,8 @@ class OptionsValidator:
     """Validate command-line options and configuration."""
 
     def __init__(self):
-        self.valid_formats = {'markdown', 'json', 'plain'}
-        self.valid_log_levels = {'DEBUG', 'INFO', 'WARNING', 'ERROR'}
+        self.valid_formats = {"markdown", "json", "plain"}
+        self.valid_log_levels = {"DEBUG", "INFO", "WARNING", "ERROR"}
 
     def validate_output_format(self, format_name: str) -> ValidationResult:
         """Validate output format option."""
@@ -402,10 +395,12 @@ class OptionsValidator:
         elif timeout_val > 600:  # 10 minutes
             result.add_warning("Very long timeout specified")
 
-        result.details['timeout_seconds'] = timeout_val
+        result.details["timeout_seconds"] = timeout_val
         return result
 
-    def validate_retry_settings(self, attempts: Union[int, str], delay: Union[int, float, str]) -> ValidationResult:
+    def validate_retry_settings(
+        self, attempts: Union[int, str], delay: Union[int, float, str]
+    ) -> ValidationResult:
         """Validate retry configuration."""
         result = ValidationResult(valid=True)
 
@@ -433,10 +428,7 @@ class OptionsValidator:
         elif delay_val > 60:  # 1 minute
             result.add_warning("Very long retry delay specified")
 
-        result.details.update({
-            'retry_attempts': attempts_val,
-            'retry_delay': delay_val
-        })
+        result.details.update({"retry_attempts": attempts_val, "retry_delay": delay_val})
 
         return result
 
@@ -456,22 +448,26 @@ class OptionsValidator:
             result.add_warning("Very long resolved marker may be unwieldy")
 
         # Check for special characters (good for uniqueness)
-        special_chars = set('🔒🎯✅❌⚠️💡🔧📝📊🚀')
+        special_chars = set("🔒🎯✅❌⚠️💡🔧📝📊🚀")
         marker_chars = set(marker)
 
         if not marker_chars.intersection(special_chars):
-            result.add_suggestion("Consider adding special characters (🔒, ✅, etc.) for better uniqueness")
+            result.add_suggestion(
+                "Consider adding special characters (🔒, ✅, etc.) for better uniqueness"
+            )
 
         # Check for common words that might cause false positives
-        common_words = ['resolved', 'done', 'fixed', 'complete', 'finished']
+        common_words = ["resolved", "done", "fixed", "complete", "finished"]
         marker_lower = marker.lower()
 
         conflicting_words = [word for word in common_words if word in marker_lower]
         if conflicting_words:
-            result.add_warning(f"Marker contains common words that may cause false positives: {', '.join(conflicting_words)}")
+            result.add_warning(
+                f"Marker contains common words that may cause false positives: {', '.join(conflicting_words)}"
+            )
 
-        result.details['marker_length'] = len(marker)
-        result.details['special_char_count'] = len(marker_chars.intersection(special_chars))
+        result.details["marker_length"] = len(marker)
+        result.details["special_char_count"] = len(marker_chars.intersection(special_chars))
 
         return result
 
@@ -481,7 +477,7 @@ def retry_on_failure(
     delay: float = 1.0,
     backoff_factor: float = 2.0,
     jitter: float = 0.0,
-    exceptions: tuple = (Exception,)
+    exceptions: tuple = (Exception,),
 ) -> Callable:
     """Decorator for adding retry logic to functions.
 
@@ -495,6 +491,7 @@ def retry_on_failure(
     Returns:
         Decorated function with retry logic
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -510,7 +507,9 @@ def retry_on_failure(
 
                     if attempt == validated_max_attempts:
                         # Last attempt failed, log with stack trace and re-raise
-                        logger.exception(f"Function {func.__name__} failed after {validated_max_attempts} attempts")
+                        logger.exception(
+                            f"Function {func.__name__} failed after {validated_max_attempts} attempts"
+                        )
                         raise last_exception
 
                     # Calculate delay with exponential backoff
@@ -519,12 +518,15 @@ def retry_on_failure(
                     # Apply jitter to avoid thundering herd
                     if jitter > 0:
                         import random
+
                         current_delay += random.uniform(-jitter, jitter)
                         # Ensure delay is not negative
                         current_delay = max(0, current_delay)
 
-                    logger.warning(f"Function {func.__name__} failed (attempt {attempt}/{validated_max_attempts}): {e}. "
-                                 f"Retrying in {current_delay:.1f}s...")
+                    logger.warning(
+                        f"Function {func.__name__} failed (attempt {attempt}/{validated_max_attempts}): {e}. "
+                        f"Retrying in {current_delay:.1f}s..."
+                    )
 
                     time.sleep(current_delay)
 
@@ -533,9 +535,12 @@ def retry_on_failure(
             if last_exception:
                 raise last_exception
             else:
-                raise RuntimeError(f"Function {func.__name__} completed without success or exception")
+                raise RuntimeError(
+                    f"Function {func.__name__} completed without success or exception"
+                )
 
         return wrapper
+
     return decorator
 
 
@@ -548,6 +553,7 @@ def timeout_handler(timeout_seconds: float) -> Callable:
     Returns:
         Decorated function with timeout handling
     """
+
     def decorator(func: Callable) -> Callable:
         @wraps(func)
         def wrapper(*args, **kwargs):
@@ -580,6 +586,7 @@ def timeout_handler(timeout_seconds: float) -> Callable:
                 signal.signal(signal.SIGALRM, old_handler)
 
         return wrapper
+
     return decorator
 
 
@@ -603,40 +610,42 @@ class ValidationSuite:
         result = ValidationResult(valid=True)
 
         # Validate PR URL
-        if 'pr_url' in config:
-            url_result = self.url_validator.validate_pr_url(config['pr_url'])
+        if "pr_url" in config:
+            url_result = self.url_validator.validate_pr_url(config["pr_url"])
             result.merge(url_result)
 
         # Validate persona file
-        if 'persona_file' in config:
-            file_result = self.file_validator.validate_persona_file(config['persona_file'])
+        if "persona_file" in config:
+            file_result = self.file_validator.validate_persona_file(config["persona_file"])
             result.merge(file_result)
 
         # Validate output file
-        if 'output_file' in config:
-            output_result = self.file_validator.validate_output_path(config['output_file'])
+        if "output_file" in config:
+            output_result = self.file_validator.validate_output_path(config["output_file"])
             result.merge(output_result)
 
         # Validate output format
-        if 'output_format' in config:
-            format_result = self.options_validator.validate_output_format(config['output_format'])
+        if "output_format" in config:
+            format_result = self.options_validator.validate_output_format(config["output_format"])
             result.merge(format_result)
 
         # Validate timeout
-        if 'timeout_seconds' in config:
-            timeout_result = self.options_validator.validate_timeout(config['timeout_seconds'])
+        if "timeout_seconds" in config:
+            timeout_result = self.options_validator.validate_timeout(config["timeout_seconds"])
             result.merge(timeout_result)
 
         # Validate retry settings
-        if 'retry_attempts' in config and 'retry_delay' in config:
+        if "retry_attempts" in config and "retry_delay" in config:
             retry_result = self.options_validator.validate_retry_settings(
-                config['retry_attempts'], config['retry_delay']
+                config["retry_attempts"], config["retry_delay"]
             )
             result.merge(retry_result)
 
         # Validate resolved marker
-        if 'resolved_marker' in config:
-            marker_result = self.options_validator.validate_resolved_marker(config['resolved_marker'])
+        if "resolved_marker" in config:
+            marker_result = self.options_validator.validate_resolved_marker(
+                config["resolved_marker"]
+            )
             result.merge(marker_result)
 
         return result

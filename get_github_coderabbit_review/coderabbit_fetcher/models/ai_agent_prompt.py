@@ -49,7 +49,7 @@ class AIAgentPrompt(BaseCodeRabbitModel):
             return "java"
         elif any(keyword in code for keyword in ["#include", "int main", "std::"]):
             return "cpp"
-        elif any(keyword in code for keyword in ["func ", "package ", "import \""]):
+        elif any(keyword in code for keyword in ["func ", "package ", 'import "']):
             return "go"
 
         return None
@@ -63,10 +63,10 @@ class AIAgentPrompt(BaseCodeRabbitModel):
         """
         if not self.code_block or self.language is None:
             return False
-            
+
         stripped_code = self.code_block.strip()
-        non_empty_lines = [line for line in stripped_code.split('\n') if line.strip()]
-        
+        non_empty_lines = [line for line in stripped_code.split("\n") if line.strip()]
+
         # 完全な提案と判定する条件:
         # - 複数の非空行がある、または
         # - 単一行でも20文字以上の有効なコード

@@ -1,30 +1,33 @@
 """Comment posting functionality for CodeRabbit resolution requests."""
 
-from typing import Dict, List, Optional, Any, Union
 from dataclasses import dataclass
-from urllib.parse import urlparse
 
 # "GitHubClient" import will be added in Task 12 when CLI is implemented
 # For now, we use typing.TYPE_CHECKING to avoid import errors in tests
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+from urllib.parse import urlparse
 
 if TYPE_CHECKING:
     from .github_client import GitHubClient
+
 from .exceptions import CodeRabbitFetcherError
 
 
 class CommentPostingError(CodeRabbitFetcherError):
     """Exception raised when comment posting fails."""
+
     pass
 
 
 class InvalidCommentError(CodeRabbitFetcherError):
     """Exception raised when comment content is invalid."""
+
     pass
 
 
 class PRUrlValidationError(CodeRabbitFetcherError):
     """Exception raised when PR URL validation fails."""
+
     pass
 
 
@@ -40,7 +43,9 @@ class ResolutionRequestConfig:
     resolved_marker: str = "🔒 CODERABBIT_RESOLVED 🔒"
 
     # Template for resolution request message
-    request_template: str = "@coderabbitai Please verify HEAD and add resolved marker {marker} if there are no issues"
+    request_template: str = (
+        "@coderabbitai Please verify HEAD and add resolved marker {marker} if there are no issues"
+    )
 
     # Additional context to include in requests
     include_context: bool = True
@@ -87,20 +92,24 @@ class ResolutionRequestConfig:
         if len(full_message) > self.max_comment_length:
             # Truncate context if message is too long
             if self.include_context and additional_context:
-                available_space = (self.max_comment_length -
-                                 len(main_message) -
-                                 len(self.custom_prefix or "") -
-                                 len(self.custom_suffix or "") -
-                                 20)  # Buffer for formatting
+                available_space = (
+                    self.max_comment_length
+                    - len(main_message)
+                    - len(self.custom_prefix or "")
+                    - len(self.custom_suffix or "")
+                    - 20
+                )  # Buffer for formatting
 
                 if available_space > 50:  # Minimum useful context size
-                    truncated_context = additional_context[:available_space-3] + "..."
+                    truncated_context = additional_context[: available_space - 3] + "..."
                     return self.generate_message(truncated_context)
                 else:
                     # Remove context entirely
                     return self.generate_message("")
             else:
-                raise InvalidCommentError(f"Comment too long: {len(full_message)} > {self.max_comment_length}")
+                raise InvalidCommentError(
+                    f"Comment too long: {len(full_message)} > {self.max_comment_length}"
+                )
 
         return full_message
 
@@ -125,16 +134,15 @@ class ResolutionRequestConfig:
         if "@" in self.resolved_marker and "github" in self.resolved_marker.lower():
             issues.append("Resolved marker should not contain GitHub mentions")
 
-        return {
-            "valid": len(issues) == 0,
-            "issues": issues
-        }
+        return {"valid": len(issues) == 0, "issues": issues}
 
 
 class CommentPoster:
     """Handles posting resolution request comments to GitHub."""
 
-    def __init__(self, github_client: "GitHubClient", config: Optional[ResolutionRequestConfig] = None):
+    def __init__(
+        self, github_client: "GitHubClient", config: Optional[ResolutionRequestConfig] = None
+    ):
         """Initialize comment poster.
 
         Args:
@@ -187,7 +195,7 @@ class CommentPoster:
                     and "Context:" in comment_message
                 ),
                 "message_length": len(comment_message),
-                "posted_at": result.get("created_at")
+                "posted_at": result.get("created_at"),
             }
 
         except Exception as e:
@@ -207,8 +215,9 @@ class CommentPoster:
         """
         return self.config.generate_message(additional_context)
 
-    def batch_post_resolution_requests(self, pr_urls: List[str],
-                                     context_per_url: Optional[Dict[str, str]] = None) -> Dict[str, Any]:
+    def batch_post_resolution_requests(
+        self, pr_urls: List[str], context_per_url: Optional[Dict[str, str]] = None
+    ) -> Dict[str, Any]:
         """Post resolution requests to multiple pull requests.
 
         Args:
@@ -223,7 +232,7 @@ class CommentPoster:
             "failed_posts": [],
             "total_urls": len(pr_urls),
             "success_count": 0,
-            "failure_count": 0
+            "failure_count": 0,
         }
 
         for pr_url in pr_urls:
@@ -234,15 +243,13 @@ class CommentPoster:
                 results["success_count"] += 1
 
             except (CommentPostingError, PRUrlValidationError) as e:
-                failed_result = {
-                    "pr_url": pr_url,
-                    "error": str(e),
-                    "error_type": type(e).__name__
-                }
+                failed_result = {"pr_url": pr_url, "error": str(e), "error_type": type(e).__name__}
                 results["failed_posts"].append(failed_result)
                 results["failure_count"] += 1
 
-        results["success_rate"] = results["success_count"] / results["total_urls"] if results["total_urls"] > 0 else 0.0
+        results["success_rate"] = (
+            results["success_count"] / results["total_urls"] if results["total_urls"] > 0 else 0.0
+        )
 
         return results
 
@@ -260,7 +267,7 @@ class CommentPoster:
             "issues": [],
             "warnings": [],
             "message_preview": "",
-            "message_length": 0
+            "message_length": 0,
         }
 
         # Validate configuration
@@ -272,7 +279,9 @@ class CommentPoster:
         # Try to generate message
         try:
             message = self.config.generate_message(additional_context)
-            validation_result["message_preview"] = message[:200] + "..." if len(message) > 200 else message
+            validation_result["message_preview"] = (
+                message[:200] + "..." if len(message) > 200 else message
+            )
             validation_result["message_length"] = len(message)
 
             # Check message content
@@ -287,7 +296,9 @@ class CommentPoster:
 
         # Add warnings for potential issues
         if additional_context and len(additional_context) > 1000:
-            validation_result["warnings"].append("Additional context is quite long and may be truncated")
+            validation_result["warnings"].append(
+                "Additional context is quite long and may be truncated"
+            )
 
         if self.config.resolved_marker and len(self.config.resolved_marker) > 50:
             validation_result["warnings"].append("Resolved marker is quite long")
@@ -320,7 +331,7 @@ class CommentPoster:
             "marker_length": len(self.config.resolved_marker),
             "template_length": len(self.config.request_template),
             "github_client_authenticated": self.github_client.is_authenticated(),
-            "config_valid": self.config.validate_marker()["valid"]
+            "config_valid": self.config.validate_marker()["valid"],
         }
 
     def _validate_config(self) -> None:
@@ -368,7 +379,9 @@ class CommentPoster:
         # Check path structure
         path_parts = [p for p in parsed.path.split("/") if p]
         if len(path_parts) < 4 or path_parts[2] != "pull":
-            raise PRUrlValidationError("URL must be a GitHub pull request URL (e.g., https://github.com/owner/repo/pull/123)")
+            raise PRUrlValidationError(
+                "URL must be a GitHub pull request URL (e.g., https://github.com/owner/repo/pull/123)"
+            )
 
         # Check PR number
         try:
@@ -433,17 +446,15 @@ class CommentPoster:
         parsed = urlparse(pr_url)
         path_parts = [p for p in parsed.path.split("/") if p]
 
-        return {
-            "owner": path_parts[0],
-            "repo": path_parts[1],
-            "pr_number": path_parts[3]
-        }
+        return {"owner": path_parts[0], "repo": path_parts[1], "pr_number": path_parts[3]}
 
 
 class ResolutionRequestManager:
     """High-level manager for resolution request operations."""
 
-    def __init__(self, github_client: "GitHubClient", config: Optional[ResolutionRequestConfig] = None):
+    def __init__(
+        self, github_client: "GitHubClient", config: Optional[ResolutionRequestConfig] = None
+    ):
         """Initialize resolution request manager.
 
         Args:
@@ -453,8 +464,9 @@ class ResolutionRequestManager:
         self.poster = CommentPoster(github_client, config)
         self.github_client = github_client
 
-    def request_resolution_for_comments(self, pr_url: str, comment_ids: List[Union[str, int]],
-                                      include_summary: bool = True) -> Dict[str, Any]:
+    def request_resolution_for_comments(
+        self, pr_url: str, comment_ids: List[Union[str, int]], include_summary: bool = True
+    ) -> Dict[str, Any]:
         """Request resolution for specific comments in a pull request.
 
         Args:
@@ -505,23 +517,15 @@ class ResolutionRequestManager:
             return {
                 "success": False,
                 "validation": validation,
-                "error": "Validation failed: " + "; ".join(validation["issues"])
+                "error": "Validation failed: " + "; ".join(validation["issues"]),
             }
 
         # Post if validation passes
         try:
             posting_result = self.poster.post_resolution_request(pr_url, additional_context)
-            return {
-                "success": True,
-                "validation": validation,
-                "posting": posting_result
-            }
+            return {"success": True, "validation": validation, "posting": posting_result}
         except CommentPostingError as e:
-            return {
-                "success": False,
-                "validation": validation,
-                "error": str(e)
-            }
+            return {"success": False, "validation": validation, "error": str(e)}
 
     def get_config_template(self) -> Dict[str, Any]:
         """Get a template for configuration customization.
@@ -535,28 +539,28 @@ class ResolutionRequestManager:
                 "examples": [
                     "✅ VERIFIED_AND_RESOLVED ✅",
                     "🔐 CR_RESOLUTION_CONFIRMED 🔐",
-                    "[RESOLVED_BY_CODERABBIT]"
+                    "[RESOLVED_BY_CODERABBIT]",
                 ],
                 "recommendations": [
                     "Use special characters or emoji for uniqueness",
                     "Keep it concise but descriptive",
-                    "Avoid common words that might appear in regular text"
-                ]
+                    "Avoid common words that might appear in regular text",
+                ],
             },
             "request_template": {
                 "default": "@coderabbitai Please verify HEAD and add resolved marker {marker} if there are no issues",
                 "examples": [
                     "@coderabbitai Please review the latest changes and mark as {marker} if resolved",
                     "@coderabbitai Could you verify the fix and add {marker} if everything looks good?",
-                    "@coderabbitai Please check HEAD and add {marker} when verified"
-                ]
+                    "@coderabbitai Please check HEAD and add {marker} when verified",
+                ],
             },
             "custom_options": {
                 "custom_prefix": "Optional text to add before the main request",
                 "custom_suffix": "Optional text to add after the main request",
                 "include_context": "Whether to include additional context in requests",
-                "max_comment_length": "Maximum allowed comment length (GitHub limit: 65536)"
-            }
+                "max_comment_length": "Maximum allowed comment length (GitHub limit: 65536)",
+            },
         }
 
     def update_poster_config(self, **kwargs) -> None:

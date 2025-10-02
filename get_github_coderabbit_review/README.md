@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![uvx Compatible](https://img.shields.io/badge/uvx-compatible-green)](https://github.com/astral-sh/uv)
 
-Professional tool to fetch, analyze, and format CodeRabbit comments from GitHub Pull Requests with AI-agent optimization and Claude 4 best practices compliance.
+Professional tool to fetch, analyze, and format CodeRabbit comments from GitHub Pull Requests with AI-agent optimization. Generates LLM instruction prompts following Claude 4 best practices for automated code review analysis.
 
 ## ✨ Features
 
@@ -21,15 +21,20 @@ Professional tool to fetch, analyze, and format CodeRabbit comments from GitHub 
 - **No Token Storage**: Relies on GitHub CLI authentication, never stores tokens
 
 ### 📊 **Multiple Output Formats**
+- **LLM Instruction (Default)**: XML-structured prompts optimized for Claude 4 and other LLMs
 - **Markdown**: Rich formatting with headers, code blocks, and organization
 - **JSON**: Structured data for programmatic processing
 - **Plain Text**: Simple, readable format for basic use cases
 
 ### 🎭 **AI-Agent Optimization**
+- **LLM Instruction Format**: XML-structured prompts optimized for Claude 4 and other LLMs
 - **Persona Support**: Custom AI persona files for tailored output
 - **Claude 4 Best Practices**: Optimized prompts and formatting for Claude 4
 - **AI Agent Prompts**: Extracts and formats "Prompt for AI Agents" sections
 - **Contextual Analysis**: Provides rich context for AI processing
+- **Priority Classification**: Automatic HIGH/MEDIUM/LOW priority assignment using rule-based analysis
+- **Comment ID Tracking**: Full traceability back to original CodeRabbit comments
+- **Thread Context Extraction**: Advanced inline comment detection from thread discussions
 
 ### ⚡ **Performance & Reliability**
 - **Large Dataset Support**: Efficiently processes PRs with hundreds of comments
@@ -47,13 +52,19 @@ Professional tool to fetch, analyze, and format CodeRabbit comments from GitHub 
 ### Installation with uvx (Recommended)
 
 ```bash
-# Install and run directly with uvx
-uvx coderabbit-comment-fetcher https://github.com/owner/repo/pull/123
+# Install and run directly with uvx (local development)
+uvx --from . -n crf https://github.com/owner/repo/pull/123
+
+# With quiet mode for AI-optimized output
+uvx --from . -n crf https://github.com/owner/repo/pull/123 --quiet
 
 # With custom options
-uvx coderabbit-comment-fetcher https://github.com/owner/repo/pull/123 \
+uvx --from . -n crf https://github.com/owner/repo/pull/123 \
     --output-format json \
     --output-file results.json
+
+# From PyPI (when published)
+uvx coderabbit-comment-fetcher https://github.com/owner/repo/pull/123
 ```
 
 ### Installation with pip
@@ -62,8 +73,12 @@ uvx coderabbit-comment-fetcher https://github.com/owner/repo/pull/123 \
 # Install from PyPI
 pip install coderabbit-comment-fetcher
 
-# Basic usage
+# Basic usage (LLM instruction format - default)
 coderabbit-fetch https://github.com/owner/repo/pull/123
+
+# Alternative output formats
+coderabbit-fetch https://github.com/owner/repo/pull/123 --output-format markdown
+coderabbit-fetch https://github.com/owner/repo/pull/123 --output-format json
 
 # With full features
 pip install "coderabbit-comment-fetcher[full]"
@@ -136,6 +151,9 @@ python -m get_github_coderabbit_review.coderabbit_fetcher https://github.com/own
 ### Advanced Usage
 
 ```bash
+# Quiet mode for AI-optimized minimal output
+coderabbit-fetch https://github.com/owner/repo/pull/123 --quiet
+
 # With custom persona file
 coderabbit-fetch https://github.com/owner/repo/pull/123 \
     --persona-file my_reviewer_persona.txt \
@@ -156,6 +174,11 @@ coderabbit-fetch https://github.com/owner/repo/pull/123 \
 coderabbit-fetch https://github.com/owner/repo/pull/123 \
     --debug \
     --show-stats
+
+# uvx development usage with quiet mode
+uvx --from . -n crf https://github.com/owner/repo/pull/123 \
+    --quiet \
+    --debug
 ```
 
 ### Command Line Options
@@ -164,7 +187,7 @@ coderabbit-fetch https://github.com/owner/repo/pull/123 \
 | --------------------------- | ----------------------------------------------- | ------------------------- |
 | `pr_url`                    | GitHub pull request URL                         | Required                  |
 | `--persona-file`            | Path to persona file for AI context             | None                      |
-| `--output-format`           | Output format: `markdown`, `json`, `plain`      | `markdown`                |
+| `--output-format`           | Output format: `llm-instruction`, `markdown`, `json`, `plain` | `llm-instruction`        |
 | `--output-file`             | Output file path                                | stdout                    |
 | `--resolved-marker`         | Custom resolved marker string                   | `🔒 CODERABBIT_RESOLVED 🔒` |
 | `--post-resolution-request` | Post resolution requests to unresolved comments | False                     |
@@ -172,9 +195,72 @@ coderabbit-fetch https://github.com/owner/repo/pull/123 \
 | `--retry-attempts`          | Number of retry attempts                        | 3                         |
 | `--retry-delay`             | Delay between retries in seconds                | 1.0                       |
 | `--show-stats`              | Show execution statistics                       | False                     |
+| `--quiet`                   | AI-optimized minimal output with priority grouping | False                 |
 | `--debug`                   | Enable debug mode                               | False                     |
 | `--version`                 | Show version information                        | -                         |
 | `--help`                    | Show help message                               | -                         |
+
+## 📋 Output Formats
+
+### 🤖 LLM Instruction Format (Default)
+
+The LLM instruction format generates XML-structured prompts optimized for Claude 4 and other large language models. This format follows best practices for LLM consumption and includes:
+
+- **Structured XML output** with agent context, task overview, and execution instructions
+- **Comment ID tracking** for traceability back to original CodeRabbit comments
+- **Priority-based classification** (HIGH/MEDIUM/LOW) using rule-based analysis
+- **Actionable task lists** with specific file paths, line numbers, and code suggestions
+- **Thread context data** in structured JSON format for complex comment discussions
+
+**Example usage:**
+```bash
+# Uses LLM instruction format by default
+crf https://github.com/owner/repo/pull/123
+
+# Explicit specification
+crf https://github.com/owner/repo/pull/123 --output-format llm-instruction
+
+# Save to file for LLM processing
+crf https://github.com/owner/repo/pull/123 --output-file instructions.xml
+```
+
+**Sample output structure:**
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<coderabbit_instructions generated="2025-09-04T17:35:50.629259">
+  <agent_context>
+    <persona language="english">...</persona>
+    <capabilities>...</capabilities>
+  </agent_context>
+  <task_overview>
+    <objective>Analyze CodeRabbit review comments and provide actionable recommendations</objective>
+    <statistics>...</statistics>
+  </task_overview>
+  <execution_instructions>
+    <primary_tasks>
+      <task priority='HIGH' comment_id='actionable_0'>
+        <description>Security vulnerability in authentication</description>
+        <file>src/auth.py</file>
+        <line>42</line>
+        <code_suggestion language='python'>
+          # Add input validation here
+          if not validate_input(user_input):
+              raise ValidationError("Invalid input")
+        </code_suggestion>
+      </task>
+    </primary_tasks>
+  </execution_instructions>
+  <context_data>...</context_data>
+</coderabbit_instructions>
+```
+
+📖 **Detailed specification**: See [LLM_INSTRUCTION_FORMAT.md](docs/LLM_INSTRUCTION_FORMAT.md) for complete documentation.
+
+### 📝 Other Formats
+
+- **Markdown**: Rich formatting with headers, code blocks, and organization
+- **JSON**: Structured data for programmatic processing
+- **Plain Text**: Simple, readable format for basic use cases
 
 ## 🎭 Persona Files
 
@@ -213,7 +299,39 @@ You are a Senior Software Architect with 15+ years of experience.
 
 ## 📊 Output Examples
 
-### Markdown Output
+### Quiet Mode Output (AI-Optimized)
+
+```markdown
+# CodeRabbit Analysis Summary
+
+## Overview
+- **Total Issues**: 8
+- **Priority Breakdown**: 2 Critical, 4 Important, 2 Minor
+- **Files Affected**: 5
+
+## 🔴 Critical Issues (Immediate Action Required)
+• **Security**: Potential vulnerability in token validation
+  - File: `src/auth/token.py:23`
+  - Action: Implement proper input sanitization
+
+• **Bug Fix**: Null pointer exception in login handler
+  - File: `src/auth/login.py:67`
+  - Action: Add null checks before property access
+
+## 🟡 Important Issues (Should Fix Soon)
+• **Performance**: Inefficient database queries detected
+  - File: `src/data/repository.py:45`
+
+• **Configuration**: Hardcoded credentials in source code
+  - File: `src/config/database.py:12`
+
+## Files Summary
+- **src/auth/token.py**: 2 issue(s)
+- **src/auth/login.py**: 1 issue(s)
+- **src/data/repository.py**: 3 issue(s)
+```
+
+### Standard Markdown Output
 
 ```markdown
 # 🤖 CodeRabbit Comments Analysis
@@ -286,44 +404,53 @@ git clone https://github.com/yohi/coderabbit-comment-fetcher.git
 cd coderabbit-comment-fetcher
 
 # Install with development dependencies
-pip install -e ".[dev]"
+make install-dev
+# or manually: pip install -e ".[dev,performance,docs]"
 
 # Install pre-commit hooks
-pre-commit install
+make pre-commit-install
 
-# Run tests
-pytest
+# Run all tests
+make test
+
+# Run specific test types
+make test-unit
+make test-integration
+make test-performance
 
 # Run with coverage
-pytest --cov=coderabbit_fetcher --cov-report=html
+make coverage
+make coverage-html
 
-# Format code
-black coderabbit_fetcher tests
-isort coderabbit_fetcher tests
+# Code quality checks
+make lint          # ruff + mypy
+make format        # black + isort
+make type-check    # mypy only
 
-# Type checking
-mypy coderabbit_fetcher
-
-# Lint code
-ruff check coderabbit_fetcher tests
+# uvx compatibility testing (important)
+make uvx-test
 ```
 
 ### Running Tests
 
 ```bash
-# Run all tests
-python tests/test_runner.py
+# Using Make commands (recommended)
+make test              # Run all tests
+make test-unit         # Unit tests only
+make test-integration  # Integration tests only
+make test-performance  # Performance tests only
+make coverage          # With coverage report
 
-# Run specific test types
+# Using custom test runner directly
+python tests/test_runner.py
 python tests/test_runner.py --type unit
 python tests/test_runner.py --type integration
 python tests/test_runner.py --type performance
-
-# Generate test report
-python tests/test_runner.py --report test_results.html
-
-# Run with coverage
 python tests/test_runner.py --coverage
+
+# Generate detailed reports
+python tests/test_runner.py --report test_results.html
+python tests/test_runner.py --verbosity 2
 ```
 
 ### Project Structure
@@ -532,14 +659,20 @@ gh pr view 123 --repo owner/repo
 #### Performance Issues
 
 ```bash
+# Use quiet mode for cleaner AI processing
+coderabbit-fetch URL --quiet
+
 # Use JSON format for large PRs
 coderabbit-fetch URL --output-format json
 
 # Increase timeout for large datasets
 coderabbit-fetch URL --timeout 120
 
-# Enable parallel processing
-coderabbit-fetch URL --show-stats
+# Enable parallel processing with debug info
+coderabbit-fetch URL --show-stats --debug
+
+# uvx usage for development testing
+uvx --from . -n crf URL --quiet --debug
 ```
 
 ### Error Messages
@@ -557,7 +690,14 @@ coderabbit-fetch URL --show-stats
 Enable debug mode for detailed logging:
 
 ```bash
+# Standard debug mode
 coderabbit-fetch URL --debug
+
+# Debug mode with quiet output (AI-optimized)
+coderabbit-fetch URL --debug --quiet
+
+# uvx development debugging
+uvx --from . -n crf URL --debug --quiet
 ```
 
 This provides:
@@ -566,6 +706,7 @@ This provides:
 - Memory usage statistics
 - Error stack traces
 - Validation details
+- Thread context analysis (in quiet mode)
 
 ## 📋 API Reference
 

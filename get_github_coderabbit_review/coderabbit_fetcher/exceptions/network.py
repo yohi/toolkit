@@ -3,11 +3,13 @@ Network-related exceptions.
 """
 
 from datetime import datetime, timezone
+
 from .base import CodeRabbitFetcherError
 
 
 class NetworkError(CodeRabbitFetcherError):
     """Base class for network-related errors."""
+
     pass
 
 
@@ -19,9 +21,7 @@ class APIRateLimitError(NetworkError):
     """
 
     def __init__(
-        self,
-        message: str = "GitHub API rate limit exceeded",
-        reset_time: int | None = None
+        self, message: str = "GitHub API rate limit exceeded", reset_time: int | None = None
     ) -> None:
         """Initialize the rate limit error.
 

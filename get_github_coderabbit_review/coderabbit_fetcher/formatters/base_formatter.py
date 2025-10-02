@@ -1,18 +1,16 @@
 """Base formatter abstract class for CodeRabbit comment output."""
 
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any
 from datetime import datetime
+from typing import Any, Dict, List
 
 from ..models import (
-    AnalyzedComments,
-    SummaryComment,
-    ReviewComment,
-    ThreadContext,
-    AIAgentPrompt,
     ActionableComment,
+    AIAgentPrompt,
+    AnalyzedComments,
     NitpickComment,
-    OutsideDiffComment
+    OutsideDiffComment,
+    ThreadContext,
 )
 
 
@@ -80,8 +78,8 @@ class BaseFormatter(ABC):
         sections.append(f"**Resolution Status**: {thread.resolution_status}")
 
         # Safe comment count calculation with proper fallback
-        chronological_order = getattr(thread, 'chronological_order', [])
-        comment_count = getattr(thread, 'comment_count', None)
+        chronological_order = getattr(thread, "chronological_order", [])
+        comment_count = getattr(thread, "comment_count", None)
 
         # Use explicit comment_count if valid, otherwise fallback to chronological_order length
         if comment_count is None or not isinstance(comment_count, int) or comment_count < 0:
@@ -90,19 +88,19 @@ class BaseFormatter(ABC):
         sections.append(f"**Comment Count**: {comment_count}")
 
         # File Context
-        if hasattr(thread, 'file_context') and thread.file_context:
+        if hasattr(thread, "file_context") and thread.file_context:
             sections.append(f"**File**: {thread.file_context}")
 
-        if hasattr(thread, 'line_context') and thread.line_context:
+        if hasattr(thread, "line_context") and thread.line_context:
             sections.append(f"**Line**: {thread.line_context}")
 
         # Participants
-        if hasattr(thread, 'participants') and thread.participants:
+        if hasattr(thread, "participants") and thread.participants:
             participants_str = ", ".join(thread.participants)
             sections.append(f"**Participants**: {participants_str}")
 
         # AI Summary
-        if hasattr(thread, 'ai_summary') and thread.ai_summary:
+        if hasattr(thread, "ai_summary") and thread.ai_summary:
             sections.append("### AI Summary")
             sections.append(thread.ai_summary)
 
@@ -211,9 +209,13 @@ class BaseFormatter(ABC):
             "timestamp": self.timestamp.isoformat(),
             "total_comments": total_comments,
             "total_threads": total_threads,
-            "summary_count": len(analyzed_comments.summary_comments) if analyzed_comments.summary_comments else 0,
-            "review_count": len(analyzed_comments.review_comments) if analyzed_comments.review_comments else 0,
-            "formatter_type": self.__class__.__name__
+            "summary_count": (
+                len(analyzed_comments.summary_comments) if analyzed_comments.summary_comments else 0
+            ),
+            "review_count": (
+                len(analyzed_comments.review_comments) if analyzed_comments.review_comments else 0
+            ),
+            "formatter_type": self.__class__.__name__,
         }
 
     def get_visual_markers(self) -> Dict[str, str]:
@@ -232,7 +234,7 @@ class BaseFormatter(ABC):
             "bug": "🐛",
             "enhancement": "✨",
             "documentation": "📝",
-            "refactor": "♻️"
+            "refactor": "♻️",
         }
 
     def _sanitize_content(self, content: str) -> str:
@@ -248,9 +250,9 @@ class BaseFormatter(ABC):
             return ""
 
         # Remove potentially problematic characters but preserve formatting
-        sanitized = content.replace('\x00', '')  # Remove null bytes
-        sanitized = sanitized.replace('\r\n', '\n')  # Normalize line endings
-        sanitized = sanitized.replace('\r', '\n')  # Handle Mac line endings
+        sanitized = content.replace("\x00", "")  # Remove null bytes
+        sanitized = sanitized.replace("\r\n", "\n")  # Normalize line endings
+        sanitized = sanitized.replace("\r", "\n")  # Handle Mac line endings
 
         return sanitized
 
@@ -267,7 +269,7 @@ class BaseFormatter(ABC):
         if not content or len(content) <= max_length:
             return content
 
-        return content[:max_length-3] + "..."
+        return content[: max_length - 3] + "..."
 
     def _extract_priority_level(self, comment_content: str) -> str:
         """Extract priority level from comment content.
@@ -282,14 +284,28 @@ class BaseFormatter(ABC):
 
         # High priority indicators
         high_priority_keywords = [
-            'critical', 'security', 'vulnerability', 'error', 'exception',
-            'breaking', 'urgent', 'important', 'must fix', 'required'
+            "critical",
+            "security",
+            "vulnerability",
+            "error",
+            "exception",
+            "breaking",
+            "urgent",
+            "important",
+            "must fix",
+            "required",
         ]
 
         # Medium priority indicators
         medium_priority_keywords = [
-            'should', 'recommend', 'suggest', 'improve', 'optimize',
-            'performance', 'consider', 'enhancement'
+            "should",
+            "recommend",
+            "suggest",
+            "improve",
+            "optimize",
+            "performance",
+            "consider",
+            "enhancement",
         ]
 
         # Check for high priority

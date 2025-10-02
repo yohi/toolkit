@@ -1,16 +1,20 @@
 """Unit tests for validation utilities."""
 
-import unittest
-import tempfile
 import os
+import sys
+import tempfile
+import unittest
 from pathlib import Path
 
+# Add project root to path
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+
 from coderabbit_fetcher.validation import (
-    URLValidator,
     FileValidator,
     OptionsValidator,
+    URLValidator,
+    ValidationResult,
     ValidationSuite,
-    ValidationResult
 )
 
 
@@ -70,7 +74,7 @@ class TestURLValidator(unittest.TestCase):
         valid_urls = [
             "https://github.com/owner/repo/pull/123",
             "https://github.com/test-user/test-repo/pull/1",
-            "https://github.com/org_name/repo.name/pull/999999"
+            "https://github.com/org_name/repo.name/pull/999999",
         ]
 
         for url in valid_urls:
@@ -151,7 +155,7 @@ class TestFileValidator(unittest.TestCase):
 
     def test_validate_existing_persona_file(self):
         """Test validation of existing persona file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("Test persona content")
             temp_file = f.name
 
@@ -173,7 +177,7 @@ class TestFileValidator(unittest.TestCase):
 
     def test_validate_empty_persona_file(self):
         """Test validation of empty persona file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             # Create empty file
             temp_file = f.name
 
@@ -187,8 +191,8 @@ class TestFileValidator(unittest.TestCase):
 
     def test_validate_binary_file(self):
         """Test validation of binary file."""
-        with tempfile.NamedTemporaryFile(mode='wb', suffix='.bin', delete=False) as f:
-            f.write(b'\x00\x01\x02\x03')  # Binary content
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".bin", delete=False) as f:
+            f.write(b"\x00\x01\x02\x03")  # Binary content
             temp_file = f.name
 
         try:
@@ -233,13 +237,13 @@ class TestOptionsValidator(unittest.TestCase):
     def test_validate_output_format(self):
         """Test output format validation."""
         # Valid formats
-        valid_formats = ['markdown', 'json', 'plain']
+        valid_formats = ["markdown", "json", "plain"]
         for fmt in valid_formats:
             result = self.validator.validate_output_format(fmt)
             self.assertTrue(result.valid, f"Format should be valid: {fmt}")
 
         # Invalid formats
-        invalid_formats = ['', 'xml', 'html', 'pdf']
+        invalid_formats = ["", "xml", "html", "pdf"]
         for fmt in invalid_formats:
             result = self.validator.validate_output_format(fmt)
             self.assertFalse(result.valid, f"Format should be invalid: {fmt}")
@@ -311,12 +315,12 @@ class TestValidationSuite(unittest.TestCase):
     def test_validate_all_inputs_valid(self):
         """Test validation of all valid inputs."""
         config = {
-            'pr_url': 'https://github.com/owner/repo/pull/123',
-            'output_format': 'markdown',
-            'timeout_seconds': 30,
-            'retry_attempts': 3,
-            'retry_delay': 1.0,
-            'resolved_marker': '🔒 RESOLVED 🔒'
+            "pr_url": "https://github.com/owner/repo/pull/123",
+            "output_format": "markdown",
+            "timeout_seconds": 30,
+            "retry_attempts": 3,
+            "retry_delay": 1.0,
+            "resolved_marker": "🔒 RESOLVED 🔒",
         }
 
         result = self.suite.validate_all_inputs(config)
@@ -325,12 +329,12 @@ class TestValidationSuite(unittest.TestCase):
     def test_validate_all_inputs_invalid(self):
         """Test validation with invalid inputs."""
         config = {
-            'pr_url': 'invalid-url',
-            'output_format': 'invalid',
-            'timeout_seconds': -1,
-            'retry_attempts': -1,
-            'retry_delay': -1,
-            'resolved_marker': ''
+            "pr_url": "invalid-url",
+            "output_format": "invalid",
+            "timeout_seconds": -1,
+            "retry_attempts": -1,
+            "retry_delay": -1,
+            "resolved_marker": "",
         }
 
         result = self.suite.validate_all_inputs(config)
@@ -339,15 +343,12 @@ class TestValidationSuite(unittest.TestCase):
 
     def test_validate_with_persona_file(self):
         """Test validation with persona file."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.txt', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("Test persona")
             temp_file = f.name
 
         try:
-            config = {
-                'pr_url': 'https://github.com/owner/repo/pull/123',
-                'persona_file': temp_file
-            }
+            config = {"pr_url": "https://github.com/owner/repo/pull/123", "persona_file": temp_file}
 
             result = self.suite.validate_all_inputs(config)
             self.assertTrue(result.valid)
@@ -371,5 +372,5 @@ class TestValidationSuite(unittest.TestCase):
         self.assertIn("test_key", report)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

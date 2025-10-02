@@ -1,31 +1,27 @@
 """End-to-end workflow tests for CodeRabbit Comment Fetcher."""
 
-import unittest
-import tempfile
+import json
 import os
 import shutil
-import json
-from unittest.mock import patch, MagicMock
-from typing import Dict, Any
+import tempfile
+import unittest
+from unittest.mock import patch
 
-from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionConfig
 from coderabbit_fetcher.exceptions import (
-    ValidationError,
     GitHubAuthenticationError,
-    InvalidPRUrlError,
-    TransientError
+    TransientError,
+    ValidationError,
 )
-from tests.fixtures.sample_data import (
-    SAMPLE_PR_DATA,
-    SAMPLE_CODERABBIT_COMMENTS,
-    SAMPLE_LARGE_DATASET
-)
+from coderabbit_fetcher.orchestrator import CodeRabbitOrchestrator, ExecutionConfig
+
 from tests.fixtures.github_responses import (
-    MOCK_GH_PR_RESPONSE,
     MOCK_GH_COMMENTS_RESPONSE,
-    MOCK_SUCCESS_RESPONSES
+    MOCK_GH_PR_RESPONSE,
 )
-from tests.fixtures.persona_files import PersonaFileManager, PERSONA_FILE_CONTENT
+from tests.fixtures.persona_files import PERSONA_FILE_CONTENT, PersonaFileManager
+from tests.fixtures.sample_data import (
+    SAMPLE_LARGE_DATASET,
+)
 
 
 class TestEndToEndWorkflow(unittest.TestCase):
@@ -37,11 +33,13 @@ class TestEndToEndWorkflow(unittest.TestCase):
         self.persona_manager = PersonaFileManager()
 
         # Create sample persona file
-        self.persona_file = self.persona_manager.create_temp_persona_file({
-            "content": PERSONA_FILE_CONTENT["default"],
-            "filename": "test_persona.txt",
-            "encoding": "utf-8"
-        })
+        self.persona_file = self.persona_manager.create_temp_persona_file(
+            {
+                "content": PERSONA_FILE_CONTENT["default"],
+                "filename": "test_persona.txt",
+                "encoding": "utf-8",
+            }
+        )
 
     def tearDown(self):
         """Clean up test fixtures."""
@@ -53,9 +51,9 @@ class TestEndToEndWorkflow(unittest.TestCase):
                 os.unlink(os.path.join(self.temp_dir, file))
             os.rmdir(self.temp_dir)
 
-    @patch('coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.check_authentication')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.validate')
+    @patch("coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.check_authentication")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.validate")
     def test_complete_successful_workflow(self, mock_validate, mock_auth, mock_fetch):
         """Test complete successful workflow from start to finish."""
         # Mock GitHub client responses
@@ -63,7 +61,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
         mock_auth.return_value = True
         mock_fetch.return_value = {
             "pr_data": MOCK_GH_PR_RESPONSE,
-            "comments": MOCK_GH_COMMENTS_RESPONSE
+            "comments": MOCK_GH_COMMENTS_RESPONSE,
         }
 
         # Create configuration
@@ -74,7 +72,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
             output_format="markdown",
             output_file=output_file,
             show_stats=True,
-            debug=False
+            debug=False,
         )
 
         # Execute workflow
@@ -90,14 +88,14 @@ class TestEndToEndWorkflow(unittest.TestCase):
         self.assertTrue(os.path.exists(output_file))
 
         # Verify output content
-        with open(output_file, 'r', encoding='utf-8') as f:
+        with open(output_file, encoding="utf-8") as f:
             content = f.read()
             self.assertIn("CodeRabbit", content)
             self.assertIn("Comments Analysis", content)
 
-    @patch('coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.check_authentication')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.validate')
+    @patch("coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.check_authentication")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.validate")
     def test_workflow_with_different_output_formats(self, mock_validate, mock_auth, mock_fetch):
         """Test workflow with different output formats."""
         # Mock GitHub client responses
@@ -105,7 +103,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
         mock_auth.return_value = True
         mock_fetch.return_value = {
             "pr_data": MOCK_GH_PR_RESPONSE,
-            "comments": MOCK_GH_COMMENTS_RESPONSE
+            "comments": MOCK_GH_COMMENTS_RESPONSE,
         }
 
         formats = ["markdown", "json", "plain"]
@@ -116,7 +114,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
                 config = ExecutionConfig(
                     pr_url="https://github.com/owner/repo/pull/123",
                     output_format=output_format,
-                    output_file=output_file
+                    output_file=output_file,
                 )
 
                 orchestrator = CodeRabbitOrchestrator(config)
@@ -126,7 +124,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
                 self.assertTrue(os.path.exists(output_file))
 
                 # Verify format-specific content
-                with open(output_file, 'r', encoding='utf-8') as f:
+                with open(output_file, encoding="utf-8") as f:
                     content = f.read()
 
                     if output_format == "json":
@@ -140,10 +138,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
     def test_workflow_validation_failure(self):
         """Test workflow with validation failures."""
         # Invalid URL
-        config = ExecutionConfig(
-            pr_url="invalid-url",
-            output_format="markdown"
-        )
+        config = ExecutionConfig(pr_url="invalid-url", output_format="markdown")
 
         orchestrator = CodeRabbitOrchestrator(config)
 
@@ -152,14 +147,13 @@ class TestEndToEndWorkflow(unittest.TestCase):
         self.assertFalse(validation_result["valid"])
         self.assertGreater(len(validation_result["issues"]), 0)
 
-    @patch('coderabbit_fetcher.github_client.GitHubClient.check_authentication')
+    @patch("coderabbit_fetcher.github_client.GitHubClient.check_authentication")
     def test_workflow_authentication_failure(self, mock_auth):
         """Test workflow with authentication failure."""
         mock_auth.side_effect = GitHubAuthenticationError("Authentication required")
 
         config = ExecutionConfig(
-            pr_url="https://github.com/owner/repo/pull/123",
-            output_format="markdown"
+            pr_url="https://github.com/owner/repo/pull/123", output_format="markdown"
         )
 
         orchestrator = CodeRabbitOrchestrator(config)
@@ -169,9 +163,9 @@ class TestEndToEndWorkflow(unittest.TestCase):
         self.assertIn("error", results)
         self.assertIn("authentication", results["error"].lower())
 
-    @patch('coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.check_authentication')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.validate')
+    @patch("coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.check_authentication")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.validate")
     def test_workflow_with_resolved_marker_filtering(self, mock_validate, mock_auth, mock_fetch):
         """Test workflow with resolved marker filtering."""
         # Mock responses including resolved comments
@@ -181,7 +175,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
         mock_auth.return_value = True
         mock_fetch.return_value = {
             "pr_data": MOCK_GH_PR_RESPONSE,
-            "comments": MOCK_GH_COMMENTS_RESPONSE + SAMPLE_RESOLVED_COMMENTS
+            "comments": MOCK_GH_COMMENTS_RESPONSE + SAMPLE_RESOLVED_COMMENTS,
         }
 
         output_file = os.path.join(self.temp_dir, "output_filtered.md")
@@ -189,7 +183,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
             pr_url="https://github.com/owner/repo/pull/123",
             output_format="markdown",
             output_file=output_file,
-            resolved_marker="🔒 CODERABBIT_RESOLVED 🔒"
+            resolved_marker="🔒 CODERABBIT_RESOLVED 🔒",
         )
 
         orchestrator = CodeRabbitOrchestrator(config)
@@ -203,26 +197,26 @@ class TestEndToEndWorkflow(unittest.TestCase):
         self.assertIn("comments_processed", metrics)
         self.assertIn("resolved_comments_filtered", metrics)
 
-    @patch('coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.check_authentication')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.validate')
+    @patch("coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.check_authentication")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.validate")
     def test_workflow_with_comment_posting(self, mock_validate, mock_auth, mock_fetch):
         """Test workflow with comment posting enabled."""
         mock_validate.return_value = {"valid": True, "issues": [], "warnings": []}
         mock_auth.return_value = True
         mock_fetch.return_value = {
             "pr_data": MOCK_GH_PR_RESPONSE,
-            "comments": MOCK_GH_COMMENTS_RESPONSE
+            "comments": MOCK_GH_COMMENTS_RESPONSE,
         }
 
         config = ExecutionConfig(
             pr_url="https://github.com/owner/repo/pull/123",
             output_format="markdown",
-            post_resolution_request=True
+            post_resolution_request=True,
         )
 
         # Mock comment posting
-        with patch('coderabbit_fetcher.github_client.GitHubClient.post_comment') as mock_post:
+        with patch("coderabbit_fetcher.github_client.GitHubClient.post_comment") as mock_post:
             mock_post.return_value = {"id": 12345, "body": "Resolution request posted"}
 
             orchestrator = CodeRabbitOrchestrator(config)
@@ -233,9 +227,9 @@ class TestEndToEndWorkflow(unittest.TestCase):
             # Verify comment posting was attempted
             mock_post.assert_called()
 
-    @patch('coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.check_authentication')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.validate')
+    @patch("coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.check_authentication")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.validate")
     def test_workflow_error_recovery(self, mock_validate, mock_auth, mock_fetch):
         """Test workflow error recovery mechanisms."""
         mock_validate.return_value = {"valid": True, "issues": [], "warnings": []}
@@ -243,15 +237,13 @@ class TestEndToEndWorkflow(unittest.TestCase):
 
         # Simulate transient error followed by success
         call_count = 0
+
         def mock_fetch_with_retry(*_args, **_kwargs):
             nonlocal call_count
             call_count += 1
             if call_count == 1:
                 raise TransientError("Temporary network issue")
-            return {
-                "pr_data": MOCK_GH_PR_RESPONSE,
-                "comments": MOCK_GH_COMMENTS_RESPONSE
-            }
+            return {"pr_data": MOCK_GH_PR_RESPONSE, "comments": MOCK_GH_COMMENTS_RESPONSE}
 
         mock_fetch.side_effect = mock_fetch_with_retry
 
@@ -259,7 +251,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
             pr_url="https://github.com/owner/repo/pull/123",
             output_format="markdown",
             retry_attempts=3,
-            retry_delay=0.1  # Short delay for testing
+            retry_delay=0.1,  # Short delay for testing
         )
 
         orchestrator = CodeRabbitOrchestrator(config)
@@ -269,23 +261,25 @@ class TestEndToEndWorkflow(unittest.TestCase):
         self.assertTrue(results["success"])
         self.assertEqual(call_count, 2)  # One failure, one success
 
-    @patch('coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.check_authentication')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.validate')
+    @patch("coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.check_authentication")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.validate")
     def test_workflow_with_japanese_persona(self, mock_validate, mock_auth, mock_fetch):
         """Test workflow with Japanese persona file."""
         # Create Japanese persona file
-        japanese_persona = self.persona_manager.create_temp_persona_file({
-            "content": PERSONA_FILE_CONTENT["japanese_reviewer"],
-            "filename": "japanese_persona.txt",
-            "encoding": "utf-8"
-        })
+        japanese_persona = self.persona_manager.create_temp_persona_file(
+            {
+                "content": PERSONA_FILE_CONTENT["japanese_reviewer"],
+                "filename": "japanese_persona.txt",
+                "encoding": "utf-8",
+            }
+        )
 
         mock_validate.return_value = {"valid": True, "issues": [], "warnings": []}
         mock_auth.return_value = True
         mock_fetch.return_value = {
             "pr_data": MOCK_GH_PR_RESPONSE,
-            "comments": MOCK_GH_COMMENTS_RESPONSE
+            "comments": MOCK_GH_COMMENTS_RESPONSE,
         }
 
         output_file = os.path.join(self.temp_dir, "output_japanese.md")
@@ -293,7 +287,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
             pr_url="https://github.com/owner/repo/pull/123",
             persona_file=japanese_persona,
             output_format="markdown",
-            output_file=output_file
+            output_file=output_file,
         )
 
         orchestrator = CodeRabbitOrchestrator(config)
@@ -303,7 +297,7 @@ class TestEndToEndWorkflow(unittest.TestCase):
         self.assertTrue(os.path.exists(output_file))
 
         # Verify Japanese content is preserved
-        with open(output_file, 'r', encoding='utf-8') as f:
+        with open(output_file, encoding="utf-8") as f:
             content = f.read()
             self.assertIn("日本語", content.lower())
 
@@ -322,16 +316,16 @@ class TestPerformanceWorkflow(unittest.TestCase):
                 os.unlink(os.path.join(self.temp_dir, file))
             os.rmdir(self.temp_dir)
 
-    @patch('coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.check_authentication')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.validate')
+    @patch("coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.check_authentication")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.validate")
     def test_large_dataset_performance(self, mock_validate, mock_auth, mock_fetch):
         """Test performance with large comment datasets."""
         mock_validate.return_value = {"valid": True, "issues": [], "warnings": []}
         mock_auth.return_value = True
         mock_fetch.return_value = {
             "pr_data": SAMPLE_LARGE_DATASET["metadata"],
-            "comments": SAMPLE_LARGE_DATASET["inline_comments"]
+            "comments": SAMPLE_LARGE_DATASET["inline_comments"],
         }
 
         output_file = os.path.join(self.temp_dir, "large_output.json")
@@ -339,10 +333,11 @@ class TestPerformanceWorkflow(unittest.TestCase):
             pr_url="https://github.com/owner/repo/pull/999",
             output_format="json",
             output_file=output_file,
-            timeout_seconds=60  # Longer timeout for large dataset
+            timeout_seconds=60,  # Longer timeout for large dataset
         )
 
         import time
+
         start_time = time.time()
 
         orchestrator = CodeRabbitOrchestrator(config)
@@ -364,13 +359,14 @@ class TestPerformanceWorkflow(unittest.TestCase):
         self.assertGreater(file_size, 1000)  # Should have substantial content
         self.assertLess(file_size, 10 * 1024 * 1024)  # But not excessive (< 10MB)
 
-    @patch('coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.check_authentication')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.validate')
+    @patch("coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.check_authentication")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.validate")
     def test_memory_usage_with_large_dataset(self, mock_validate, mock_auth, mock_fetch):
         """Test memory usage with large comment datasets."""
-        import psutil
         import os
+
+        import psutil
 
         process = psutil.Process(os.getpid())
         initial_memory = process.memory_info().rss
@@ -379,12 +375,11 @@ class TestPerformanceWorkflow(unittest.TestCase):
         mock_auth.return_value = True
         mock_fetch.return_value = {
             "pr_data": SAMPLE_LARGE_DATASET["metadata"],
-            "comments": SAMPLE_LARGE_DATASET["inline_comments"]
+            "comments": SAMPLE_LARGE_DATASET["inline_comments"],
         }
 
         config = ExecutionConfig(
-            pr_url="https://github.com/owner/repo/pull/999",
-            output_format="json"
+            pr_url="https://github.com/owner/repo/pull/999", output_format="json"
         )
 
         orchestrator = CodeRabbitOrchestrator(config)
@@ -397,9 +392,9 @@ class TestPerformanceWorkflow(unittest.TestCase):
         self.assertTrue(results["success"])
         self.assertLess(memory_increase, 100 * 1024 * 1024)  # < 100MB
 
-    @patch('coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.check_authentication')
-    @patch('coderabbit_fetcher.github_client.GitHubClient.validate')
+    @patch("coderabbit_fetcher.github_client.GitHubClient.fetch_pr_comments")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.check_authentication")
+    @patch("coderabbit_fetcher.github_client.GitHubClient.validate")
     def test_concurrent_workflow_execution(self, mock_validate, mock_auth, mock_fetch):
         """Test concurrent execution of workflows."""
         import threading
@@ -409,7 +404,7 @@ class TestPerformanceWorkflow(unittest.TestCase):
         mock_auth.return_value = True
         mock_fetch.return_value = {
             "pr_data": MOCK_GH_PR_RESPONSE,
-            "comments": MOCK_GH_COMMENTS_RESPONSE
+            "comments": MOCK_GH_COMMENTS_RESPONSE,
         }
 
         results = []
@@ -421,13 +416,13 @@ class TestPerformanceWorkflow(unittest.TestCase):
                 config = ExecutionConfig(
                     pr_url=f"https://github.com/owner/repo/pull/{100 + index}",
                     output_format="markdown",
-                    output_file=output_file
+                    output_file=output_file,
                 )
 
                 orchestrator = CodeRabbitOrchestrator(config)
                 result = orchestrator.execute()
                 results.append((index, result))
-            except (ValidationError, GitHubAuthenticationError, IOError, RuntimeError) as e:
+            except (OSError, ValidationError, GitHubAuthenticationError, RuntimeError) as e:
                 errors.append((index, e))
 
         # Start multiple concurrent workflows
@@ -493,20 +488,21 @@ class TestUvxCompatibility(unittest.TestCase):
         import coderabbit_fetcher
 
         # Verify package has necessary components
-        self.assertTrue(hasattr(coderabbit_fetcher, '__version__'))
+        self.assertTrue(hasattr(coderabbit_fetcher, "__version__"))
 
         # Verify CLI module exists
         from coderabbit_fetcher.cli import main
-        self.assertTrue(hasattr(main, 'main'))
+
+        self.assertTrue(hasattr(main, "main"))
 
     def test_dependency_compatibility(self):
         """Test that dependencies are compatible with uvx."""
         # Test that all required modules can be imported
         required_modules = [
-            'argparse',  # Standard library
-            'json',      # Standard library
-            'pathlib',   # Standard library
-            'subprocess' # Standard library
+            "argparse",  # Standard library
+            "json",  # Standard library
+            "pathlib",  # Standard library
+            "subprocess",  # Standard library
         ]
 
         for module_name in required_modules:
@@ -516,5 +512,5 @@ class TestUvxCompatibility(unittest.TestCase):
                 self.fail(f"Required module {module_name} cannot be imported")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

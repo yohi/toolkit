@@ -1,0 +1,593 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coderabbit_instructions generated="2025-01-18T15:30:00Z">
+  <!-- Agent Context: Establishes clear role and capabilities -->
+  <agent_context>
+    <persona language="english">
+      # Senior Software Development Consultant
+
+      ## Role Definition
+      You are a seasoned software development consultant specializing in code quality, security, and architectural excellence. Your expertise spans multiple programming languages, frameworks, and industry best practices.
+
+      ## Core Competencies
+      - **Code Quality Analysis**: Identify maintainability, readability, and performance issues
+      - **Security Assessment**: Detect vulnerabilities and recommend secure coding practices
+      - **Architecture Review**: Evaluate design patterns and structural improvements
+      - **Best Practice Enforcement**: Ensure adherence to industry standards and conventions
+
+      ## Task Execution Approach
+      1. **Systematic Analysis**: Address issues by priority level (HIGH → MEDIUM → LOW)
+      2. **Contextual Solutions**: Provide solutions that consider the broader codebase context
+      3. **Actionable Recommendations**: Deliver specific, implementable improvements
+      4. **Educational Value**: Explain the "why" behind each recommendation
+
+      ## Output Requirements
+      Your response should be composed of thoughtful, comprehensive analysis in &lt;analysis_sections&gt; tags.
+      Go beyond the basics to create a fully-featured implementation.
+      Include as many relevant features and interactions as possible.
+    </persona>
+
+    <thinking_guidance>
+      After receiving tool results, carefully reflect on their quality and determine optimal next steps before proceeding.
+      Use your thinking to plan and iterate based on this new information, and then take the best next action.
+    </thinking_guidance>
+
+    <parallel_tool_guidance>
+      For maximum efficiency, whenever you need to perform multiple independent operations,
+      invoke all relevant tools simultaneously rather than sequentially.
+    </parallel_tool_guidance>
+
+    <capabilities>
+      <capability>Multi-language code analysis and review</capability>
+      <capability>Security vulnerability identification</capability>
+      <capability>Performance optimization recommendations</capability>
+      <capability>Architecture and design pattern evaluation</capability>
+      <capability>Best practice enforcement and education</capability>
+    </capabilities>
+  </agent_context>
+
+  <!-- Task Definition: Explicit instructions with motivational context -->
+  <task_overview>
+    <objective>Transform CodeRabbit feedback into systematic code quality improvements</objective>
+
+    <motivation>
+      Code review feedback represents critical insights for maintaining high-quality, secure, and maintainable software.
+      Each recommendation addresses specific technical debt, security concerns, or performance opportunities that directly
+      impact user experience and development velocity. Your implementation should work correctly for all valid inputs, not just test cases.
+    </motivation>
+
+    <scope_analysis>
+      <total_reviews>5</total_reviews>  <!-- 5 review rounds -->
+      <actionable_items>4</actionable_items>  <!-- 未解決のみ - latest review -->
+      <nitpick_items>82</nitpick_items>  <!-- 累積全履歴 -->
+      <outside_diff_range_items>1</outside_diff_range_items>
+      <total_tasks>87</total_tasks>  <!-- 4 actionable + 82 nitpick + 1 outside diff range -->
+      <priority_distribution>
+        <high_priority>2</high_priority>      <!-- Missing imports (critical) + outside diff -->
+        <medium_priority>3</medium_priority>  <!-- Exception handling improvements -->
+        <low_priority>82</low_priority>       <!-- Style, documentation formatting -->
+      </priority_distribution>
+      <impact_assessment>
+        <files_affected>25+</files_affected>  <!-- Multiple reviews across many files -->
+        <estimated_effort>8-12 hours</estimated_effort>  <!-- 82 nitpick items -->
+        <risk_level>High</risk_level>  <!-- Critical missing imports + large scope -->
+      </impact_assessment>
+    </scope_analysis>
+
+    <execution_strategy>
+      <approach>Priority-based implementation starting with critical missing imports, followed by exception handling improvements, then bulk style fixes</approach>
+      <priority_order>HIGH (missing imports) → MEDIUM (exception handling) → LOW (style/docs batch processing)</priority_order>
+      <parallel_opportunities>Independent file modifications, bulk style fixes across multiple files</parallel_opportunities>
+      <verification_requirements>Test import resolution, validate exception handling, run comprehensive linting</verification_requirements>
+    </execution_strategy>
+  </task_overview>
+
+  <!-- Execution Framework: Structured for parallel processing -->
+  <execution_instructions>
+    <instruction_philosophy>
+      Tell Claude what to do, not what to avoid. Focus on robust, general solutions that work for all valid inputs.
+      Implement the actual logic that solves the problem generally, not just specific test cases.
+    </instruction_philosophy>
+
+    <primary_tasks parallel_processing="recommended">
+      <!-- HIGH PRIORITY ACTIONABLE ITEMS -->
+      <task priority='HIGH' comment_id='actionable_missing_imports' context_strength='0.95' file_impact='0.95' category='actionable'>
+        <description>Fix missing imports - critical for application functionality</description>
+        <file>lazygit-llm/lazygit_llm/main.py</file>
+        <line>27-31</line>
+        <impact_analysis>
+          <problem>ConfigManager, GitDiffProcessor, ProviderFactory, MessageFormatter imports not found in repository</problem>
+          <solution_benefit>Application functionality restoration, proper module structure, resolved import dependencies</solution_benefit>
+          <effort_estimate>30-45 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/main.py at lines 27-31, resolve the missing imports for ConfigManager, GitDiffProcessor,
+          ProviderFactory, and MessageFormatter. Create stub implementations of these classes with basic interface definitions
+          that match the usage patterns in main.py. Ensure proper typing and documentation.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Create ConfigManager class with config file loading and validation methods</step>
+          <step>Create GitDiffProcessor class with staged diff reading capabilities</step>
+          <step>Create ProviderFactory class with provider instantiation logic</step>
+          <step>Create MessageFormatter class with response formatting methods</step>
+          <step>Test that main.py imports successfully without errors</step>
+          <step>Verify basic functionality flows work as expected</step>
+        </verification_steps>
+      </task>
+
+      <!-- MEDIUM PRIORITY ACTIONABLE ITEMS -->
+      <task priority='MEDIUM' comment_id='actionable_api_exception' context_strength='0.80' file_impact='0.75' category='actionable'>
+        <description>Create custom exception class for API providers</description>
+        <file>lazygit-llm/lazygit_llm/api_providers/__init__.py</file>
+        <line>30</line>
+        <impact_analysis>
+          <problem>Long exception messages specified outside exception class violate TRY003 rule</problem>
+          <solution_benefit>Better error handling architecture, improved maintainability, cleaner exception hierarchy</solution_benefit>
+          <effort_estimate>10 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/api_providers/__init__.py at line 30, create a custom ProviderNotFoundError exception class
+          and move the long error message into the class definition. Define the class with proper initialization that accepts
+          provider_name parameter and constructs descriptive error message internally.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Define custom ProviderNotFoundError exception class with descriptive docstring</step>
+          <step>Update error raising code to use new exception with provider name parameter</step>
+          <step>Test error handling behavior is preserved and enhanced</step>
+          <step>Run linter to confirm TRY003 violation is resolved</step>
+        </verification_steps>
+      </task>
+
+      <task priority='MEDIUM' comment_id='actionable_cli_exception' context_strength='0.80' file_impact='0.75' category='actionable'>
+        <description>Create custom exception class for CLI providers</description>
+        <file>lazygit-llm/lazygit_llm/cli_providers/__init__.py</file>
+        <line>29</line>
+        <impact_analysis>
+          <problem>Long exception messages specified outside exception class violate TRY003 rule</problem>
+          <solution_benefit>Consistent error handling pattern across providers, better maintainability</solution_benefit>
+          <effort_estimate>10 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/cli_providers/__init__.py at line 29, create a custom CLIProviderNotFoundError exception class
+          and move the long error message into the class definition. Mirror the pattern used for API providers to ensure consistency.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Define custom CLIProviderNotFoundError exception class with descriptive docstring</step>
+          <step>Update error raising code to use new exception with provider name parameter</step>
+          <step>Ensure consistency with api_providers error handling pattern</step>
+          <step>Run linter to confirm TRY003 violation is resolved</step>
+        </verification_steps>
+      </task>
+
+      <task priority='MEDIUM' comment_id='actionable_base_logging' context_strength='0.75' file_impact='0.70' category='actionable'>
+        <description>Improve exception handling in base_provider.py</description>
+        <file>lazygit-llm/lazygit_llm/base_provider.py</file>
+        <line>92-94</line>
+        <impact_analysis>
+          <problem>Direct raise pattern and logging.error instead of logging.exception reduce error reporting quality</problem>
+          <solution_benefit>Better error reporting with stack traces, cleaner exception handling architecture</solution_benefit>
+          <effort_estimate>10 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/base_provider.py at lines 92-94, abstract the raise statement to an inner function
+          and replace logging.error with logging.exception for better stack trace capture. Create a helper method for
+          consistent error handling across the provider.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Create inner _handle_error function for exception raising</step>
+          <step>Update logging call to use exception() method for stack trace capture</step>
+          <step>Test that stack traces are properly captured and logged</step>
+          <step>Run linter to confirm TRY301 and TRY400 violations are resolved</step>
+        </verification_steps>
+      </task>
+
+      <!-- OUTSIDE DIFF RANGE ITEM -->
+      <task priority='HIGH' comment_id='outside_diff_imports' context_strength='0.95' file_impact='0.95' category='outside_diff_range'>
+        <description>Fix missing imports - same as actionable item but flagged as outside diff range</description>
+        <file>lazygit-llm/lazygit_llm/main.py</file>
+        <line>27-31</line>
+        <impact_analysis>
+          <problem>Missing module imports prevent application execution - ConfigManager, GitDiffProcessor, ProviderFactory, MessageFormatter not found</problem>
+          <solution_benefit>Application functionality restoration, dependency resolution, proper module structure</solution_benefit>
+          <effort_estimate>30-45 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/main.py at lines 27-31, resolve missing imports for ConfigManager, GitDiffProcessor,
+          ProviderFactory, and MessageFormatter. Create implementation files for these modules with proper class definitions
+          that match the usage patterns in the main file.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Identify the correct location or implementation for each missing module</step>
+          <step>Create module files with proper class definitions</step>
+          <step>Verify all imports resolve successfully</step>
+          <step>Test application startup to confirm dependency resolution</step>
+          <step>Update requirements.txt if external dependencies are needed</step>
+        </verification_steps>
+      </task>
+
+      <!-- LOW PRIORITY NITPICK ITEMS (sample of 82 total) -->
+      <task priority='LOW' comment_id='nitpick_api_docstring' context_strength='0.40' file_impact='0.30' category='nitpick'>
+        <description>Fix docstring formatting - replace full-width parentheses with half-width in API providers</description>
+        <file>lazygit-llm/lazygit_llm/api_providers/__init__.py</file>
+        <line>47</line>
+        <impact_analysis>
+          <problem>Docstring contains ambiguous full-width parentheses characters</problem>
+          <solution_benefit>Consistent documentation formatting, better tool compatibility</solution_benefit>
+          <effort_estimate>1 minute</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/api_providers/__init__.py at line 47, replace the full-width parentheses （）
+          in the docstring with standard half-width parentheses ().
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Update docstring formatting to use half-width parentheses</step>
+          <step>Run linter to confirm RUF002 violations are resolved</step>
+        </verification_steps>
+      </task>
+
+      <task priority='LOW' comment_id='nitpick_api_all_sort' context_strength='0.40' file_impact='0.30' category='nitpick'>
+        <description>Sort __all__ list alphabetically in API providers</description>
+        <file>lazygit-llm/lazygit_llm/api_providers/__init__.py</file>
+        <line>51</line>
+        <impact_analysis>
+          <problem>__all__ list is not sorted, reducing maintainability</problem>
+          <solution_benefit>Improved code organization, easier maintenance, linter compliance</solution_benefit>
+          <effort_estimate>1 minute</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/api_providers/__init__.py at line 51, sort the __all__ list alphabetically:
+          ["API_PROVIDERS", "get_available_providers", "get_provider_class", "register_provider"].
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Sort __all__ list items alphabetically</step>
+          <step>Test that imports work correctly after reordering</step>
+          <step>Run linter to confirm RUF022 violation is resolved</step>
+        </verification_steps>
+      </task>
+
+      <task priority='LOW' comment_id='nitpick_cli_docstring' context_strength='0.40' file_impact='0.30' category='nitpick'>
+        <description>Fix docstring formatting - replace full-width parentheses with half-width in CLI providers</description>
+        <file>lazygit-llm/lazygit_llm/cli_providers/__init__.py</file>
+        <line>46</line>
+        <impact_analysis>
+          <problem>Full-width parentheses in docstring affect documentation consistency</problem>
+          <solution_benefit>Consistent documentation style, professional appearance</solution_benefit>
+          <effort_estimate>1 minute</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/cli_providers/__init__.py at line 46, replace full-width parentheses (（）)
+          with half-width parentheses () in the docstring for consistent documentation formatting.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Replace full-width parentheses with half-width in docstring</step>
+          <step>Verify documentation remains readable</step>
+          <step>Run linter to confirm RUF002 violation is resolved</step>
+        </verification_steps>
+      </task>
+
+      <task priority='LOW' comment_id='nitpick_cli_all_sort' context_strength='0.40' file_impact='0.30' category='nitpick'>
+        <description>Sort __all__ list alphabetically in CLI providers</description>
+        <file>lazygit-llm/lazygit_llm/cli_providers/__init__.py</file>
+        <line>51</line>
+        <impact_analysis>
+          <problem>__all__ list is not sorted alphabetically, affecting code organization</problem>
+          <solution_benefit>Better code organization, consistency with API providers module</solution_benefit>
+          <effort_estimate>1 minute</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/cli_providers/__init__.py at line 51, sort the __all__ list alphabetically:
+          ["CLI_PROVIDERS", "get_available_providers", "get_provider_class", "register_provider"].
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Sort __all__ list items alphabetically</step>
+          <step>Verify imports work correctly after reordering</step>
+          <step>Run linter to confirm RUF022 violation is resolved</step>
+        </verification_steps>
+      </task>
+
+      <!-- Additional nitpick items (representing 78 more similar style/formatting tasks) -->
+      <task priority='LOW' comment_id='nitpick_base_docstring' context_strength='0.35' file_impact='0.25' category='nitpick'>
+        <description>Fix docstring formatting in base_provider.py - replace full-width parentheses</description>
+        <file>lazygit-llm/lazygit_llm/base_provider.py</file>
+        <line>99, 123</line>
+        <impact_analysis>
+          <problem>Multiple instances of full-width parentheses in docstrings and comments</problem>
+          <solution_benefit>Consistent documentation formatting across the codebase</solution_benefit>
+          <effort_estimate>2 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/base_provider.py at lines 99 and 123, replace full-width parentheses
+          with half-width parentheses in docstrings and comments for consistent formatting.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Update all instances of full-width parentheses to half-width</step>
+          <step>Run linter to confirm RUF002/RUF003 violations are resolved</step>
+        </verification_steps>
+      </task>
+
+      <task priority='LOW' comment_id='nitpick_main_unused_vars' context_strength='0.35' file_impact='0.25' category='nitpick'>
+        <description>Remove unused exception variables in main.py</description>
+        <file>lazygit-llm/lazygit_llm/main.py</file>
+        <line>179, 184</line>
+        <impact_analysis>
+          <problem>Unused exception variables in exception handlers</problem>
+          <solution_benefit>Cleaner code, reduced linting warnings</solution_benefit>
+          <effort_estimate>2 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/main.py at lines 179 and 184, remove unused exception variables 'e'
+          from exception handlers. Change "except SomeError as e:" to "except SomeError:".
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Remove unused exception variables</step>
+          <step>Test exception handling still works correctly</step>
+          <step>Run linter to confirm F841 violations are resolved</step>
+        </verification_steps>
+      </task>
+
+      <task priority='LOW' comment_id='nitpick_main_try_structure' context_strength='0.30' file_impact='0.20' category='nitpick'>
+        <description>Move return statement to else block in try-except structure</description>
+        <file>lazygit-llm/lazygit_llm/main.py</file>
+        <line>177</line>
+        <impact_analysis>
+          <problem>Return statement placement could be clearer in try-except structure</problem>
+          <solution_benefit>Improved code readability, explicit success path indication</solution_benefit>
+          <effort_estimate>2 minutes</effort_estimate>
+        </impact_analysis>
+        <ai_agent_prompt>
+          In lazygit-llm/lazygit_llm/main.py at line 177, move the return statement to an else block
+          after the try-except structure to make the success path more explicit.
+        </ai_agent_prompt>
+        <verification_steps>
+          <step>Move return statement to else block</step>
+          <step>Verify function behavior remains unchanged</step>
+          <step>Run linter to confirm TRY300 violation is resolved</step>
+        </verification_steps>
+      </task>
+
+      <!-- Representing additional 75 nitpick items through task groups -->
+      <task_group priority='LOW' category='nitpick_bulk' estimated_items='75'>
+        <description>Bulk style and formatting improvements across multiple files</description>
+        <common_patterns>
+          <pattern type="gitignore_optimization">Optimize .gitignore file - remove duplicates and improve organization (7 items)</pattern>
+          <pattern type="docstring_improvements">Fix docstring formatting issues across src/ directory (12 items)</pattern>
+          <pattern type="import_optimization">Optimize import statements and remove unused imports (8 items)</pattern>
+          <pattern type="configuration_improvements">Improve configuration file examples and documentation (15 items)</pattern>
+          <pattern type="logging_consistency">Ensure consistent logging patterns across modules (6 items)</pattern>
+          <pattern type="type_hint_improvements">Add and improve type hints for better code clarity (9 items)</pattern>
+          <pattern type="exception_handling_minor">Minor exception handling improvements (7 items)</pattern>
+          <pattern type="code_style_consistency">Ensure consistent code style across all Python files (11 items)</pattern>
+        </common_patterns>
+        <batch_processing_guidance>
+          These 75 additional nitpick items should be processed in batches by file type or pattern similarity.
+          Focus on completing similar tasks together for efficiency. Each individual item takes 1-3 minutes
+          but can be batch processed for better time management.
+        </batch_processing_guidance>
+      </task_group>
+    </primary_tasks>
+
+    <implementation_guidance>
+      <systematic_approach>
+        1. **Critical First**: Resolve missing imports to enable basic functionality
+        2. **Exception Handling**: Standardize exception patterns across providers
+        3. **Batch Processing**: Group similar nitpick items for efficient resolution
+        4. **Quality Assurance**: Run comprehensive linting after each batch
+      </systematic_approach>
+
+      <solution_requirements>
+        <!-- Claude 4 Best Practice: Focus on robust, general solutions -->
+        - Implement solutions that work for all valid inputs, not just test cases
+        - Consider edge cases and error handling in all modifications
+        - Ensure solutions are maintainable and follow established patterns
+        - Document any architectural decisions or trade-offs made
+      </solution_requirements>
+
+      <quality_standards>
+        <code_quality>Follow existing conventions, maintain readability, add appropriate comments</code_quality>
+        <security>Validate all inputs, avoid introduction of new vulnerabilities</security>
+        <performance>Consider impact on execution speed and memory usage</performance>
+        <maintainability>Write code that future developers can easily understand and modify</maintainability>
+      </quality_standards>
+
+      <file_cleanup_guidance>
+        If you create any temporary new files, scripts, or helper files for iteration,
+        clean up these files by removing them at the end of the task.
+      </file_cleanup_guidance>
+    </implementation_guidance>
+  </execution_instructions>
+
+  <!-- Rich Context: Supporting detailed reasoning -->
+  <context_data>
+    <summary_information>
+      <pr_title>feat(task-01): Implement project structure and core interfaces</pr_title>
+      <summary_content>
+LazyGit LLM Commit Message Generator の基本プロジェクト構造を実装：
+
+* LazyGit LLM専用ディレクトリ構造作成 (lazygit-llm/)
+* ベースプロバイダーインターフェース定義 (base_provider.py)
+* メインエントリーポイント作成 (main.py)
+* API/CLIプロバイダーディレクトリとレジストリ作成
+* 設定ファイル例・setup.py・requirements.txt作成
+* 日本語コメント完備、Google Style Guide準拠
+* デグレチェック完了: 既存ファイル保護確認済み
+* タスクリスト更新: .specs/tasks.md L3-9
+      </summary_content>
+
+      <walkthrough>
+新規パッケージ「lazygit-llm」を追加し、CLIエントリポイント、抽象プロバイダ基底クラス、API/CLIプロバイダ用レジストリ、設定例、パッケージング関連（setup.py／requirements.txt／.gitignore）、メタデータ、及び仕様タスク更新を導入。メイン実行フロー（設定→差分取得→プロバイダ→メッセージ整形→出力）と設定テスト機能を実装。
+      </walkthrough>
+
+      <changes_table>
+        <change file=".specs/tasks.md" summary="タスク1を「完了」に更新し、5つの具体的完了項目に差し替え" />
+        <change file="lazygit-llm/config/config.yml.example" summary="LLM用設定例を追加（provider/model/api_key/prompt_template/timeout/max_tokens/additional_params）" />
+        <change file="requirements.txt, setup.py, .gitignore" summary="依存関係宣言と配布設定を追加（console_scripts: lazygit-llm-generate）" />
+        <change file="lazygit-llm/lazygit_llm/__init__.py" summary="バージョン、作者、説明のメタデータを追加" />
+        <change file="lazygit-llm/lazygit_llm/base_provider.py" summary="抽象基底クラスを新設（設定検証、プロンプト整形、レスポンス検証、例外階層、タイムアウト／トークン既定）" />
+        <change file="lazygit-llm/lazygit_llm/api_providers/__init__.py" summary="APIプロバイダ用レジストリ（登録／取得／一覧）を追加" />
+        <change file="lazygit-llm/lazygit_llm/cli_providers/__init__.py" summary="CLIベースプロバイダ用レジストリ（登録／取得／一覧）を追加" />
+        <change file="lazygit-llm/lazygit_llm/main.py" summary="CLI実装を追加（引数解析、ロギング、設定読込／検証、設定テスト、Git差分処理、プロバイダ実行、メッセージ整形、標準出力、エラー処理と終了コード）" />
+      </changes_table>
+    </summary_information>
+
+    <review_classification>
+      <actionable_comments>
+        <comment id="actionable_missing_imports" file="lazygit-llm/lazygit_llm/main.py" line="27-31" type="import_error">
+          <description>インポート先が見つかりません — 修正/確認が必要</description>
+          <details>ConfigManager, GitDiffProcessor, ProviderFactory, MessageFormatter をインポートしていますが、リポジトリ内に対応するモジュールファイルが見つかりません</details>
+          <severity>CRITICAL</severity>
+        </comment>
+
+        <comment id="actionable_api_exception" file="lazygit-llm/lazygit_llm/api_providers/__init__.py" line="30" type="exception_handling">
+          <description>例外処理でのカスタム例外クラス使用</description>
+          <details>長い例外メッセージを外部で指定しています。カスタム例外クラスを定義して使用することを推奨</details>
+          <severity>MEDIUM</severity>
+          <ai_agent_prompt>
+class ProviderNotFoundError(Exception):
+    """プロバイダーが見つからない場合のエラー"""
+    def __init__(self, provider_name: str):
+        super().__init__(f"Provider '{provider_name}' not found in registered API providers")
+        self.provider_name = provider_name
+          </ai_agent_prompt>
+        </comment>
+
+        <comment id="actionable_cli_exception" file="lazygit-llm/lazygit_llm/cli_providers/__init__.py" line="29" type="exception_handling">
+          <description>例外処理でのカスタム例外クラス使用</description>
+          <details>長い例外メッセージを外部で指定しています。カスタム例外クラスを定義して使用することを推奨</details>
+          <severity>MEDIUM</severity>
+          <ai_agent_prompt>
+class CLIProviderNotFoundError(Exception):
+    """CLIプロバイダーが見つからない場合のエラー"""
+    def __init__(self, provider_name: str):
+        super().__init__(f"Provider '{provider_name}' not found in registered CLI providers")
+        self.provider_name = provider_name
+          </ai_agent_prompt>
+        </comment>
+
+        <comment id="actionable_base_logging" file="lazygit-llm/lazygit_llm/base_provider.py" line="92-94" type="logging_improvement">
+          <description>例外処理の改善</description>
+          <details>raise文を内部関数に抽象化し、logging.errorの代わりにlogging.exceptionを使用することを推奨</details>
+          <severity>MEDIUM</severity>
+          <ai_agent_prompt>
+def _handle_error(self, error_msg: str, exception: Exception) -> None:
+    """エラーハンドリングの内部関数"""
+    logger.exception(error_msg)  # logging.errorではなくlogging.exception
+    raise exception
+          </ai_agent_prompt>
+        </comment>
+      </actionable_comments>
+
+      <nitpick_comments>
+        <!-- Sample of 82 total nitpick items -->
+        <comment id="nitpick_api_docstring" file="lazygit-llm/lazygit_llm/api_providers/__init__.py" line="47" type="docstring_formatting">
+          <description>docstring内の全角括弧を半角に修正</description>
+          <suggestion>Line 47のdocstringに全角括弧が含まれています</suggestion>
+        </comment>
+
+        <comment id="nitpick_api_all_sort" file="lazygit-llm/lazygit_llm/api_providers/__init__.py" line="51" type="code_style">
+          <description>__all__のソート順を修正</description>
+          <suggestion>__all__リストをアルファベット順にソートすることを推奨します</suggestion>
+        </comment>
+
+        <comment id="nitpick_cli_docstring" file="lazygit-llm/lazygit_llm/cli_providers/__init__.py" line="46" type="docstring_formatting">
+          <description>docstring内の全角括弧を半角に修正</description>
+          <suggestion>Line 46のdocstringに全角括弧が含まれています</suggestion>
+        </comment>
+
+        <comment id="nitpick_cli_all_sort" file="lazygit-llm/lazygit_llm/cli_providers/__init__.py" line="51" type="code_style">
+          <description>__all__のソート順を修正</description>
+          <suggestion>__all__リストをアルファベット順にソートすることを推奨します</suggestion>
+        </comment>
+
+        <!-- Additional nitpick items grouped by category -->
+        <nitpick_group category="gitignore_improvements" count="7">
+          <pattern>coverage系の重複を整理、バックアップパターンの重複削除、環境変数ファイルの網羅性強化など</pattern>
+        </nitpick_group>
+
+        <nitpick_group category="config_improvements" count="2">
+          <pattern>環境変数参照の展開明記、プレースホルダの安全な置換方式への変更</pattern>
+        </nitpick_group>
+
+        <nitpick_group category="src_formatting" count="18">
+          <pattern>全角括弧の半角化、バージョン管理の単一ソース化、ロガーのNullHandler追加など</pattern>
+        </nitpick_group>
+
+        <nitpick_group category="setup_improvements" count="3">
+          <pattern>URLの実リポジトリへの更新、LICENSEファイル同梱確認、依存関係の修正</pattern>
+        </nitpick_group>
+
+        <nitpick_group category="main_optimizations" count="15">
+          <pattern>処理順序最適化、例外処理改善、ドキュメント整合性向上など</pattern>
+        </nitpick_group>
+
+        <nitpick_group category="provider_enhancements" count="12">
+          <pattern>型ガード追加、一覧ソート、公開API明示化など</pattern>
+        </nitpick_group>
+
+        <nitpick_group category="misc_style" count="25">
+          <pattern>その他のスタイル、型ヒント、ログ改善等の細かい調整</pattern>
+        </nitpick_group>
+      </nitpick_comments>
+
+      <outside_diff_range_comments>
+        <comment id="outside_diff_imports" file="lazygit-llm/lazygit_llm/main.py" line="27-31" type="import_error">
+          <description>インポート先が見つかりません — 修正/確認が必要</description>
+          <suggestion>ConfigManager, GitDiffProcessor, ProviderFactory, MessageFormatter のインポートエラー。実装ファイルを追加するか、インポートパスを修正してください</suggestion>
+        </comment>
+      </outside_diff_range_comments>
+    </review_classification>
+
+    <thread_relationships>
+      <thread id='review_thread_main' resolved='false'>
+        <file_context>Multiple files across lazygit-llm project</file_context>
+        <line_context>Various lines across 5 review rounds</line_context>
+        <participants>
+          <participant>coderabbitai[bot]</participant>
+          <participant>yohi</participant>
+        </participants>
+        <review_rounds>
+          <round number="1" timestamp="2025-09-17T04:17:41Z" actionable="7" nitpick="18" />
+          <round number="2" timestamp="2025-09-17T08:50:59Z" actionable="0" nitpick="7" />
+          <round number="3" timestamp="2025-09-17T15:42:33Z" actionable="0" nitpick="21" />
+          <round number="4" timestamp="2025-09-17T16:02:54Z" actionable="1" nitpick="28" />
+          <round number="5" timestamp="2025-09-17T21:06:47Z" actionable="0" nitpick="8" />
+        </review_rounds>
+        <structured_data>
+          {
+            "thread_id": "review_thread_main",
+            "total_reviews": 5,
+            "cumulative_actionable": 4,
+            "cumulative_nitpick": 82,
+            "context_summary": "CodeRabbit review of LazyGit LLM project across multiple development iterations",
+            "resolution_status": "partially_resolved",
+            "last_activity": "2025-09-17T21:06:47Z"
+          }
+        </structured_data>
+      </thread>
+    </thread_relationships>
+
+    <resolved_markers>
+      <!-- No resolved markers detected in current PR -->
+    </resolved_markers>
+  </context_data>
+
+  <summary_statistics>
+    <processing_timestamp>2025-01-18T15:30:00Z</processing_timestamp>
+    <coderabbit_data_version>pr_2_comprehensive_review_data</coderabbit_data_version>
+    <total_actionable_tasks>4</total_actionable_tasks>
+    <total_nitpick_tasks>82</total_nitpick_tasks>
+    <total_outside_diff_tasks>1</total_outside_diff_tasks>
+    <total_tasks>87</total_tasks>
+    <estimated_total_effort>8-12 hours</estimated_total_effort>
+    <files_requiring_changes>25+</files_requiring_changes>
+    <priority_breakdown>
+      <high_priority_tasks>2</high_priority_tasks>     <!-- Missing imports (critical) -->
+      <medium_priority_tasks>3</medium_priority_tasks> <!-- Exception handling -->
+      <low_priority_tasks>82</low_priority_tasks>      <!-- Style and formatting -->
+    </priority_breakdown>
+    <quality_metrics>
+      <completion_rate>0%</completion_rate>  <!-- All items unresolved -->
+      <critical_blocking_issues>1</critical_blocking_issues>  <!-- Missing imports -->
+      <code_quality_impact>High</code_quality_impact>
+      <maintainability_improvement>Significant</maintainability_improvement>
+    </quality_metrics>
+  </summary_statistics>
+</coderabbit_instructions>

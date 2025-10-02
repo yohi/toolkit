@@ -2,33 +2,35 @@
 
 import logging
 import time
-from typing import Dict, List, Optional, Any
 from dataclasses import dataclass
+from typing import Any, Dict, List, Optional
 
 # Module-level logger
 logger = logging.getLogger(__name__)
 
+from .exceptions import CodeRabbitFetcherError
 from .models import (
     AnalyzedComments,
-    SummaryComment,
-    ReviewComment,
     CommentMetadata,
+    ResolutionStatus,
+    ReviewComment,
+    SummaryComment,
     ThreadContext,
-    ResolutionStatus
 )
-from .processors import SummaryProcessor, ReviewProcessor, ThreadProcessor
+from .processors import ReviewProcessor, SummaryProcessor, ThreadProcessor
 from .resolved_marker import ResolvedMarkerConfig, ResolvedMarkerDetector
-from .exceptions import CodeRabbitFetcherError
 
 
 class CommentAnalysisError(CodeRabbitFetcherError):
     """Exception raised during comment analysis."""
+
     pass
 
 
 @dataclass
 class CommentStats:
     """Statistics collected during comment analysis."""
+
     total_comments: int = 0
     coderabbit_comments: int = 0
     summary_comments: int = 0
@@ -95,7 +97,9 @@ class CommentAnalyzer:
                 return self._create_empty_result(pr_info)
 
             # Categorize comments
-            summary_comments, review_comments, inline_comments = self._categorize_comments(coderabbit_comments)
+            summary_comments, review_comments, inline_comments = self._categorize_comments(
+                coderabbit_comments
+            )
 
             # Process each category
             processed_summary = self._process_summary_comments(summary_comments)
@@ -115,7 +119,7 @@ class CommentAnalyzer:
                 summary_comments=processed_summary,
                 review_comments=processed_review,
                 unresolved_threads=filtered_threads,
-                metadata=metadata
+                metadata=metadata,
             )
 
         except Exception as e:
@@ -131,7 +135,7 @@ class CommentAnalyzer:
             "owner": pr_data.get("owner", ""),
             "repo": pr_data.get("repo", ""),
             "state": pr_data.get("state", ""),
-            "author": pr_data.get("author", {}).get("login", "") if pr_data.get("author") else ""
+            "author": pr_data.get("author", {}).get("login", "") if pr_data.get("author") else "",
         }
 
     def _collect_all_comments(self, pr_data: Dict[str, Any]) -> List[Dict[str, Any]]:
@@ -155,7 +159,7 @@ class CommentAnalyzer:
                         "body": body,
                         "user": review.get("user", {}),
                         "created_at": review.get("created_at"),
-                        "comment_type": "review"
+                        "comment_type": "review",
                     }
                     all_comments.append(review_comment)
 
@@ -217,7 +221,9 @@ class CommentAnalyzer:
                 processed.append(summary)
             except (ValueError, KeyError, TypeError) as e:
                 # Log error but continue processing
-                logger.warning("Failed to process summary comment %s: %s", comment.get('id'), e, exc_info=True)
+                logger.warning(
+                    "Failed to process summary comment %s: %s", comment.get("id"), e, exc_info=True
+                )
             except (KeyboardInterrupt, SystemExit):
                 # Re-raise critical exceptions
                 raise
@@ -235,7 +241,9 @@ class CommentAnalyzer:
                 self.stats.actionable_comments += review.actionable_count
             except (ValueError, KeyError, TypeError, AttributeError) as e:
                 # Log error but continue processing
-                logger.warning("Failed to process review comment %s: %s", comment.get('id'), e, exc_info=True)
+                logger.warning(
+                    "Failed to process review comment %s: %s", comment.get("id"), e, exc_info=True
+                )
             except (KeyboardInterrupt, SystemExit):
                 # Re-raise critical exceptions
                 raise
@@ -271,8 +279,7 @@ class CommentAnalyzer:
 
         # Filter to only unresolved threads
         unresolved = [
-            thread for thread in threads
-            if thread.resolution_status != ResolutionStatus.RESOLVED
+            thread for thread in threads if thread.resolution_status != ResolutionStatus.RESOLVED
         ]
 
         return unresolved
@@ -289,7 +296,7 @@ class CommentAnalyzer:
             coderabbit_comments=self.stats.coderabbit_comments,
             resolved_comments=self.stats.resolved_comments,
             actionable_comments=self.stats.actionable_comments,
-            processing_time_seconds=self.stats.processing_time_seconds
+            processing_time_seconds=self.stats.processing_time_seconds,
         )
 
     def _create_empty_result(self, pr_info: Dict[str, Any]) -> AnalyzedComments:
@@ -297,10 +304,7 @@ class CommentAnalyzer:
         metadata = self._create_metadata(pr_info)
 
         return AnalyzedComments(
-            summary_comments=[],
-            review_comments=[],
-            unresolved_threads=[],
-            metadata=metadata
+            summary_comments=[], review_comments=[], unresolved_threads=[], metadata=metadata
         )
 
     def get_analysis_statistics(self) -> Dict[str, Any]:
@@ -320,9 +324,10 @@ class CommentAnalyzer:
             "threads_processed": self.stats.threads_processed,
             "processing_time_seconds": self.stats.processing_time_seconds,
             "resolution_rate": (
-                0.0 if self.stats.coderabbit_comments == 0
+                0.0
+                if self.stats.coderabbit_comments == 0
                 else self.stats.resolved_comments / self.stats.coderabbit_comments
-            )
+            ),
         }
 
     def validate_pr_data(self, pr_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -339,7 +344,7 @@ class CommentAnalyzer:
             "issues": [],
             "warnings": [],
             "comment_count": 0,
-            "review_count": 0
+            "review_count": 0,
         }
 
         # Check required fields
@@ -432,7 +437,7 @@ class CommentAnalyzer:
             "coderabbit_percentage": 0.0,
             "comment_types": {},
             "resolution_patterns": {},
-            "time_distribution": {}
+            "time_distribution": {},
         }
 
         if not comments:

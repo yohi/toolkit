@@ -2,7 +2,6 @@
 Markdown formatter for CodeRabbit Comment Fetcher.
 """
 
-import json
 from typing import Any, Dict
 
 from .base import Formatter
@@ -34,7 +33,7 @@ class MarkdownFormatter(Formatter):
             lines.append("")
 
         # Summary
-        metadata = analyzed_comments.get('metadata', {})
+        metadata = analyzed_comments.get("metadata", {})
         lines.append("## Summary")
         lines.append(f"- **Pull Request**: #{metadata.get('pull_request_number', 'N/A')}")
         lines.append(f"- **Total Comments**: {metadata.get('total_inline_comments', 0)}")
@@ -42,17 +41,17 @@ class MarkdownFormatter(Formatter):
         lines.append("")
 
         # Comments
-        inline_comments = analyzed_comments.get('inline_comments', [])
+        inline_comments = analyzed_comments.get("inline_comments", [])
         if inline_comments:
             lines.append("## Inline Comments")
             for i, comment in enumerate(inline_comments, 1):
                 lines.append(f"### Comment {i}")
                 lines.append(f"**File**: `{comment.get('path', 'N/A')}`")
                 lines.append(f"**User**: {comment.get('user', 'N/A')}")
-                if comment.get('is_coderabbit'):
+                if comment.get("is_coderabbit"):
                     lines.append("**Source**: CodeRabbit 🤖")
                 lines.append("")
-                body = comment.get('body', '')
+                body = comment.get("body", "")
                 if body:
                     lines.append(body)
                 lines.append("")
