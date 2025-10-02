@@ -59,8 +59,9 @@ class ResolutionDetector:
         self.config = config or {}
 
         # デフォルト解決マーカーパターン
+        # Note: Removed generic affirmative words (good, ok, fine) to reduce false positives
         self.default_resolution_patterns = [
-            # 日本語パターン
+            # 日本語パターン（具体的な修正文脈を持つもの）
             r"解決済み",
             r"解決しました",
             r"解決された",
@@ -70,22 +71,20 @@ class ResolutionDetector:
             r"対応済み",
             r"対応しました",
             r"対応された",
-            r"完了",
             r"完了しました",
-            r"適切です",
+            r"適切です[！!]",  # 感嘆符付きのみ残す
             r"問題ありません",
-            # 英語パターン
-            r"resolved",
-            r"fixed",
-            r"addressed",
-            r"completed",
-            r"done",
-            r"corrected",
-            r"appropriate",
-            r"good",
-            r"ok",
-            r"fine",
-            # 肯定的なフィードバックパターン
+            # 英語パターン（修正文脈を持つもの）
+            r"\bresolved\b",
+            r"\bfixed\b",
+            r"\baddressed\b",
+            r"\bcompleted\b",
+            r"\bdone\b",
+            r"\bcorrected\b",
+            r"\bhas been fixed\b",
+            r"\bhas been resolved\b",
+            r"\bhas been addressed\b",
+            # 肯定的なフィードバックパターン（文脈付き）
             r"解決.*?[！!]",
             r"適切.*?改名",
             r"前回.*?解決",
@@ -97,7 +96,6 @@ class ResolutionDetector:
             r"前回のレビューで指摘した.*?解決",
             r"素晴らしい対応です",
             r"適切に修正されています",
-            r"適切です[！!]",
             r"適切な対応です",
             r"問題が解決されました",
             r"命名衝突が解決",

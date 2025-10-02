@@ -473,9 +473,10 @@ def cache_result(
             key_identifier = key_template.format(**key_data)
             cache_key = CacheKey(namespace=namespace, identifier=key_identifier)
 
-            # Try to get from cache
-            result = cache_manager.get(cache_key)
-            if result is not None:
+            # Try to get from cache using sentinel to distinguish None values
+            _CACHE_MISS = object()
+            result = cache_manager.get(cache_key, default=_CACHE_MISS)
+            if result is not _CACHE_MISS:
                 return result
 
             # Execute function and cache result

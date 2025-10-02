@@ -267,14 +267,15 @@ class SentimentAnalyzer:
             return result
 
         except Exception as e:
-            logger.error(f"Error analyzing sentiment: {e}")
+            # Log full exception with stack trace for debugging
+            logger.exception("Error analyzing sentiment")
 
-            # Return safe default
+            # Return safe default without exposing exception details
             return SentimentScore(
                 sentiment_score=0.0,
                 sentiment_label=SentimentLabel.NEUTRAL,
                 confidence=0.0,
-                reasoning=f"Analysis error: {e}",
+                reasoning="Analysis error occurred; details logged for debugging",
             )
 
     def analyze_sentiment(
@@ -363,8 +364,22 @@ class SentimentAnalyzer:
                 prompt=prompt, system_prompt=system_prompt, temperature=0.1, max_tokens=400
             )
 
+            # Validate response object
+            if not response:
+                logger.warning("LLM returned None response")
+                return None
+            
+            # Defensive attribute access
+            content = getattr(response, 'content', None)
+            if not content:
+                logger.warning("LLM response missing 'content' attribute")
+                return None
+
             # Parse response
             result = self._parse_ai_response(response, text)
+
+            # Safely get response_time_ms with fallback
+            response_time_ms = getattr(response, 'response_time_ms', 0)
 
             # Publish analysis event
             publish_event(
@@ -375,7 +390,7 @@ class SentimentAnalyzer:
                     "sentiment_score": result.sentiment_score,
                     "sentiment_label": result.sentiment_label.value,
                     "confidence": result.confidence,
-                    "response_time_ms": response.response_time_ms,
+                    "response_time_ms": response_time_ms,
                 },
             )
 
@@ -432,14 +447,18 @@ class SentimentAnalyzer:
         except Exception as e:
             logger.error(f"Error parsing AI sentiment response: {e}")
 
-            # Return rule-based analysis as fallback
+            # Return rule-based analysis as fallback and update stats
+            if "fallback_analyses" not in self.stats:
+                self.stats["fallback_analyses"] = 0
+            self.stats["fallback_analyses"] += 1
+            
             return self._analyze_with_rules(text)
 
     def _parse_text_response(self, text: str, original_text: str) -> SentimentScore:
         """Parse text response from AI."""
-        # Extract sentiment score
+        # Extract sentiment score (support both integer and decimal)
         sentiment_score = 0.0
-        score_match = re.search(r"sentiment.*?(-?\d+\.\d+)", text, re.IGNORECASE)
+        score_match = re.search(r"sentiment.*?(-?\d+(?:\.\d+)?)", text, re.IGNORECASE)
         if score_match:
             sentiment_score = float(score_match.group(1))
 
@@ -455,9 +474,9 @@ class SentimentAnalyzer:
         else:
             sentiment_label = SentimentLabel.NEUTRAL
 
-        # Extract confidence
+        # Extract confidence (support both integer and decimal)
         confidence = 0.5
-        confidence_match = re.search(r"confidence.*?(\d+\.\d+)", text, re.IGNORECASE)
+        confidence_match = re.search(r"confidence.*?(\d+(?:\.\d+)?)", text, re.IGNORECASE)
         if confidence_match:
             confidence = float(confidence_match.group(1))
 

@@ -239,7 +239,14 @@ class RedisCache(CacheProvider):
             ttl = None
             if entry.expires_at:
                 ttl_delta = entry.expires_at - datetime.now()
-                ttl = max(1, int(ttl_delta.total_seconds()))
+                ttl_seconds = int(ttl_delta.total_seconds())
+                
+                # If already expired, delete existing key and skip set
+                if ttl_seconds <= 0:
+                    self._redis_client.delete(redis_key)
+                    return False
+                
+                ttl = ttl_seconds
 
             # Set in Redis with TTL
             if ttl:

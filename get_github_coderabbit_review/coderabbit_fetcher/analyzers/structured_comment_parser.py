@@ -189,23 +189,28 @@ class StructuredCommentParser:
 
         # Outside Diff Rangeセクションの場合、直接パターンマッチング
         if section_type == CommentSection.OUTSIDE_DIFF_RANGE:
+            # Find all <summary> tags and their positions to map comments to correct files
+            summary_pattern = re.compile(r"<summary>(.*?)</summary>", re.DOTALL)
+            summaries = [(m.start(), m.group(1).strip()) for m in summary_pattern.finditer(section_content)]
+            
             # 直接section_content全体から`行番号`: **タイトル** パターンを検索
             direct_matches = self.line_comment_pattern.finditer(section_content)
             for match in direct_matches:
                 line_range = match.group(1)
                 title = match.group(2)
+                match_pos = match.start()
 
-                # ファイル名を抽出（summary内から）
+                # ファイル名を抽出（マッチ位置より前で最も近い<summary>から）
                 file_path = "unknown_file"
-                summary_match = re.search(r"<summary>(.*?)</summary>", section_content, re.DOTALL)
-                if summary_match:
-                    summary_text = summary_match.group(1).strip()
-                    # "ファイル名 (1)" のようなパターンからファイル名を抽出
-                    file_name_match = re.match(r"(.+?)\s*\(\d+\)", summary_text)
-                    if file_name_match:
-                        file_path = file_name_match.group(1).strip()
-                    else:
-                        file_path = summary_text
+                for sum_pos, sum_text in reversed(summaries):
+                    if sum_pos < match_pos:
+                        # "ファイル名 (1)" のようなパターンからファイル名を抽出
+                        file_name_match = re.match(r"(.+?)\s*\(\d+\)", sum_text)
+                        if file_name_match:
+                            file_path = file_name_match.group(1).strip()
+                        else:
+                            file_path = sum_text
+                        break
 
                 # コメント内容を抽出
                 content_start = match.end()

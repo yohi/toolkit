@@ -432,7 +432,7 @@ class FileCache(CacheProvider):
     def _cleanup_cache(self) -> None:
         """Cleanup cache by removing oldest files."""
         try:
-            # Get all cache files with their modification times
+            # Get all cache files with their modification times and sizes
             cache_files = []
 
             for root, dirs, files in os.walk(self.cache_dir):
@@ -440,8 +440,8 @@ class FileCache(CacheProvider):
                     if file.endswith(".cache"):
                         file_path = Path(root) / file
                         try:
-                            mtime = file_path.stat().st_mtime
-                            cache_files.append((file_path, mtime))
+                            stat_info = file_path.stat()
+                            cache_files.append((file_path, stat_info.st_mtime, stat_info.st_size))
                         except Exception:
                             # Remove inaccessible files
                             try:
@@ -452,15 +452,24 @@ class FileCache(CacheProvider):
             # Sort by modification time (oldest first)
             cache_files.sort(key=lambda x: x[1])
 
-            # Remove oldest files until we're under limits
-            removed = 0
+            # Calculate limits
+            size_limit_bytes = int(self.config.max_total_size_mb * 1024 * 1024)
+            current_total_size = sum(entry[2] for entry in cache_files)
             target_file_count = int(self.config.max_files * 0.8)  # Clean to 80% of limit
+            target_size_bytes = int(size_limit_bytes * 0.8) if size_limit_bytes > 0 else 0
 
-            while len(cache_files) - removed > target_file_count and cache_files:
-                file_path, _ = cache_files[removed]
+            removed = 0
+
+            # Remove oldest files until both file count and size are under limits
+            while cache_files and (
+                len(cache_files) > target_file_count or
+                (target_size_bytes > 0 and current_total_size > target_size_bytes)
+            ):
+                file_path, _, file_size = cache_files.pop(0)
                 try:
                     file_path.unlink()
                     removed += 1
+                    current_total_size -= file_size
                 except Exception as e:
                     logger.warning(f"Error removing cache file {file_path}: {e}")
                     removed += 1  # Count it anyway to avoid infinite loop
