@@ -353,7 +353,7 @@ class MetadataEnhancer:
 
         critical = 0  # Reserved for security issues
         high = actionable  # Actionable comments
-        medium = nitpick  # Nitpick comments
+        medium = nitpick + outside_diff  # Nitpick + Outside diff comments
         low = 0  # Minor style issues
 
         return f"Critical: {critical}, High: {high}, Medium: {medium}, Low: {low}"

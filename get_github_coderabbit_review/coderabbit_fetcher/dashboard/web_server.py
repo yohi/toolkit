@@ -465,6 +465,10 @@ class DashboardServer:
                 self.current_metrics.processing_count += 1
 
             elif event.event_type == EventType.PROCESSING_COMPLETED:
+                # Decrement processing count
+                if self.current_metrics.processing_count > 0:
+                    self.current_metrics.processing_count -= 1
+                
                 # Extract response time if available
                 if "response_time_ms" in event.data:
                     response_time = event.data["response_time_ms"]
@@ -476,6 +480,9 @@ class DashboardServer:
 
             elif event.event_type == EventType.PROCESSING_FAILED:
                 self.current_metrics.errors += 1
+                # Decrement processing count
+                if self.current_metrics.processing_count > 0:
+                    self.current_metrics.processing_count -= 1
 
             elif event.event_type == EventType.CACHE_HIT:
                 self.current_metrics.cache_hits += 1

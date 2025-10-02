@@ -419,9 +419,19 @@ class RedisCache(CacheProvider):
             pattern = f"{self.config.key_prefix}{namespace}:*"
             redis_keys = list(self._redis_client.scan_iter(pattern, count=1000))
 
-            # Remove prefix from keys
+            # Remove prefix from keys and normalize to str
             prefix_len = len(self.config.key_prefix)
-            return [key[prefix_len:] for key in redis_keys]
+            
+            def _to_str(k):
+                """Normalize key to string (handle bytes from decode_responses=False)."""
+                if isinstance(k, bytes):
+                    try:
+                        return k.decode("utf-8", errors="ignore")
+                    except Exception:
+                        return str(k)
+                return k
+            
+            return [_to_str(k)[prefix_len:] for k in redis_keys]
 
         except redis.RedisError:
             logger.exception(f"Error getting namespace keys for {namespace}")

@@ -183,6 +183,10 @@ class AsyncTaskManager:
             return summary
 
         except Exception as e:
+            # Update stats even on failure
+            execution_time = time.time() - start_time
+            self.stats["total_execution_time"] = execution_time
+            
             logger.error(f"Error executing tasks: {e}")
             raise
 
@@ -357,14 +361,13 @@ class AsyncTaskManager:
         # Topological sort for dependency resolution
         remaining_tasks = dict(self.tasks)
         execution_waves = []
+        completed_tasks = set()  # Track actually completed tasks
 
         while remaining_tasks:
             # Find tasks with no unmet dependencies
             ready_tasks = []
             for task_id, task in remaining_tasks.items():
-                if self._dependencies_satisfied(
-                    task, completed_tasks=set(self.tasks.keys()) - set(remaining_tasks.keys())
-                ):
+                if self._dependencies_satisfied(task, completed_tasks=completed_tasks):
                     ready_tasks.append(task_id)
 
             if not ready_tasks:
@@ -394,8 +397,9 @@ class AsyncTaskManager:
             ready_tasks.sort(key=lambda tid: self.tasks[tid].priority.value, reverse=True)
             execution_waves.append(ready_tasks)
 
-            # Remove ready tasks from remaining
+            # Mark ready tasks as completed for next wave and remove from remaining
             for task_id in ready_tasks:
+                completed_tasks.add(task_id)
                 del remaining_tasks[task_id]
 
         return execution_waves
@@ -420,13 +424,16 @@ class AsyncTaskManager:
                 task_id for task_id, t in self.tasks.items() if t.status == TaskStatus.COMPLETED
             }
 
+        # First, check for missing dependencies
+        missing_deps = [dep for dep in task.dependencies if dep not in self.tasks]
+        if missing_deps:
+            raise ValueError(
+                f"Task '{task.id}' has unregistered dependencies: {missing_deps}. "
+                f"Registered task IDs: {list(self.tasks.keys())}"
+            )
+        
         # Check each dependency
         for dep_id in task.dependencies:
-            # Dependency must exist
-            if dep_id not in self.tasks:
-                logger.error(f"Task {task.task_id} depends on non-existent task {dep_id}")
-                return False
-
             # Dependency must be completed
             if dep_id not in completed_tasks:
                 dep_task = self.tasks[dep_id]
@@ -450,7 +457,20 @@ class AsyncTaskManager:
         tasks_to_run = [self._execute_single_task(self.tasks[task_id]) for task_id in task_ids]
 
         if tasks_to_run:
-            await asyncio.gather(*tasks_to_run, return_exceptions=True)
+            results = await asyncio.gather(*tasks_to_run, return_exceptions=True)
+            
+            # Check for exceptions and log them
+            for i, result in enumerate(results):
+                if isinstance(result, Exception):
+                    task_id = task_ids[i]
+                    task = self.tasks[task_id]
+                    logger.error(f"Task {task_id} failed with exception: {result}")
+                    
+                    # Update task state if not already marked as failed
+                    if task.status != TaskStatus.FAILED:
+                        task.status = TaskStatus.FAILED
+                        task.error = str(result)
+                        self.stats["failed_tasks"] += 1
 
     async def _execute_single_task(self, task: AsyncTask) -> Any:
         """Execute a single task with retries and error handling.
@@ -462,99 +482,108 @@ class AsyncTaskManager:
             Task result
         """
         async with self.semaphore:
-            # Update task status
-            task.status = TaskStatus.RUNNING
-            task.started_at = datetime.now()
+            last_exception = None
+            
+            # Retry loop (iterative, not recursive)
+            for attempt in range(task.max_retries + 1):
+                # Update task status
+                task.status = TaskStatus.RUNNING
+                task.started_at = datetime.now()
 
-            # Call started hooks
-            for hook in self.task_started_hooks:
-                try:
-                    hook(task)
-                except Exception as e:
-                    logger.warning(f"Task started hook failed: {e}")
-
-            logger.debug(f"Starting task {task.name} ({task.id})")
-
-            # Create asyncio task for execution
-            execution_task = asyncio.create_task(task.coroutine)
-            self.running_tasks[task.id] = execution_task
-
-            try:
-                # Execute with timeout
-                if task.timeout_seconds:
-                    try:
-                        result = await asyncio.wait_for(
-                            execution_task, timeout=task.timeout_seconds
-                        )
-                    except asyncio.TimeoutError:
-                        # Cancel the underlying task on timeout
-                        execution_task.cancel()
+                # Call started hooks (only on first attempt)
+                if attempt == 0:
+                    for hook in self.task_started_hooks:
                         try:
-                            await execution_task
-                        except asyncio.CancelledError:
-                            pass
-                        raise asyncio.TimeoutError(
-                            f"Task {task.name} timed out after {task.timeout_seconds}s"
+                            hook(task)
+                        except Exception as e:
+                            logger.warning(f"Task started hook failed: {e}")
+
+                logger.debug(f"Starting task {task.name} ({task.id}) - attempt {attempt + 1}/{task.max_retries + 1}")
+
+                # Create asyncio task for execution
+                execution_task = asyncio.create_task(task.coroutine)
+                self.running_tasks[task.id] = execution_task
+
+                try:
+                    # Execute with timeout
+                    if task.timeout_seconds:
+                        try:
+                            result = await asyncio.wait_for(
+                                execution_task, timeout=task.timeout_seconds
+                            )
+                        except asyncio.TimeoutError:
+                            # Cancel the underlying task on timeout
+                            execution_task.cancel()
+                            try:
+                                await execution_task
+                            except asyncio.CancelledError:
+                                pass
+                            raise asyncio.TimeoutError(
+                                f"Task {task.name} timed out after {task.timeout_seconds}s"
+                            )
+                    else:
+                        result = await execution_task
+
+                    # Task completed successfully
+                    task.status = TaskStatus.COMPLETED
+                    task.completed_at = datetime.now()
+                    task.result = result
+                    self.stats["completed_tasks"] += 1
+
+                    # Call completed hooks
+                    for hook in self.task_completed_hooks:
+                        try:
+                            hook(task)
+                        except Exception as e:
+                            logger.warning(f"Task completed hook failed: {e}")
+
+                    logger.debug(f"Completed task {task.name} ({task.id})")
+                    return result
+
+                except Exception as e:
+                    last_exception = e
+                    error_msg = str(e)
+                    logger.error(f"Task {task.name} failed (attempt {attempt + 1}): {error_msg}")
+
+                    # Check if we should retry
+                    if attempt < task.max_retries:
+                        task.retry_attempts = attempt + 1
+                        logger.info(
+                            f"Retrying task {task.name} (attempt {task.retry_attempts + 1}/{task.max_retries + 1})"
                         )
-                else:
-                    result = await execution_task
 
-                # Task completed successfully
-                task.status = TaskStatus.COMPLETED
-                task.completed_at = datetime.now()
-                task.result = result
-                self.stats["completed_tasks"] += 1
+                        # Reset status for retry
+                        task.status = TaskStatus.PENDING
+                        task.started_at = None
 
-                # Call completed hooks
-                for hook in self.task_completed_hooks:
-                    try:
-                        hook(task)
-                    except Exception as e:
-                        logger.warning(f"Task completed hook failed: {e}")
+                        # Exponential backoff
+                        wait_time = min(2 ** (attempt + 1), 10)
+                        await asyncio.sleep(wait_time)
+                        
+                        # Continue to next iteration
+                        continue
+                    
+                    # All retries exhausted
+                    break
+            
+            # Task failed permanently after all retries
+            task.status = TaskStatus.FAILED
+            task.completed_at = datetime.now()
+            task.error = str(last_exception) if last_exception else "Unknown error"
+            self.stats["failed_tasks"] += 1
 
-                logger.debug(f"Completed task {task.name} ({task.id})")
-                return result
+            # Call failed hooks
+            for hook in self.task_failed_hooks:
+                try:
+                    hook(task, task.error)
+                except Exception as hook_error:
+                    logger.warning(f"Task failed hook failed: {hook_error}")
 
-            except Exception as e:
-                error_msg = str(e)
-                logger.error(f"Task {task.name} failed: {error_msg}")
-
-                # Handle retries
-                if task.retry_attempts < task.max_retries:
-                    task.retry_attempts += 1
-                    logger.info(
-                        f"Retrying task {task.name} (attempt {task.retry_attempts}/{task.max_retries})"
-                    )
-
-                    # Reset status for retry
-                    task.status = TaskStatus.PENDING
-                    task.started_at = None
-
-                    # Wait a bit before retry
-                    await asyncio.sleep(min(2**task.retry_attempts, 10))  # Exponential backoff
-
-                    # Recursive retry
-                    return await self._execute_single_task(task)
-
-                # Task failed permanently
-                task.status = TaskStatus.FAILED
-                task.completed_at = datetime.now()
-                task.error = error_msg
-                self.stats["failed_tasks"] += 1
-
-                # Call failed hooks
-                for hook in self.task_failed_hooks:
-                    try:
-                        hook(task, error_msg)
-                    except Exception as hook_error:
-                        logger.warning(f"Task failed hook failed: {hook_error}")
-
-                raise
-
-            finally:
-                # Clean up running task reference
-                if task.id in self.running_tasks:
-                    del self.running_tasks[task.id]
+            # Clean up running task reference
+            if task.id in self.running_tasks:
+                del self.running_tasks[task.id]
+            
+            raise last_exception if last_exception else RuntimeError("Task failed")
 
     def _generate_execution_summary(self) -> Dict[str, Any]:
         """Generate execution summary.
