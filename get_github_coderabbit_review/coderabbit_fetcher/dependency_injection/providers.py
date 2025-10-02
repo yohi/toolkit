@@ -1,5 +1,6 @@
 """Service provider implementations for dependency injection."""
 
+import inspect
 import logging
 import threading
 from abc import ABC, abstractmethod
@@ -97,10 +98,27 @@ class FactoryProvider(AbstractProvider):
     def provide(self) -> T:
         """Provide instance using factory."""
         if self.container:
-            return self.container._invoke_factory(self.factory)
+            result = self.container._invoke_factory(self.factory)
         else:
             # Fallback to simple factory call
-            return self.factory()
+            result = self.factory()
+        
+        # Handle async factory functions
+        if inspect.iscoroutinefunction(self.factory) or inspect.iscoroutine(result):
+            import asyncio
+            try:
+                loop = asyncio.get_running_loop()
+                raise RuntimeError(
+                    f"Async factory {self.factory.__name__} cannot be called from sync context "
+                    "with a running event loop. Use an async entrypoint or resolve asynchronously."
+                )
+            except RuntimeError as e:
+                if "cannot be called" in str(e):
+                    raise
+                # No running loop, safe to use asyncio.run
+                return asyncio.run(result) if inspect.iscoroutine(result) else result
+        
+        return result
 
     def can_provide(self, service_type: Type) -> bool:
         """Check if can provide service type."""
@@ -250,9 +268,14 @@ class LazyProvider(AbstractProvider):
             with self._lock:
                 # Double-check inside lock to prevent race conditions
                 if not self._created:
-                    self._instance = self.provider.provide()
-                    self._created = True
-                    logger.debug(f"Lazily created instance of {self.service_type.__name__}")
+                    try:
+                        self._instance = self.provider.provide()
+                        self._created = True
+                        logger.debug(f"Lazily created instance of {self.service_type.__name__}")
+                    except Exception:
+                        # On failure, ensure _created remains False so retry is possible
+                        self._created = False
+                        raise
 
         return self._instance
 
@@ -284,7 +307,8 @@ class PooledProvider(AbstractProvider):
         self.provider = provider
         self.pool_size = pool_size
         self._pool: List[T] = []
-        self._in_use: set[T] = set()
+        # Use id() to track instances instead of relying on hashability
+        self._in_use_ids: Dict[int, T] = {}
         self._lock = threading.RLock()  # Thread safety for pool operations
 
     def provide(self) -> T:
@@ -293,13 +317,13 @@ class PooledProvider(AbstractProvider):
             # Try to get from pool
             if self._pool:
                 instance = self._pool.pop()
-                self._in_use.add(instance)
+                self._in_use_ids[id(instance)] = instance
                 logger.debug(f"Provided instance from pool for {self.service_type.__name__}")
                 return instance
 
             # Create new instance if pool is empty
             instance = self.provider.provide()
-            self._in_use.add(instance)
+            self._in_use_ids[id(instance)] = instance
             logger.debug(f"Created new pooled instance for {self.service_type.__name__}")
             return instance
 
@@ -310,8 +334,9 @@ class PooledProvider(AbstractProvider):
             instance: Instance to return
         """
         with self._lock:
-            if instance in self._in_use:
-                self._in_use.remove(instance)
+            instance_id = id(instance)
+            if instance_id in self._in_use_ids:
+                del self._in_use_ids[instance_id]
 
                 if len(self._pool) < self.pool_size:
                     self._pool.append(instance)
@@ -329,7 +354,7 @@ class PooledProvider(AbstractProvider):
         """
         return {
             "pool_size": len(self._pool),
-            "in_use": len(self._in_use),
+            "in_use": len(self._in_use_ids),
             "max_pool_size": self.pool_size,
         }
 

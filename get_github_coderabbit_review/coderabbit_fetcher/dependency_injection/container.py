@@ -3,6 +3,7 @@
 import inspect
 import logging
 import threading
+import typing
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum
@@ -192,9 +193,10 @@ class DIContainer:
         if parent:
             parent._child_containers.append(self)
 
-        # Self-register the container
-        with self.bind(DIContainer) as b:
-            b.to_instance(self)
+        # Note: Self-registration is intentionally NOT done in __init__
+        # to avoid circular references and dangling references with child containers.
+        # Users should explicitly register the container if needed via:
+        # container.bind(DIContainer).to_instance(container)
 
     def bind(self, service_type: Type[T]) -> "ServiceBinder[T]":
         """Bind a service type.
@@ -298,6 +300,12 @@ class DIContainer:
         # Must be a concrete class (not abstract)
         if inspect.isabstract(service_type):
             return False
+        
+        # Additional check for ABCMeta with unimplemented abstract methods
+        if hasattr(service_type, '__abstractmethods__'):
+            abstract_methods = getattr(service_type, '__abstractmethods__', set())
+            if abstract_methods:
+                return False
 
         # Must have a constructor we can inspect
         try:
@@ -309,6 +317,14 @@ class DIContainer:
     def _create_instance(self, implementation_type: Type) -> Any:
         """Create instance with dependency injection."""
         constructor = implementation_type.__init__
+        
+        # Use get_type_hints to resolve ForwardRef and string annotations
+        try:
+            type_hints = typing.get_type_hints(constructor)
+        except Exception as e:
+            logger.warning(f"Failed to resolve type hints for {implementation_type.__name__}: {e}")
+            type_hints = {}
+        
         signature = inspect.signature(constructor)
 
         # Prepare constructor arguments
@@ -317,16 +333,17 @@ class DIContainer:
             if param_name == "self":
                 continue
 
+            # Try to get resolved type hint first, fallback to annotation
+            param_type = type_hints.get(param_name, param.annotation)
+            
             # Skip parameters with default values if no binding exists
-            if param.annotation == param.empty:
+            if param_type == param.empty:
                 if param.default != param.empty:
                     continue
                 else:
                     raise DIError(
                         f"Parameter {param_name} in {implementation_type.__name__} has no type annotation"
                     )
-
-            param_type = param.annotation
 
             try:
                 # Resolve dependency
@@ -349,35 +366,44 @@ class DIContainer:
 
     def _invoke_factory(self, factory: Callable) -> Any:
         """Invoke factory function with dependency injection."""
+        # Use get_type_hints to resolve ForwardRef and string annotations
+        try:
+            type_hints = typing.get_type_hints(factory)
+        except Exception as e:
+            logger.warning(f"Failed to resolve type hints for factory: {e}")
+            type_hints = {}
+        
         signature = inspect.signature(factory)
 
         # Prepare factory arguments
         kwargs = {}
         for param_name, param in signature.parameters.items():
-            if param.annotation == param.empty:
+            # Try to get resolved type hint first, fallback to annotation
+            param_type = type_hints.get(param_name, param.annotation)
+            
+            if param_type == param.empty:
                 if param.default != param.empty:
                     continue
                 else:
                     raise DIError(f"Factory parameter {param_name} has no type annotation")
 
-            param_type = param.annotation
-
             try:
                 # Resolve dependency
                 dependency = self._resolve(param_type)
                 kwargs[param_name] = dependency
-            except DIError:
+            except DIError as e:
                 if param.default != param.empty:
                     # Use default value if available
                     continue
                 else:
-                    raise
+                    # Chain exception for better debugging
+                    raise DIError(f"Failed to resolve factory parameter {param_name}: {e}") from e
 
         # Invoke factory
         try:
             return factory(**kwargs)
         except Exception as e:
-            raise DIError(f"Factory invocation failed: {e}")
+            raise DIError(f"Factory invocation failed: {e}") from e
 
     def _register_binding(self, binding: ServiceBinding) -> None:
         """Register service binding."""
@@ -523,15 +549,23 @@ class ScopeContext:
 
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         """Exit scope context."""
+        # Pop from stack and verify it's the correct scope
+        popped_scope_id = None
         if self.container._scope_stack:
-            self.container._scope_stack.pop()
+            popped_scope_id = self.container._scope_stack.pop()
+        
+        # Restore previous scope from stack or fallback
+        if self.container._scope_stack:
+            self.container.current_scope_id = self.container._scope_stack[-1]
+        else:
+            self.container.current_scope_id = self.previous_scope_id
 
-        self.container.current_scope_id = self.previous_scope_id
-
-        # Clear scope instances
-        self.container.clear_scope(self.scope_id)
-
-        logger.debug(f"Exited scope {self.scope_id}")
+        # Only clear scope if this context actually created it
+        if popped_scope_id == self.scope_id:
+            self.container.clear_scope(self.scope_id)
+            logger.debug(f"Exited and cleared scope {self.scope_id}")
+        else:
+            logger.debug(f"Exited scope {self.scope_id} (not clearing, stack mismatch)")
 
 
 # Global default container

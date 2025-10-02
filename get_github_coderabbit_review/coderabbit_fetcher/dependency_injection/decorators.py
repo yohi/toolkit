@@ -265,7 +265,7 @@ def auto_wire(func: Callable) -> Callable:
                     continue
                 else:
                     logger.warning(
-                        f"Failed to auto-wire {param.annotation.__name__} as {param_name}: {e}"
+                        f"Failed to auto-wire {_safe_typename(param.annotation)} as {param_name}: {e}"
                     )
 
         return func(*args, **kwargs)
