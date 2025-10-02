@@ -52,6 +52,7 @@ class AsyncGitHubClient:
             headers = {
                 "Accept": "application/vnd.github.v3+json",
                 "User-Agent": "CodeRabbit-Fetcher/1.0",
+                "X-GitHub-Api-Version": "2022-11-28",
             }
 
             if self.token:

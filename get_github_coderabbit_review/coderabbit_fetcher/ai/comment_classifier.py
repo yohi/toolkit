@@ -167,9 +167,9 @@ class AICommentClassifier:
             self._update_stats(result)
             return result
 
-        except Exception as e:
-            # 軽量なエラーログに変更
-            logger.debug(f"Classification failed: {type(e).__name__}")
+        except Exception:
+            # 軽量だが追跡可能なログ
+            logger.debug("Classification failed", exc_info=True)
 
             # Return safe default (error details from reasoning for debugging)
             return ClassificationResult(
@@ -244,16 +244,16 @@ class AICommentClassifier:
                     result = await self.classify_comment_async(comment_text, context)
                     results.append(result)
 
-            except Exception as e:
-                logger.error(f"Error in batch classification: {e}")
+            except Exception:
+                logger.exception("Error in batch classification")
 
                 # Fallback to individual classification
                 for comment_text, context in batch:
                     try:
                         result = await self.classify_comment_async(comment_text, context)
                         results.append(result)
-                    except Exception as individual_error:
-                        logger.error(f"Individual classification error: {individual_error}")
+                    except Exception:
+                        logger.exception("Individual classification error")
                         results.append(
                             ClassificationResult(
                                 category=CommentCategory.UNKNOWN,
@@ -345,8 +345,8 @@ class AICommentClassifier:
 
             return results
 
-        except Exception as e:
-            logger.error(f"Batch AI classification error: {e}")
+        except Exception:
+            logger.exception("Batch AI classification error")
             return None
 
     def _parse_ai_response(self, response: LLMResponse, comment_text: str) -> ClassificationResult:
@@ -408,8 +408,8 @@ class AICommentClassifier:
             # Fallback to individual parsing
             return []
 
-        except Exception as e:
-            logger.error(f"Error parsing batch AI response: {e}")
+        except Exception:
+            logger.exception("Error parsing batch AI response")
             return []
 
     def _parse_text_response(self, text: str, comment_text: str) -> ClassificationResult:

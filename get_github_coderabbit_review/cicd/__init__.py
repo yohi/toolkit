@@ -9,10 +9,10 @@ from .github_actions import (
 )
 
 __all__ = [
-    # GitHub Actions
+    # GitHub Actions (alphabetically sorted)
+    "ActionRunner",
     "GitHubActionsIntegration",
-    "WorkflowConfig",
     "JobConfig",
     "StepConfig",
-    "ActionRunner",
+    "WorkflowConfig",
 ]

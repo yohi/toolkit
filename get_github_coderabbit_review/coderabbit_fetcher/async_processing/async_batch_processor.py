@@ -300,7 +300,7 @@ class AsyncBatchProcessor:
 
         try:
             # Run analysis in thread pool
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(self.executor, analyze_files, file_batch)
 
             logger.debug(f"File batch {batch_number} completed")
@@ -373,7 +373,7 @@ class AsyncBatchProcessor:
 
         try:
             # Run analysis in thread pool
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(self.executor, analyze_commits, commit_batch)
 
             logger.debug(f"Commit batch {batch_number} completed")
@@ -409,7 +409,7 @@ class AsyncBatchProcessor:
             return results
 
         # Run processing in thread pool
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(self.executor, process_batch, item_batch)
 
     async def _combine_file_results(
@@ -462,7 +462,7 @@ class AsyncBatchProcessor:
             return combined
 
         # Run combination in thread pool
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(self.executor, combine_sync)
 
     async def _combine_commit_results(
@@ -515,7 +515,7 @@ class AsyncBatchProcessor:
             return combined
 
         # Run combination in thread pool
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(self.executor, combine_sync)
 
     async def close(self) -> None:
