@@ -336,9 +336,18 @@ class AsyncCodeRabbitOrchestrator:
     ) -> Dict[str, Any]:
         """Finalize execution results."""
 
-        execution_time = (
-            self.end_time or datetime.now(timezone.utc) - self.start_time
-        ).total_seconds()
+        # 実行時間の正確な計算
+        end_time = self.end_time or datetime.now(timezone.utc)
+        
+        # タイムゾーンの正規化（naiveとawareの混在を防ぐ）
+        if self.start_time and end_time.tzinfo and not self.start_time.tzinfo:
+            # start_timeがnaiveな場合、UTCとして扱う
+            self.start_time = self.start_time.replace(tzinfo=timezone.utc)
+        elif self.start_time and not end_time.tzinfo and self.start_time.tzinfo:
+            # end_timeがnaiveな場合、UTCとして扱う
+            end_time = end_time.replace(tzinfo=timezone.utc)
+        
+        execution_time = (end_time - self.start_time).total_seconds()
 
         results = {
             "success": True,

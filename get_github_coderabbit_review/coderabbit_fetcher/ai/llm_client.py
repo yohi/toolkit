@@ -114,19 +114,11 @@ class LLMClient(ABC):
             LLM response
         """
         try:
-            # 既に実行中のイベントループがある場合はスレッドで実行
+            # 既に実行中のイベントループがある場合は安全にスケジュール
             loop = asyncio.get_running_loop()
-            import concurrent.futures
-
-            # Run in executor to avoid creating new event loop
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                fut = loop.run_in_executor(
-                    ex,
-                    lambda: asyncio.new_event_loop().run_until_complete(
-                        self.generate_async(prompt, system_prompt, **kwargs)
-                    ),
-                )
-                return loop.run_until_complete(fut)
+            coro = self.generate_async(prompt, system_prompt, **kwargs)
+            future = asyncio.run_coroutine_threadsafe(coro, loop)
+            return future.result()
         except RuntimeError:
             # 実行中ループが無い場合のみ同期実行
             return asyncio.run(self.generate_async(prompt, system_prompt, **kwargs))

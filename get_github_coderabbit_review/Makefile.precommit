@@ -2,7 +2,7 @@
 .PHONY: install setup-precommit fix-all run-precommit clean help
 .DEFAULT_GOAL := help
 
-PYTHON := python3.13
+PYTHON ?= python3
 # Dynamically detect existing directories to avoid fix-all failures
 EXISTING_DIRS := $(shell find . -maxdepth 2 -type d \( -name "coderabbit_fetcher" -o -name "auth" -o -name "cicd" -o -name "microservices" -o -name "scripts" -o -name "tests" \) 2>/dev/null | sort)
 

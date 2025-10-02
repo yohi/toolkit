@@ -480,11 +480,36 @@ class FileCache(CacheProvider):
 
         Returns:
             Number of entries removed
+            
+        Raises:
+            ValueError: If namespace contains invalid characters or path traversal attempts
         """
         with self._lock:
+            # Sanitize namespace to prevent path traversal
+            if not namespace or '/' in namespace or '\\' in namespace or namespace in ('.', '..'):
+                raise ValueError(f"Invalid namespace: {namespace}")
+            
+            # Extract safe directory name only
+            safe_namespace = Path(namespace).name
+            if not safe_namespace or safe_namespace in ('.', '..'):
+                raise ValueError(f"Invalid namespace after sanitization: {namespace}")
+            
+            namespace_dir = self.cache_dir / safe_namespace
+            
+            # Security check: ensure resolved path is within cache_dir
+            try:
+                resolved_dir = namespace_dir.resolve()
+                resolved_cache_dir = self.cache_dir.resolve()
+                
+                if not str(resolved_dir).startswith(str(resolved_cache_dir)):
+                    raise ValueError(
+                        f"Namespace directory '{namespace}' resolves outside cache directory"
+                    )
+            except Exception as e:
+                logger.error(f"Path resolution error for namespace {namespace}: {e}")
+                raise ValueError(f"Invalid namespace path: {namespace}") from e
+            
             removed_count = 0
-            namespace_dir = self.cache_dir / namespace
-
             if namespace_dir.exists():
                 try:
                     # Count files before removal

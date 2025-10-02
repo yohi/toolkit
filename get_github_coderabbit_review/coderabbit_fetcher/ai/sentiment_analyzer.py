@@ -288,21 +288,22 @@ class SentimentAnalyzer:
 
         Returns:
             Sentiment analysis result
+        
+        Raises:
+            RuntimeError: If called from within a running event loop.
+                         Use analyze_sentiment_async() instead.
         """
         try:
             loop = asyncio.get_running_loop()
-            import concurrent.futures
-
-            # Run in executor to avoid creating new event loop
-            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as ex:
-                fut = loop.run_in_executor(
-                    ex,
-                    lambda: asyncio.new_event_loop().run_until_complete(
-                        self.analyze_sentiment_async(text, context)
-                    ),
-                )
-                return loop.run_until_complete(fut)
-        except RuntimeError:
+            # イベントループ内からの同期呼び出しは禁止
+            raise RuntimeError(
+                "analyze_sentiment() cannot be called from within a running event loop. "
+                "Use analyze_sentiment_async() instead."
+            )
+        except RuntimeError as e:
+            if "cannot be called" in str(e):
+                raise
+            # イベントループが存在しない正常ケース
             return asyncio.run(self.analyze_sentiment_async(text, context))
 
     async def analyze_batch_async(

@@ -39,6 +39,8 @@ class AsyncBatchProcessor:
             return {"total_files": 0, "analysis": {}}
 
         batch_size = batch_size or self.default_batch_size
+        if batch_size <= 0:
+            raise ValueError("batch_size must be > 0")
         start_time = time.time()
 
         logger.info(f"Processing {len(files)} files in batches of {batch_size}")
@@ -94,6 +96,8 @@ class AsyncBatchProcessor:
             return {"total_commits": 0, "analysis": {}}
 
         batch_size = batch_size or self.default_batch_size
+        if batch_size <= 0:
+            raise ValueError("batch_size must be > 0")
         start_time = time.time()
 
         logger.info(f"Processing {len(commits)} commits in batches of {batch_size}")
@@ -156,14 +160,41 @@ class AsyncBatchProcessor:
 
         batch_size = batch_size or self.default_batch_size
         max_concurrent = max_concurrent or self.max_workers
+        
+        # Validate parameters
+        if batch_size <= 0:
+            raise ValueError("batch_size must be > 0")
+        if max_concurrent <= 0:
+            raise ValueError("max_concurrent must be > 0")
 
         logger.info(f"Processing {len(items)} items in batches of {batch_size}")
 
         try:
-            # Create batches
+            import inspect
+            
+            # Handle async functions differently
+            if inspect.iscoroutinefunction(processor_func):
+                # For async functions: process items individually with concurrency control
+                sem = asyncio.Semaphore(max_concurrent)
+                
+                async def run_item(item):
+                    async with sem:
+                        try:
+                            return await processor_func(item)
+                        except Exception as e:
+                            logger.warning(f"Error processing item: {e}")
+                            return None
+                
+                results_list = await asyncio.gather(
+                    *(run_item(it) for it in items),
+                    return_exceptions=False
+                )
+                all_results = [r for r in results_list if r is not None]
+                logger.info(f"Processed {len(all_results)} items successfully")
+                return all_results
+            
+            # For sync functions: use batch processing with thread pool
             batches = [items[i : i + batch_size] for i in range(0, len(items), batch_size)]
-
-            # Process batches with controlled concurrency
             semaphore = asyncio.Semaphore(max_concurrent)
 
             async def process_batch_with_semaphore(batch):
@@ -172,7 +203,8 @@ class AsyncBatchProcessor:
 
             # Execute all batches
             results = await asyncio.gather(
-                *[process_batch_with_semaphore(batch) for batch in batches], return_exceptions=True
+                *[process_batch_with_semaphore(batch) for batch in batches],
+                return_exceptions=True
             )
 
             # Flatten results and filter out exceptions

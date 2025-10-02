@@ -72,9 +72,20 @@ class AsyncGitHubClient:
         """Close the HTTP session and cancel active requests."""
         # Cancel active requests
         if self._active_requests:
-            for request in list(self._active_requests):
-                if not request.done():
-                    request.cancel()
+            to_cancel = [t for t in list(self._active_requests) if not t.done()]
+            
+            # Cancel all tasks
+            for t in to_cancel:
+                t.cancel()
+            
+            # Wait for cancelled tasks to complete
+            if to_cancel:
+                try:
+                    await asyncio.gather(*to_cancel, return_exceptions=True)
+                finally:
+                    # Remove from active set
+                    for t in to_cancel:
+                        self._active_requests.discard(t)
 
         # Close session
         if self._session and not self._session.closed:
@@ -113,19 +124,50 @@ class AsyncGitHubClient:
                 self.rate_limit_remaining = int(response.headers.get("X-RateLimit-Remaining", 0))
                 self.rate_limit_reset = int(response.headers.get("X-RateLimit-Reset", 0))
 
-                # Check for rate limiting
-                if response.status == 403 and "rate limit" in (await response.text()).lower():
-                    logger.warning("GitHub API rate limit exceeded")
-                    # Calculate wait time until rate limit resets
-                    wait_time = max(0, self.rate_limit_reset - time.time())
-                    if wait_time > 0 and wait_time < 3600:  # Wait up to 1 hour
-                        logger.info(f"Waiting {wait_time:.0f} seconds for rate limit reset")
-                        await asyncio.sleep(wait_time)
-                        # Retry the request
-                        return await self._make_request(method, url, **kwargs)
-                    raise APIRateLimitError(
-                        f"Rate limit exceeded. Reset at {self.rate_limit_reset}"
+                # Check for rate limiting (403 or 429)
+                if response.status in (403, 429):
+                    body_text = await response.text()
+                    retry_after = response.headers.get("Retry-After")
+                    
+                    # Determine if this is a rate limit error
+                    is_rate_limit = (
+                        response.status == 429 or
+                        "rate limit" in body_text.lower() or
+                        retry_after is not None
                     )
+                    
+                    if is_rate_limit:
+                        logger.warning("GitHub API rate limit exceeded")
+                        
+                        # Calculate wait time
+                        if retry_after:
+                            try:
+                                # Retry-After can be seconds or HTTP-date
+                                wait_time = float(retry_after)
+                            except ValueError:
+                                # HTTP-date format
+                                try:
+                                    from email.utils import parsedate_to_datetime
+                                    from datetime import datetime, timezone
+                                    reset_time = parsedate_to_datetime(retry_after)
+                                    wait_time = max(0, (reset_time - datetime.now(timezone.utc)).total_seconds())
+                                except Exception:
+                                    # Fallback to X-RateLimit-Reset
+                                    wait_time = max(0, self.rate_limit_reset - time.time())
+                        else:
+                            wait_time = max(0, self.rate_limit_reset - time.time())
+                        
+                        # Cap wait time
+                        MAX_WAIT_TIME = 3600  # 1 hour
+                        if 0 < wait_time <= MAX_WAIT_TIME:
+                            logger.info(f"Waiting {wait_time:.0f}s for rate limit reset")
+                            await asyncio.sleep(wait_time)
+                            # Retry the request
+                            return await self._make_request(method, url, **kwargs)
+                        else:
+                            raise APIRateLimitError(
+                                f"Rate limit exceeded. Wait time ({wait_time:.0f}s) exceeds maximum ({MAX_WAIT_TIME}s)"
+                            )
 
                 # Handle authentication errors
                 if response.status == 401:

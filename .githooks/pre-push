@@ -13,7 +13,15 @@ url="$2"
 
 # Project directory
 PROJECT_DIR="get_github_coderabbit_review"
-REPO_ROOT="/home/y_ohi/program/toolkit"
+
+# Dynamically detect repository root
+REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -z "$REPO_ROOT" ] || [ ! -d "$REPO_ROOT/.git" ]; then
+    echo "❌ Error: Git repository root not found"
+    echo "💡 This hook must be run from within a Git repository"
+    exit 1
+fi
+
 PROJECT_PATH="$REPO_ROOT/$PROJECT_DIR"
 
 # Check if the project directory exists
